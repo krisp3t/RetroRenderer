@@ -33,6 +33,10 @@ struct TGAHeader {
 #pragma pack(pop)
 
 struct TGAColor {
+	TGAColor() : bgra{ 0, 0, 0, 0 } {}
+	TGAColor(std::uint8_t bpp): bgra{ 0, 0, 0, 0 }, bytespp(bpp) {}
+	TGAColor(unsigned char R, unsigned char G, unsigned char B, unsigned char A) : bgra{ B, G, R, A } {}
+
 	std::uint8_t	bgra[4] = { 0, 0, 0, 0 }; // blue, green, red, alpha
 	std::uint8_t	bytespp = 4;
 	std::uint8_t& operator[](const int i) { return bgra[i]; }
