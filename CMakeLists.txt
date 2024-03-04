@@ -12,7 +12,7 @@ endif()
 project ("Minirenderer")
 
 # Add source to this project's executable.
-add_executable (Minirenderer "Minirenderer.cpp" "Minirenderer.h")
+add_executable (Minirenderer "Minirenderer.cpp" "Minirenderer.h" "tgaimage.h" "tgaimage.cpp")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET Minirenderer PROPERTY CXX_STANDARD 20)
