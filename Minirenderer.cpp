@@ -1,12 +1,7 @@
-﻿// Minirenderer.cpp : Defines the entry point for the application.
-//
-
-#include "Minirenderer.h"
-
-using namespace std;
+﻿#include "Minirenderer.h"
 
 int main()
 {
-	cout << "Hello CMake." << endl;
+	std::cout << "Hello CMake." << std::endl;
 	return 0;
 }
