@@ -35,7 +35,7 @@ void GUI::Render(Settings* s) {
 
 	// Rendering settings window
 	if (s->open_windows.show_renderer_window) {
-		// ImGui::ShowDemoWindow(&s->open_windows.show_renderer_window);
+		ImGui::ShowDemoWindow(&s->open_windows.show_renderer_window); // TODO: remove this
 
 		ImGui::Begin("Rendering settings");
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io->Framerate, io->Framerate);
@@ -43,10 +43,11 @@ void GUI::Render(Settings* s) {
 	}
 
 	// Camera settings window
-if (s->open_windows.show_camera_window) {
+	if (s->open_windows.show_camera_window) {
 		ImGui::Begin("Camera settings");
-		ImGui::Text("Camera position: (%.2f, %.2f, %.2f)", s->camera.position.x, s->camera.position.y, s->camera.position.z);
-		ImGui::Text("Camera rotation: (%.2f, %.2f, %.2f)", s->camera.rotation.x, s->camera.rotation.y, s->camera.rotation.z);
+		ImGui::SliderFloat3("Position", &s->camera.position[0], -100.0f, 100.0f);
+		ImGui::SliderFloat3("Rotation", &s->camera.rotation[0], -180.0f, 180.0f);
+		// ImGui::Text("Camera rotation: (%.2f, %.2f, %.2f)", s->camera.rotation.x, s->camera.rotation.y, s->camera.rotation.z);
 		ImGui::End();
 	}
 

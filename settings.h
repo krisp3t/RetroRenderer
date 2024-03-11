@@ -16,6 +16,8 @@ namespace MiniRenderer
 		float fov = 60.0f;
 		float near = 0.1f;
 		float far = 100.0f;
+		float position[3] = { 0.0f, 0.0f, 3.0f };
+		float rotation[3] = { 0.0f, 0.0f, 3.0f };
 	};
 
 	struct Settings {

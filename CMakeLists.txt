@@ -16,6 +16,7 @@ file(GLOB SOURCES *.h *.cpp)
 
 find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SOURCES} "gui.cpp" "gui.h" )
 
@@ -33,4 +34,5 @@ target_link_libraries(${PROJECT_NAME}
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
  target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
+ target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
 
