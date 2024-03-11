@@ -1,55 +1,86 @@
-#include "tgaimage.h"
 
-const TGAColor white = TGAColor(255, 255, 255, 255);
-const TGAColor red = TGAColor(255, 0, 0, 255);
-const TGAColor green = TGAColor(0, 255, 0, 255);
-const TGAColor blue = TGAColor(0, 0, 255, 255);
+#include <stdio.h>
+#include <SDL.h>
+#include "gui.h"
 
+#if !SDL_VERSION_ATLEAST(2,0,17)
+#error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
+#endif
 
+int red = 0;
+int main(int, char**)
+{
+	// Setup SDL
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
+	{
+		printf("Error: %s\n", SDL_GetError());
+		return -1;
+	}
 
-void line_bresenham(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor color) {}
+#ifdef SDL_HINT_IME_SHOW_UI
+	SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
+#endif
 
-void line(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor color) {
-    // If slope > 1, swap x and y
-    bool steep = false;
-    if (std::abs(x0 - x1) < std::abs(y0 - y1)) {
-        std::swap(x0, y0);
-        std::swap(x1, y1);
-        steep = true;
-    }
-    // Ensure that x0 < x1 (left to right drawing)
-    if (x0 > x1) {
-        std::swap(x0, x1);
-        std::swap(y0, y1);
-    }
-    int dx = x1 - x0;
-    int dy = y1 - y0;
-    int derror2 = std::abs(dy) * 2;
-    int error2 = 0;
-    int y = y0;
-    for (int x = x0; x <= x1; x++) {
-        if (steep) {
-            image.set(y, x, color);
-        }
-        else {
-            image.set(x, y, color);
-        }
-        error2 += derror2;
-        if (error2 > dx) {
-            y += (y1 > y0 ? 1 : -1);
-            error2 -= dx * 2;
-        }
-    }
-}
+	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+	SDL_Window* window = SDL_CreateWindow("MiniRenderer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+	if (window == nullptr)
+	{
+		printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
+		return -1;
+	}
+	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
+	if (renderer == nullptr)
+	{
+		SDL_Log("Error creating SDL_Renderer!");
+		return 0;
+	}
+	GUI* gui = new GUI(window, renderer);
 
+	// Main loop
+	bool done = false;
+	while (!done)
+	{
+		SDL_Event event;
+		while (SDL_PollEvent(&event))
+		{
+			gui->ProcessEvent(event);
+			if (event.type == SDL_QUIT)
+			{
+				done = true;
+			}
+			if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
+			{
+				done = true;
+			}
+			else if (event.type == SDL_WINDOWEVENT)
+			{
+				if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+				{
+					SDL_Log("Window %d resized to %dx%d", event.window.windowID, event.window.data1, event.window.data2);
+				}
+			}
+		}
 
-int main(int argc, char** argv) {
-    TGAImage image(100, 100, TGAImage::RGB);
-    line(13, 20, 80, 40, image, white);
-    line(10, 50, 50, 20, image, red);
-    line(30, 50, 82, 50, image, green);
-    line(0, 500, 0, 20, image, blue);
-    image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-    image.write_tga_file("output.tga");
-    return 0;
+		// Clear
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+		SDL_RenderClear(renderer);
+
+		// Render geometry
+		SDL_Rect rect = { 100, 100, 200, 200 };
+		SDL_SetRenderDrawColor(renderer, red, 0, 0, 255);
+		SDL_RenderFillRect(renderer, &rect);
+
+		// Render GUI
+		gui->Render(&red);
+
+		// Present
+		SDL_RenderPresent(renderer);
+	}
+
+	// Cleanup
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
+
+	return 0;
 }
