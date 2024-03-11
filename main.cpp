@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include <SDL.h>
 #include "gui.h"
+#include "settings.h"
+
+using namespace MiniRenderer;
+
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
@@ -35,6 +39,7 @@ int main(int, char**)
 		return 0;
 	}
 	GUI* gui = new GUI(window, renderer);
+	Settings settings;
 
 	// Main loop
 	bool done = false;
@@ -71,7 +76,7 @@ int main(int, char**)
 		SDL_RenderFillRect(renderer, &rect);
 
 		// Render GUI
-		gui->Render(&red);
+		gui->Render(&settings);
 
 		// Present
 		SDL_RenderPresent(renderer);

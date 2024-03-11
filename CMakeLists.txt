@@ -17,7 +17,7 @@ file(GLOB SOURCES *.h *.cpp)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
-add_executable(${PROJECT_NAME} ${SOURCES} "gui.cpp" "gui.h")
+add_executable(${PROJECT_NAME} ${SOURCES} "gui.cpp" "gui.h" )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
