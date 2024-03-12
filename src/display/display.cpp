@@ -1,6 +1,18 @@
 #include "display.h"
 
+
 namespace MiniRenderer {
+	void Display::initialize_buffers() {
+		mColorBuffer = new uint32_t[mWinWidth * mWinHeight];
+		mColorBufferTexture = SDL_CreateTexture(
+			mRenderer,
+			SDL_PIXELFORMAT_ARGB8888,
+			SDL_TEXTUREACCESS_STREAMING,
+			mWinWidth,
+			mWinHeight
+		);
+	}
+
 	bool Display::initialize_window() {
 		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
 			printf("Error: %s\n", SDL_GetError());
@@ -13,15 +25,15 @@ namespace MiniRenderer {
 
 		SDL_DisplayMode display_mode;
 		SDL_GetCurrentDisplayMode(0, &display_mode);
-		mWinWidth = display_mode.w;
-		mWinHeight = display_mode.h;
+		mWinWidth = 1280;
+		mWinHeight = 720;
 		mWindow = SDL_CreateWindow(
 			"MiniRenderer",
 			SDL_WINDOWPOS_CENTERED,
 			SDL_WINDOWPOS_CENTERED,
 			mWinWidth,
 			mWinHeight,
-			SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI
+			SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
 		);
 
 		if (mWindow == nullptr)
@@ -30,27 +42,15 @@ namespace MiniRenderer {
 			return false;
 		}
 
-		mRenderer = SDL_CreateRenderer(mWindow, -1, 0);
+		mRenderer = SDL_CreateRenderer(mWindow, -1, SDL_RENDERER_ACCELERATED);
 		if (mRenderer == nullptr)
 		{
 			fprintf(stderr, "Error creating SDL renderer.\n");
 			return false;
 		}
 
-		mColorBuffer = new uint32_t[mWinWidth * mWinHeight];
-		// mColorBuffer = std::make_unique<uint32_t[]>(mWinWidth * mWinHeight);
-		mColorBufferTexture = SDL_CreateTexture(
-			mRenderer,
-			SDL_PIXELFORMAT_ARGB8888,
-			SDL_TEXTUREACCESS_STREAMING,
-			mWinWidth,
-			mWinHeight
-		);
-		// mGui = std::make_unique<GUI>();
-		// mGui->initialize_gui(mWindow, mRenderer);
+		initialize_buffers();
 		mSettings = std::make_unique<Settings>();
-
-
 
 		// Setup Dear ImGui context
 		IMGUI_CHECKVERSION();
@@ -63,6 +63,16 @@ namespace MiniRenderer {
 		ImGui_ImplSDL2_InitForSDLRenderer(mWindow, mRenderer);
 		ImGui_ImplSDLRenderer2_Init(mRenderer);
 
+		mCubeVertices = {
+			glm::vec3(-1.0f, -1.0f, -1.0f),
+			glm::vec3(-1.0f,  1.0f, -1.0f),
+			glm::vec3(1.0f,  1.0f, -1.0f),
+			glm::vec3(1.0f, -1.0f, -1.0f),
+			glm::vec3(-1.0f, -1.0f,  1.0f),
+			glm::vec3(-1.0f,  1.0f,  1.0f),
+			glm::vec3(1.0f,  1.0f,  1.0f),
+			glm::vec3(1.0f, -1.0f,  1.0f)
+		};
 
 		mIsRunning = true;
 		return true;
@@ -88,6 +98,7 @@ namespace MiniRenderer {
 				mWinWidth = event.window.data1;
 				mWinHeight = event.window.data2;
 				SDL_Log("Window %d resized to %dx%d", event.window.windowID, event.window.data1, event.window.data2);
+				initialize_buffers();
 			}
 			else if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
 				mIsRunning = false;
@@ -95,6 +106,16 @@ namespace MiniRenderer {
 			break;
 		}
 		ImGui_ImplSDL2_ProcessEvent(&event);
+
+
+	}
+
+	glm::vec2 Display::project(glm::vec3 point)
+	{
+		glm::vec2 projected_point = {
+			(fov_factor * point.x) / point.z,
+			(fov_factor * point.y) / point.z };
+		return projected_point;
 	}
 
 	void Display::update() {
@@ -117,20 +138,30 @@ namespace MiniRenderer {
 			ImGui::Begin("Camera settings");
 			ImGui::SliderFloat3("Position", &mSettings->camera.position[0], -100.0f, 100.0f);
 			ImGui::SliderFloat3("Rotation", &mSettings->camera.rotation[0], -180.0f, 180.0f);
-			// ImGui::Text("Camera rotation: (%.2f, %.2f, %.2f)", s->camera.rotation.x, s->camera.rotation.y, s->camera.rotation.z);
 			ImGui::End();
 		}
 		ImGui::Render();
+
+		mCubeRot.x += 0.01f;
+		mCubeRot.y += 0.01f;
+		mCubeRot.z += 0.01f;
+
+		for (int i = 0; i < 8; i++) {
+			glm::vec3 point = mCubeVertices[i];
+			glm::vec3 rotated_point = point;
+			rotated_point = glm::rotateX(rotated_point, mCubeRot.x);
+			rotated_point = glm::rotateY(rotated_point, mCubeRot.y);
+			rotated_point = glm::rotateZ(rotated_point, mCubeRot.z);
+			rotated_point.z += 3.0f;
+			glm::vec2 projected_point = project(rotated_point);
+			draw_pixel(projected_point.x, projected_point.y, 0xFFFFFFFF);
+		}
+
+		draw_line(0, 0, 100, 100, 0xFFFF0000);
 	}
 
 	void Display::clear_color_buffer() {
-		memset(mColorBuffer, 0xFFFFFFFF, mWinWidth * mWinHeight * sizeof(uint32_t));
-	}
-
-	void Display::render_color_buffer() {
-		draw_line(0, 0, mWinWidth, mWinHeight, 0xFF00FF00);
-		SDL_UpdateTexture(mColorBufferTexture, nullptr, mColorBuffer, static_cast<int>(mWinWidth * sizeof(uint32_t)));
-		SDL_RenderCopy(mRenderer, mColorBufferTexture, nullptr, nullptr);
+		memset(mColorBuffer, 0x00000000, mWinWidth * mWinHeight * sizeof(uint32_t));
 	}
 
 	void Display::draw_pixel(int x, int y, uint32_t color) {
@@ -158,22 +189,41 @@ namespace MiniRenderer {
 		}
 	}
 
+	void Display::draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color) {
+		draw_line(x0, y0, x1, y1, color);
+		draw_line(x1, y1, x2, y2, color);
+		draw_line(x2, y2, x0, y0, color);
+	}
+
+	void Display::draw_rect(int x, int y, int width, int height, uint32_t color) {
+		for (int i = 0; i < width; i++) {
+			for (int j = 0; j < height; j++) {
+				int current_x = x + i;
+				int current_y = y + j;
+				draw_pixel(current_x, current_y, color);
+			}
+		}
+	}
+
 	void Display::render() {
-		Display::render_color_buffer();
+		SDL_RenderClear(mRenderer);
+		SDL_UpdateTexture(mColorBufferTexture, nullptr, mColorBuffer, mWinWidth * sizeof(uint32_t));
+		SDL_RenderCopy(mRenderer, mColorBufferTexture, nullptr, nullptr);
 		ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
-		// mGui->render();
 		SDL_RenderPresent(mRenderer);
 		Display::clear_color_buffer();
 	}
 
 	void Display::destroy_window() {
+		delete mColorBuffer;
+		SDL_DestroyTexture(mColorBufferTexture);
+		ImGui_ImplSDLRenderer2_Shutdown();
 		SDL_DestroyRenderer(mRenderer);
 		SDL_DestroyWindow(mWindow);
 		SDL_Quit();
 	}
 
-	Display::~Display()
-	{
+	Display::~Display() {
 		destroy_window();
 	}
 }
