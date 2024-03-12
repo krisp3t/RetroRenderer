@@ -62,6 +62,7 @@ namespace MiniRenderer {
     }
 
     void GUI::render() {
+
 		ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
 	}
 }
