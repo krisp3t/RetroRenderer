@@ -6,21 +6,21 @@
 #include "../settings.h"
 #include <SDL.h>
 
+
 namespace MiniRenderer {
     class GUI
     {
+    public:
+        GUI() = default;
+        ~GUI();
+        bool initialize_gui(SDL_Window* window, SDL_Renderer* renderer);
+        void process_input(SDL_Event& event);
+        void update(Settings& settings);
+        void render();
+        void destroy_gui();
     private:
         SDL_Window* window;
         SDL_Renderer* renderer;
         ImGuiIO* io;
-        ImVec4 clear_color;
-    public:
-        // GUI& GetInstance(SDL_Window* window, SDL_Renderer* renderer);
-        GUI* Instance();
-        GUI(SDL_Window* window, SDL_Renderer* renderer);
-        ~GUI();
-        void Render(int* red);
-        void ProcessEvent(SDL_Event& event);
-        void Render(Settings* settings);
     };
 }

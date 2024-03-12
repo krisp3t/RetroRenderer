@@ -86,8 +86,8 @@ namespace MiniRenderer {
 	}
 
 	void Display::render_color_buffer() {
-		// SDL_UpdateTexture(mColorBufferTexture, NULL, mColorBufferTexture, (int)(mWinWidth * sizeof(uint32_t)));
-		// SDL_RenderCopy(mRenderer, mColorBufferTexture, NULL, NULL);
+		SDL_UpdateTexture(mColorBufferTexture, NULL, mColorBufferTexture, (int)(mWinWidth * sizeof(uint32_t)));
+		SDL_RenderCopy(mRenderer, mColorBufferTexture, NULL, NULL);
 		SDL_RenderPresent(mRenderer);
 	}
 

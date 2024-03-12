@@ -15,7 +15,7 @@ namespace MiniRenderer {
 		while (display->is_running()) {
 			display->process_input();
 			display->update();
-			display->render_color_buffer();
+			display->render();
 		}
 	}
 }
