@@ -63,17 +63,7 @@ namespace MiniRenderer {
 		ImGui_ImplSDL2_InitForSDLRenderer(mWindow, mRenderer);
 		ImGui_ImplSDLRenderer2_Init(mRenderer);
 
-		mCubeVertices = {
-			glm::vec3(-1.0f, -1.0f, -1.0f),
-			glm::vec3(-1.0f,  1.0f, -1.0f),
-			glm::vec3(1.0f,  1.0f, -1.0f),
-			glm::vec3(1.0f, -1.0f, -1.0f),
-			glm::vec3(-1.0f, -1.0f,  1.0f),
-			glm::vec3(-1.0f,  1.0f,  1.0f),
-			glm::vec3(1.0f,  1.0f,  1.0f),
-			glm::vec3(1.0f, -1.0f,  1.0f)
-		};
-
+		mModel = new Model("frog.obj");
 		mIsRunning = true;
 		return true;
 	}
@@ -142,19 +132,17 @@ namespace MiniRenderer {
 		}
 		ImGui::Render();
 
-		mCubeRot.x += 0.01f;
-		mCubeRot.y += 0.01f;
-		mCubeRot.z += 0.01f;
-
-		for (int i = 0; i < 8; i++) {
-			glm::vec3 point = mCubeVertices[i];
-			glm::vec3 rotated_point = point;
-			rotated_point = glm::rotateX(rotated_point, mCubeRot.x);
-			rotated_point = glm::rotateY(rotated_point, mCubeRot.y);
-			rotated_point = glm::rotateZ(rotated_point, mCubeRot.z);
-			rotated_point.z += 3.0f;
-			glm::vec2 projected_point = project(rotated_point);
-			draw_pixel(projected_point.x, projected_point.y, 0xFFFFFFFF);
+		for (int i = 0; i < mModel ->nfaces(); i++) {
+			std::vector<int> face = mModel->face(i);
+			for (int j = 0; j < 3; j++) {
+				Vec3f v0 = mModel->vert(face[j]);
+				Vec3f v1 = mModel ->vert(face[(j + 1) % 3]);
+				int x0 = (v0.x + 1.) * mWinWidth / 2.;
+				int y0 = (v0.y + 1.) * mWinHeight / 2.;
+				int x1 = (v1.x + 1.) * mWinWidth / 2.;
+				int y1 = (v1.y + 1.) * mWinHeight / 2.;
+				draw_line(x0, y0, x1, y1, 0xFFFF0000);
+			}
 		}
 
 		draw_line(0, 0, 100, 100, 0xFFFF0000);
@@ -169,8 +157,7 @@ namespace MiniRenderer {
 			mColorBuffer[(mWinWidth * y) + x] = color;
 		}
 	}
-
-	void Display::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
+	void Display::draw_DDA(int x0, int y0, int x1, int y1, uint32_t color) {
 		int delta_x = (x1 - x0);
 		int delta_y = (y1 - y0);
 
@@ -187,6 +174,42 @@ namespace MiniRenderer {
 			current_x += x_inc;
 			current_y += y_inc;
 		}
+	}
+
+	void Display::draw_bresenham(int x0, int y0, int x1, int y1, uint32_t color) {
+		bool steep = false;
+		if (std::abs(x0 - x1) < std::abs(y0 - y1)) {
+			std::swap(x0, y0);
+			std::swap(x1, y1);
+			steep = true;
+		}
+		if (x0 > x1) {
+			std::swap(x0, x1);
+			std::swap(y0, y1);
+		}
+		int dx = x1 - x0;
+		int dy = y1 - y0;
+		int derror2 = std::abs(dy) * 2;
+		int error2 = 0;
+		int y = y0;
+		for (int x = x0; x <= x1; x++) {
+			if (steep) {
+				draw_pixel(y, x, color);
+			}
+			else {
+				draw_pixel(x, y, color);
+			}
+			error2 += derror2;
+			if (error2 > dx) {
+				y += (y1 > y0 ? 1 : -1);
+				error2 -= dx * 2;
+			}
+		}
+	}
+
+	void Display::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
+		// Display::draw_DDA(x0, y0, x1, y1, color);
+		Display::draw_bresenham(x0, y0, x1, y1, color);
 	}
 
 	void Display::draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color) {

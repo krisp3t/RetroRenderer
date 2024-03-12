@@ -18,7 +18,7 @@ find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES} "src/geometry.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
 	set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
