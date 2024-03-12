@@ -3,7 +3,7 @@
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
-#include "settings.h"
+#include "../settings.h"
 #include <SDL.h>
 
 namespace MiniRenderer {
@@ -15,6 +15,8 @@ namespace MiniRenderer {
         ImGuiIO* io;
         ImVec4 clear_color;
     public:
+        // GUI& GetInstance(SDL_Window* window, SDL_Renderer* renderer);
+        GUI* Instance();
         GUI(SDL_Window* window, SDL_Renderer* renderer);
         ~GUI();
         void Render(int* red);
