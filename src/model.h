@@ -8,17 +8,25 @@
 #include <array>
 #include <glm/ext/vector_float3.hpp>
 
+struct Face {
+	std::vector<int> positionIndices;
+	std::vector<int> texIndices;
+	std::vector<int> normalIndices;
+};
+
 class Model {
 private:
 	std::vector<glm::vec3> mVerts;
-	std::vector<std::vector<std::array<int, 3>>> mFaces;
+	std::vector<Face> mFaces;
 public:
+
 	Model();
 	Model(const std::string_view filepath);
 	~Model();
 	int nVerts();
 	int nFaces();
 	glm::vec3 vert(int ix);
-	std::vector<std::array<int, 3>> face(int ix);
+	Face face(int ix);
+	std::vector<Face> faces();
 };
 

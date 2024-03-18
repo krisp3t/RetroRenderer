@@ -31,7 +31,13 @@ namespace MiniRenderer {
 		void draw_DDA(int x0, int y0, int x1, int y1, uint32_t color);
 		void draw_bresenham(int x0, int y0, int x1, int y1, uint32_t color);
 		void draw_line(int x0, int y0, int x1, int y1, uint32_t color);
+		void draw_wu(int x0, int y0, int x1, int y1, uint32_t color);
+		void plot(int x, int y, float intensity, uint32_t color);
+		float fpart(float x);
+		float rfpart(float x);
+		int ipart(float x);
 		void draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color);
+		uint32_t blendColors(uint32_t color, uint8_t alpha);
 		void draw_rect(int x, int y, int width, int height, uint32_t color);
 		glm::vec2 project(glm::vec3 point);
 		bool is_running();

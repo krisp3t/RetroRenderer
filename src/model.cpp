@@ -2,7 +2,7 @@
 
 Model::Model() {
 	mVerts = std::vector<glm::vec3>();
-	mFaces = std::vector<std::vector<std::array<int, 3>>>();
+    mFaces = std::vector<Face>();
 }
 Model::Model(const std::string_view filepath) {
     std::ifstream infile(filepath.data());
@@ -18,23 +18,22 @@ Model::Model(const std::string_view filepath) {
         if (!line.compare(0, 2, "v ")) {
             glm::vec3 vertex;
             iss >> trash >> vertex.x >> vertex.y >> vertex.z;
-            mVerts.push_back(vertex);
+            mVerts.emplace_back(std::move(vertex));
         }
         // Faces
 		else if (!line.compare(0, 2, "f ")) {
             // face is made of usually 3 (triangle) or 4 vertices (quad)
             // each vertex is made of 3 indices: position, texture, normal
-			std::vector<std::array<int, 3>> vertices; 
+			std::vector<int> positionIndices, texIndices, normalIndices;
 			int ixPosition, ixTexture, ixNormal;
 			iss >> trash;
 			while (iss >> ixPosition >> trash >> ixTexture >> trash >> ixNormal) {
-				ixPosition--; // wavefront indices start at 1, not 0
-                ixTexture--;
-                ixNormal--;
-                std::array<int, 3> vertex { ixPosition, ixTexture, ixNormal };
-                vertices.push_back(vertex);
+                ixPosition--; ixTexture--; ixNormal--; // wavefront indices start at 1, not 0
+                positionIndices.push_back(ixPosition);
+                texIndices.push_back(ixTexture);
+                normalIndices.push_back(ixNormal);
 			}
-            mFaces.push_back(vertices);
+            mFaces.emplace_back(std::move(positionIndices), std::move(texIndices), std::move(normalIndices));
 		}
 	}
     infile.close();
@@ -51,8 +50,12 @@ int Model::nFaces() {
     return mFaces.size();
 }
 
-std::vector<std::array<int, 3>> Model::face(int idx) {
+Face Model::face(int idx) {
     return mFaces[idx];
+}
+
+std::vector<Face> Model::faces() {
+    return mFaces;
 }
 
 glm::vec3 Model::vert(int i) {

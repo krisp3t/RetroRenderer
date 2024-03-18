@@ -158,7 +158,7 @@ namespace MiniRenderer {
 			ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), filePathName.c_str());
 			ImGui::SameLine();
 			ImGui::Text("loaded");
-			ImGui::Text("%d vertices, %d faces", mModel->nVerts(), mModel->nFaces());
+			// ImGui::Text("%d vertices, %d faces", mModel->nVerts(), mModel->nFaces());
 			// ImGui::Text(mModel->name.c_str());
 			/*
 			ImGui::SeparatorText("Lighting");
@@ -223,11 +223,11 @@ namespace MiniRenderer {
 		if (mModel == nullptr || (mSettings->triangle_algo != TriangleAlgo::Wireframe)) {
 			return;
 		}
-		for (int i = 0; i < mModel->nFaces(); i++) {
-			std::vector<std::array<int, 3>> face = mModel->face(i);
-			for (int j = 0; j < face.size(); j++) {
-				glm::vec3 v0 = mModel->vert(face[j][0]);
-				glm::vec3 v1 = mModel->vert(face[(j + 1) % 3][0]);
+		for (const auto& face : mModel->faces()) {
+			const std::vector<int>& vertex_indices = face.positionIndices;
+			for (auto it = vertex_indices.begin(); it != std::prev(vertex_indices.end()); ++it) {
+				glm::vec3 v0 = mModel->vert(*it);
+				glm::vec3 v1 = mModel->vert(*(std::next(it)));
 				if (mSettings->triangle_algo == TriangleAlgo::Wireframe) {
 					int x0 = (v0.x + 1.) * mWinWidth / 2.;
 					int y0 = (v0.y + 1.) * mWinHeight / 2.;
@@ -237,6 +237,7 @@ namespace MiniRenderer {
 				}
 			}
 		}
+
 	}
 
 
@@ -316,9 +317,107 @@ namespace MiniRenderer {
 	}
 
 	void Display::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
-		// Display::draw_DDA(x0, y0, x1, y1, color);
-		Display::draw_bresenham(x0, y0, x1, y1, color);
+		switch (mSettings->line_algo) {
+			case LineAlgorithm::DDA:
+				Display::draw_DDA(x0, y0, x1, y1, color);
+				break;
+			case LineAlgorithm::Bresenham:
+				Display::draw_bresenham(x0, y0, x1, y1, color);
+				break;
+			case LineAlgorithm::Wu:
+				Display::draw_wu(x0, y0, x1, y1, color);
+				break;
+		}
 	}
+
+	void Display::draw_wu(int x0, int y0, int x1, int y1, uint32_t color) {
+		bool steep = std::abs(y1 - y0) > std::abs(x1 - x0);
+		if (steep) {
+			std::swap(x0, y0);
+			std::swap(x1, y1);
+		}
+		if (x0 > x1) {
+			std::swap(x0, x1);
+			std::swap(y0, y1);
+		}
+
+		int dx = x1 - x0;
+		int dy = y1 - y0;
+		float gradient = static_cast<float>(dy) / static_cast<float>(dx);
+
+		int xend = round(x0);
+		float yend = y0 + gradient * (xend - x0);
+		float xgap = rfpart(x0 + 0.5);
+		int xpxl1 = xend;
+		int ypxl1 = ipart(yend);
+		if (steep) {
+			plot(ypxl1, xpxl1, rfpart(yend) * xgap, color);
+			plot(ypxl1 + 1, xpxl1, fpart(yend) * xgap, color);
+		}
+		else {
+			plot(xpxl1, ypxl1, rfpart(yend) * xgap, color);
+			plot(xpxl1, ypxl1 + 1, fpart(yend) * xgap, color);
+		}
+		float intery = yend + gradient;
+
+		xend = round(x1);
+		yend = y1 + gradient * (xend - x1);
+		xgap = fpart(x1 + 0.5);
+		int xpxl2 = xend;
+		int ypxl2 = ipart(yend);
+		if (steep) {
+			plot(ypxl2, xpxl2, rfpart(yend) * xgap, color);
+			plot(ypxl2 + 1, xpxl2, fpart(yend) * xgap, color);
+		}
+		else {
+			plot(xpxl2, ypxl2, rfpart(yend) * xgap, color);
+			plot(xpxl2, ypxl2 + 1, fpart(yend) * xgap, color);
+		}
+
+		if (steep) {
+			for (int x = xpxl1 + 1; x < xpxl2; x++) {
+				plot(ipart(intery), x, rfpart(intery), color);
+				plot(ipart(intery) + 1, x, fpart(intery), color);
+				intery += gradient;
+			}
+		}
+		else {
+			for (int x = xpxl1 + 1; x < xpxl2; x++) {
+				plot(x, ipart(intery), rfpart(intery), color);
+				plot(x, ipart(intery) + 1, fpart(intery), color);
+				intery += gradient;
+			}
+		}
+	}
+
+	void Display::plot(int x, int y, float intensity, uint32_t color) {
+		uint8_t alpha = static_cast<uint8_t>(255 * intensity);
+		uint32_t blendedColor = blendColors(color, alpha);
+		draw_pixel(x, y, blendedColor);
+	}
+
+	float Display::fpart(float x) {
+		return x - floor(x);
+	}
+
+	float Display::rfpart(float x) {
+		return 1 - fpart(x);
+	}
+
+	int Display::ipart(float x) {
+		return static_cast<int>(floor(x));
+	}
+
+	uint32_t Display::blendColors(uint32_t color, uint8_t alpha) {
+		uint32_t r = (color >> 16) & 0xFF;
+		uint32_t g = (color >> 8) & 0xFF;
+		uint32_t b = color & 0xFF;
+		r = (r * alpha + 255 * (255 - alpha)) / 255;
+		g = (g * alpha + 255 * (255 - alpha)) / 255;
+		b = (b * alpha + 255 * (255 - alpha)) / 255;
+		return (r << 16) | (g << 8) | b;
+	}
+
 
 
 	void Display::draw_rect(int x, int y, int width, int height, uint32_t color) {
