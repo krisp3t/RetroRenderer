@@ -224,10 +224,10 @@ namespace MiniRenderer {
 			return;
 		}
 		for (const auto& face : mModel->faces()) {
-			const std::vector<int>& vertex_indices = face.positionIndices;
-			for (auto it = vertex_indices.begin(); it != std::prev(vertex_indices.end()); ++it) {
-				glm::vec3 v0 = mModel->vert(*it);
-				glm::vec3 v1 = mModel->vert(*(std::next(it)));
+			const std::array<int, 3>& vertex_indices = face.positionIndices;
+			for (int i = 0; i < 3; i++) {
+				glm::vec3 v0 = mModel->vert(vertex_indices[i]);
+				glm::vec3 v1 = mModel->vert(vertex_indices[(i + 1) % 3]);
 				if (mSettings->triangle_algo == TriangleAlgo::Wireframe) {
 					int x0 = (v0.x + 1.) * mWinWidth / 2.;
 					int y0 = (v0.y + 1.) * mWinHeight / 2.;

@@ -22,16 +22,18 @@ Model::Model(const std::string_view filepath) {
         }
         // Faces
 		else if (!line.compare(0, 2, "f ")) {
-            // face is made of usually 3 (triangle) or 4 vertices (quad)
+            // we only support triangles (not quads)
             // each vertex is made of 3 indices: position, texture, normal
-			std::vector<int> positionIndices, texIndices, normalIndices;
+            std::array<int, 3> positionIndices, texIndices, normalIndices;
 			int ixPosition, ixTexture, ixNormal;
 			iss >> trash;
+            int count = 0;
 			while (iss >> ixPosition >> trash >> ixTexture >> trash >> ixNormal) {
-                ixPosition--; ixTexture--; ixNormal--; // wavefront indices start at 1, not 0
-                positionIndices.push_back(ixPosition);
-                texIndices.push_back(ixTexture);
-                normalIndices.push_back(ixNormal);
+                // wavefront indices start at 1, not 0
+                positionIndices[count] = --ixPosition;
+                texIndices[count] = --ixTexture;
+                normalIndices[count] = --ixNormal;
+                count++;
 			}
             mFaces.emplace_back(std::move(positionIndices), std::move(texIndices), std::move(normalIndices));
 		}

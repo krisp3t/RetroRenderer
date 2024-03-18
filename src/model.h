@@ -9,9 +9,9 @@
 #include <glm/ext/vector_float3.hpp>
 
 struct Face {
-	std::vector<int> positionIndices;
-	std::vector<int> texIndices;
-	std::vector<int> normalIndices;
+	std::array<int, 3> positionIndices;
+	std::array<int, 3> texIndices;
+	std::array<int, 3> normalIndices;
 };
 
 class Model {
