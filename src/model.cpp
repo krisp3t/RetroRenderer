@@ -29,6 +29,10 @@ Model::Model(const std::string_view filepath) {
 			iss >> trash;
             int count = 0;
 			while (iss >> ixPosition >> trash >> ixTexture >> trash >> ixNormal) {
+                if (count >= 3) {
+					std::cerr << "Error: renderer only supports triangles in obj file" << std::endl;
+					return;
+                }
                 // wavefront indices start at 1, not 0
                 positionIndices[count] = --ixPosition;
                 texIndices[count] = --ixTexture;
