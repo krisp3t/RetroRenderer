@@ -63,7 +63,7 @@ namespace MiniRenderer {
 		ImGui_ImplSDL2_InitForSDLRenderer(mWindow, mRenderer);
 		ImGui_ImplSDLRenderer2_Init(mRenderer);
 
-		mModel = new Model("head.obj");
+		mModel = new Model("cat2.obj");
 		mIsRunning = true;
 		return true;
 	}
@@ -99,6 +99,8 @@ namespace MiniRenderer {
 
 
 	}
+	std::string filePathName;
+	std::string filePath;
 
 	glm::vec2 Display::project(glm::vec3 point)
 	{
@@ -112,6 +114,8 @@ namespace MiniRenderer {
 		ImGui_ImplSDLRenderer2_NewFrame();
 		ImGui_ImplSDL2_NewFrame();
 		ImGui::NewFrame();
+
+
 
 		// TODO: Remove this line
 		ImGui::ShowDemoWindow(nullptr);
@@ -134,9 +138,24 @@ namespace MiniRenderer {
 			ImGui::Checkbox("Show normals", &mSettings->show_normals);
 			ImGui::Checkbox("Show bounding box", &mSettings->show_bounding_box);
 			*/
-			ImGui::Button("Load model");
+
+			if (ImGui::Button("Open File Dialog")) {
+				IGFD::FileDialogConfig config;
+				config.path = filePath;
+				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj", config);
+			}
+			// display
+			if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
+				if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
+					filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+					filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+					delete mModel;
+					mModel = new Model(filePathName.c_str());
+				}
+				ImGuiFileDialog::Instance()->Close();
+			}
 			ImGui::SameLine();
-			ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), "head.obj");
+			ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), filePathName.c_str());
 			ImGui::SameLine();
 			ImGui::Text("loaded");
 			// ImGui::Text(mModel->name.c_str());

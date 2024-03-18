@@ -7,6 +7,7 @@
 #include <glm/vec2.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include "../model.h"
+#include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
