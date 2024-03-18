@@ -4,7 +4,14 @@ namespace MiniRenderer
 {
 	enum LineAlgorithm {
 		DDA,
-		Bresenham
+		Bresenham,
+		Wu
+	};
+
+	enum TriangleAlgo {
+		Wireframe,
+		Flat,
+		Gouraud
 	};
 
 	struct OpenWindows {
@@ -22,6 +29,7 @@ namespace MiniRenderer
 
 	struct Settings {
 		LineAlgorithm line_algo = LineAlgorithm::Bresenham;
+		TriangleAlgo triangle_algo = TriangleAlgo::Wireframe;
 		bool draw_wireframe = false;
 		OpenWindows open_windows;
 		Camera camera;

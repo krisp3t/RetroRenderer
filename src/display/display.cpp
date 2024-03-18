@@ -63,7 +63,7 @@ namespace MiniRenderer {
 		ImGui_ImplSDL2_InitForSDLRenderer(mWindow, mRenderer);
 		ImGui_ImplSDLRenderer2_Init(mRenderer);
 
-		mModel = new Model("frog.obj");
+		mModel = new Model("head.obj");
 		mIsRunning = true;
 		return true;
 	}
@@ -116,10 +116,74 @@ namespace MiniRenderer {
 		// TODO: Remove this line
 		ImGui::ShowDemoWindow(nullptr);
 
+		// Main settings window
+		ImGui::Begin("Window settings");
+		ImGui::Checkbox("Show renderer window", &mSettings->open_windows.show_renderer_window);
+		ImGui::Checkbox("Show camera window", &mSettings->open_windows.show_camera_window);
+		ImGui::End();
+
 		// Rendering settings window
 		if (mSettings && mSettings->open_windows.show_renderer_window) {
 			ImGui::Begin("Rendering settings");
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / mIo->Framerate, mIo->Framerate);
+			ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / mIo->Framerate, mIo->Framerate);
+
+			ImGui::SeparatorText("Model");
+			/*
+			ImGui::Checkbox("Show model", &mSettings->show_model);
+			ImGui::Checkbox("Show wireframe", &mSettings->show_wireframe);
+			ImGui::Checkbox("Show normals", &mSettings->show_normals);
+			ImGui::Checkbox("Show bounding box", &mSettings->show_bounding_box);
+			*/
+			ImGui::Button("Load model");
+			ImGui::SameLine();
+			ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), "head.obj");
+			ImGui::SameLine();
+			ImGui::Text("loaded");
+			// ImGui::Text(mModel->name.c_str());
+			/*
+			ImGui::SeparatorText("Lighting");
+						ImGui::Checkbox("Enable lighting", &mSettings->enable_lighting);
+			ImGui::Checkbox("Enable textures", &mSettings->enable_textures);
+						ImGui::SliderFloat3("Light position", &mSettings->light.position[0], -100.0f, 100.0f);
+			ImGui::SliderFloat3("Light color", &mSettings->light.color[0], 0.0f, 1.0f);
+						ImGui::SliderFloat("Ambient strength", &mSettings->light.ambient_strength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Diffuse strength", &mSettings->light.diffuse_strength, 0.0f, 1.0f);
+						ImGui::SliderFloat("Specular strength", &mSettings->light.specular_strength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Specular shininess", &mSettings->light.specular_shininess, 0.0f, 100.0f);
+						ImGui::SeparatorText("Shading");
+			ImGui::RadioButton("Flat", reinterpret_cast<int*>(&mSettings->shading), Shading::Flat);
+						ImGui::SameLine();
+			ImGui::RadioButton("Gouraud", reinterpret_cast<int*>(&mSettings->shading), Shading::Gouraud);
+						ImGui::SameLine();
+			ImGui::RadioButton("Phong", reinterpret_cast<int*>(&mSettings->shading), Shading::Phong);
+						ImGui::SeparatorText("Clipping");
+			ImGui::Checkbox("Enable clipping", &mSettings->enable_clipping);
+						ImGui::SliderFloat("Near plane", &mSettings->near_plane, 0.0f, 100.0f);
+			ImGui::SliderFloat("Far plane", &mSettings->far_plane, 0.0f, 100.0f);
+						ImGui::SeparatorText("Culling");
+			ImGui::Checkbox("Enable backface culling", &mSettings->enable_backface_culling);
+						ImGui::SeparatorText("Rasterization");
+			ImGui::RadioButton("Point", reinterpret_cast<int*>(&mSettings->rasterization), Rasterization::Point);
+						ImGui::SameLine();
+			ImGui::RadioButton("Wireframe", reinterpret_cast<int*>(&mSettings->rasterization), Rasterization::Wireframe);
+						ImGui::SameLine();
+			ImGui::RadioButton("Solid", reinterpret_cast<int*>(&mSettings->rasterization), Rasterization::Solid);
+			*/
+
+
+			ImGui::SeparatorText("Line algorithm");
+			ImGui::RadioButton("DDA", reinterpret_cast<int*>(&mSettings->line_algo), LineAlgorithm::DDA);
+			ImGui::SameLine();
+			ImGui::RadioButton("Bresenham", reinterpret_cast<int*>(&mSettings->line_algo), LineAlgorithm::Bresenham);
+			ImGui::SameLine();
+			ImGui::RadioButton("Wu", reinterpret_cast<int*>(&mSettings->line_algo), LineAlgorithm::Wu);
+
+			ImGui::SeparatorText("Triangle algorithm");
+			ImGui::RadioButton("Wireframe", reinterpret_cast<int*>(&mSettings->triangle_algo), TriangleAlgo::Wireframe);
+			ImGui::SameLine();
+			ImGui::RadioButton("Flat", reinterpret_cast<int*>(&mSettings->triangle_algo), TriangleAlgo::Flat);
+			ImGui::SameLine();
+			ImGui::RadioButton("Gouraud", reinterpret_cast<int*>(&mSettings->triangle_algo), TriangleAlgo::Gouraud);
 			ImGui::End();
 		}
 
@@ -132,11 +196,11 @@ namespace MiniRenderer {
 		}
 		ImGui::Render();
 
-		for (int i = 0; i < mModel ->nfaces(); i++) {
+		for (int i = 0; i < mModel->nfaces(); i++) {
 			std::vector<int> face = mModel->face(i);
 			for (int j = 0; j < 3; j++) {
 				Vec3f v0 = mModel->vert(face[j]);
-				Vec3f v1 = mModel ->vert(face[(j + 1) % 3]);
+				Vec3f v1 = mModel->vert(face[(j + 1) % 3]);
 				int x0 = (v0.x + 1.) * mWinWidth / 2.;
 				int y0 = (v0.y + 1.) * mWinHeight / 2.;
 				int x1 = (v1.x + 1.) * mWinWidth / 2.;
@@ -149,7 +213,22 @@ namespace MiniRenderer {
 	}
 
 	void Display::clear_color_buffer() {
-		memset(mColorBuffer, 0x00000000, mWinWidth * mWinHeight * sizeof(uint32_t));
+		//memset(mColorBuffer, 0x00000000, mWinWidth * mWinHeight * sizeof(uint32_t));
+		/*
+		__m256i colorSIMD = _mm256_set1_epi32(0xFF00FF00);
+		int blockCount = static_cast<int>(mWinWidth * mWinHeight / 8);
+		__m256i* blocks = (__m256i*) mColorBuffer;
+
+		//SIMD as much as possible
+		for (int block = 0; block < blockCount; ++block) {
+			blocks[block] = colorSIMD;
+		}
+
+		//set any remaining pixels individually
+		for (int pixel = blockCount * 8; pixel < mWinWidth * mWinHeight; ++pixel) {
+			mColorBuffer[pixel] = 0xFFFF0000;
+		}
+		*/
 	}
 
 	void Display::draw_pixel(int x, int y, uint32_t color) {
