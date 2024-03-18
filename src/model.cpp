@@ -1,54 +1,60 @@
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <vector>
 #include "model.h"
 
-Model::Model(const char* filename) : verts_(), faces_() {
-    std::ifstream in;
-    in.open(filename, std::ifstream::in);
-    if (in.fail()) return;
-    std::string line;
-    while (!in.eof()) {
-        std::getline(in, line);
-        std::istringstream iss(line.c_str());
+Model::Model() {
+	mVerts = std::vector<glm::vec3>();
+	mFaces = std::vector<std::vector<std::array<int, 3>>>();
+}
+Model::Model(const std::string_view filepath) {
+    std::ifstream infile(filepath.data());
+    if (!infile.good()) {
+		std::cerr << "Error: cannot open file " << filepath << std::endl;
+		return;
+	}
+	std::string line;
+	while (std::getline(infile, line)) {
+        std::istringstream iss(line);
         char trash;
+        // Vertices
         if (!line.compare(0, 2, "v ")) {
-            iss >> trash;
-            Vec3f v;
-            for (int i = 0; i < 3; i++) iss >> v.raw[i];
-            verts_.push_back(v);
+            glm::vec3 vertex;
+            iss >> trash >> vertex.x >> vertex.y >> vertex.z;
+            mVerts.push_back(vertex);
         }
-        else if (!line.compare(0, 2, "f ")) {
-            std::vector<int> f;
-            int itrash, idx;
-            iss >> trash;
-            while (iss >> idx >> trash >> itrash >> trash >> itrash) {
-                idx--; // in wavefront obj all indices start at 1, not zero
-                f.push_back(idx);
-            }
-            faces_.push_back(f);
-        }
-    }
-    std::cerr << "# v# " << verts_.size() << " f# " << faces_.size() << std::endl;
+        // Faces
+		else if (!line.compare(0, 2, "f ")) {
+            // face is made of usually 3 (triangle) or 4 vertices (quad)
+            // each vertex is made of 3 indices: position, texture, normal
+			std::vector<std::array<int, 3>> vertices; 
+			int ixPosition, ixTexture, ixNormal;
+			iss >> trash;
+			while (iss >> ixPosition >> trash >> ixTexture >> trash >> ixNormal) {
+				ixPosition--; // wavefront indices start at 1, not 0
+                ixTexture--;
+                ixNormal--;
+                std::array<int, 3> vertex { ixPosition, ixTexture, ixNormal };
+                vertices.push_back(vertex);
+			}
+            mFaces.push_back(vertices);
+		}
+	}
+    infile.close();
 }
 
 Model::~Model() {
 }
 
-int Model::nverts() {
-    return (int)verts_.size();
+int Model::nVerts() {
+    return mVerts.size();
 }
 
-int Model::nfaces() {
-    return (int)faces_.size();
+int Model::nFaces() {
+    return mFaces.size();
 }
 
-std::vector<int> Model::face(int idx) {
-    return faces_[idx];
+std::vector<std::array<int, 3>> Model::face(int idx) {
+    return mFaces[idx];
 }
 
-Vec3f Model::vert(int i) {
-    return verts_[i];
+glm::vec3 Model::vert(int i) {
+    return mVerts[i];
 }

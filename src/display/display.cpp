@@ -51,6 +51,7 @@ namespace MiniRenderer {
 
 		initialize_buffers();
 		mSettings = std::make_unique<Settings>();
+		mModel = std::make_unique<Model>("head.obj");
 
 		// Setup Dear ImGui context
 		IMGUI_CHECKVERSION();
@@ -63,7 +64,6 @@ namespace MiniRenderer {
 		ImGui_ImplSDL2_InitForSDLRenderer(mWindow, mRenderer);
 		ImGui_ImplSDLRenderer2_Init(mRenderer);
 
-		mModel = new Model("cat2.obj");
 		mIsRunning = true;
 		return true;
 	}
@@ -104,6 +104,7 @@ namespace MiniRenderer {
 
 	glm::vec2 Display::project(glm::vec3 point)
 	{
+		float fov_factor = 1.0f / tan(mSettings->camera.fov / 2.0f);
 		glm::vec2 projected_point = {
 			(fov_factor * point.x) / point.z,
 			(fov_factor * point.y) / point.z };
@@ -130,7 +131,7 @@ namespace MiniRenderer {
 		if (mSettings && mSettings->open_windows.show_renderer_window) {
 			ImGui::Begin("Rendering settings");
 			ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / mIo->Framerate, mIo->Framerate);
-
+			ImGui::Button("Render screenshot (TGA)");
 			ImGui::SeparatorText("Model");
 			/*
 			ImGui::Checkbox("Show model", &mSettings->show_model);
@@ -139,18 +140,17 @@ namespace MiniRenderer {
 			ImGui::Checkbox("Show bounding box", &mSettings->show_bounding_box);
 			*/
 
-			if (ImGui::Button("Open File Dialog")) {
+			if (ImGui::Button("Open Model")) {
 				IGFD::FileDialogConfig config;
 				config.path = filePath;
-				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj", config);
+				ImGuiFileDialog::Instance()->OpenDialog("ChooseObjFile", "Choose model (.obj)", ".obj", config);
 			}
 			// display
-			if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
-				if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
+			if (ImGuiFileDialog::Instance()->Display("ChooseObjFile")) {
+				if (ImGuiFileDialog::Instance()->IsOk()) {
 					filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 					filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-					delete mModel;
-					mModel = new Model(filePathName.c_str());
+					mModel = std::make_unique<Model>(filePathName);
 				}
 				ImGuiFileDialog::Instance()->Close();
 			}
@@ -158,6 +158,7 @@ namespace MiniRenderer {
 			ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), filePathName.c_str());
 			ImGui::SameLine();
 			ImGui::Text("loaded");
+			ImGui::Text("%d vertices, %d faces", mModel->nVerts(), mModel->nFaces());
 			// ImGui::Text(mModel->name.c_str());
 			/*
 			ImGui::SeparatorText("Lighting");
@@ -215,24 +216,33 @@ namespace MiniRenderer {
 		}
 		ImGui::Render();
 
-		for (int i = 0; i < mModel->nfaces(); i++) {
-			std::vector<int> face = mModel->face(i);
-			for (int j = 0; j < 3; j++) {
-				Vec3f v0 = mModel->vert(face[j]);
-				Vec3f v1 = mModel->vert(face[(j + 1) % 3]);
-				int x0 = (v0.x + 1.) * mWinWidth / 2.;
-				int y0 = (v0.y + 1.) * mWinHeight / 2.;
-				int x1 = (v1.x + 1.) * mWinWidth / 2.;
-				int y1 = (v1.y + 1.) * mWinHeight / 2.;
-				draw_line(x0, y0, x1, y1, 0xFFFF0000);
-			}
-		}
-
-		draw_line(0, 0, 100, 100, 0xFFFF0000);
+		draw_model();
 	}
 
+	void Display::draw_model() {
+		if (mModel == nullptr || (mSettings->triangle_algo != TriangleAlgo::Wireframe)) {
+			return;
+		}
+		for (int i = 0; i < mModel->nFaces(); i++) {
+			std::vector<std::array<int, 3>> face = mModel->face(i);
+			for (int j = 0; j < face.size(); j++) {
+				glm::vec3 v0 = mModel->vert(face[j][0]);
+				glm::vec3 v1 = mModel->vert(face[(j + 1) % 3][0]);
+				if (mSettings->triangle_algo == TriangleAlgo::Wireframe) {
+					int x0 = (v0.x + 1.) * mWinWidth / 2.;
+					int y0 = (v0.y + 1.) * mWinHeight / 2.;
+					int x1 = (v1.x + 1.) * mWinWidth / 2.;
+					int y1 = (v1.y + 1.) * mWinHeight / 2.;
+					draw_line(x0, y0, x1, y1, 0xFFFF0000);
+				}
+			}
+		}
+	}
+
+
+
 	void Display::clear_color_buffer() {
-		//memset(mColorBuffer, 0x00000000, mWinWidth * mWinHeight * sizeof(uint32_t));
+		memset(mColorBuffer, 0x00000000, mWinWidth * mWinHeight * sizeof(uint32_t));
 		/*
 		__m256i colorSIMD = _mm256_set1_epi32(0xFF00FF00);
 		int blockCount = static_cast<int>(mWinWidth * mWinHeight / 8);
@@ -310,11 +320,6 @@ namespace MiniRenderer {
 		Display::draw_bresenham(x0, y0, x1, y1, color);
 	}
 
-	void Display::draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color) {
-		draw_line(x0, y0, x1, y1, color);
-		draw_line(x1, y1, x2, y2, color);
-		draw_line(x2, y2, x0, y0, color);
-	}
 
 	void Display::draw_rect(int x, int y, int width, int height, uint32_t color) {
 		for (int i = 0; i < width; i++) {

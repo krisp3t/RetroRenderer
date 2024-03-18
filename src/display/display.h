@@ -24,7 +24,7 @@ namespace MiniRenderer {
 		void destroy_window(void);
 		void process_input(void);
 		void update(void);
-		void draw_grid();
+		void draw_model(void);
 		void render(void);
 		void clear_color_buffer(void);
 		void draw_pixel(int x, int y, uint32_t color);
@@ -36,6 +36,7 @@ namespace MiniRenderer {
 		glm::vec2 project(glm::vec3 point);
 		bool is_running();
 	private:
+		// SDL window and renderer
 		SDL_Window* mWindow = nullptr;
 		SDL_Renderer* mRenderer = nullptr;
 		uint32_t* mColorBuffer = nullptr;
@@ -47,12 +48,10 @@ namespace MiniRenderer {
 		int mWinHeight = 600;
 		bool mIsRunning = true;
 
+		// Camera and model
 		glm::vec3 mCameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
 		glm::vec3 mCameraRot = glm::vec3(0.0f, 0.0f, 0.0f);
 		glm::vec3 mCubeRot = glm::vec3(0.0f, 0.0f, 0.0f);
-		Model* mModel = nullptr;
-		std::vector<glm::vec3> mCubeVertices;
-		float fov_factor = 640;
-
+		std::unique_ptr<Model> mModel = nullptr;
 	};
 }
