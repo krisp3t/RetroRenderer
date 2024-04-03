@@ -120,12 +120,9 @@ namespace MiniRenderer {
 		for (int i = 0; i < 3; i++) {
 			glm::vec3 v0 = vertices[i];
 			glm::vec3 v1 = vertices[(i + 1) % 3];
-			// Transform from normalized device coordinates to screen space
-			int x0 = (v0.x + 1.) * mWinWidth / 2.;
-			int y0 = (-v0.y + 1.) * mWinHeight / 2.;
-			int x1 = (v1.x + 1.) * mWinWidth / 2.;
-			int y1 = (-v1.y + 1.) * mWinHeight / 2.;
-			draw_line(x0, y0, x1, y1, rgbaToHex(mSettings->fg_color));
+			glm::vec2 s0 = NDC_to_Screen(glm::vec2(v0.x, v0.y), mWinWidth, mWinHeight);
+			glm::vec2 s1 = NDC_to_Screen(glm::vec2(v1.x, v1.y), mWinWidth, mWinHeight);
+			draw_line(s0, s1, rgbaToHex(mSettings->fg_color));
 		}
 	}
 
@@ -243,16 +240,16 @@ namespace MiniRenderer {
 		}
 	}
 
-	void Display::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
+	void Display::draw_line(glm::vec2 p0, glm::vec2 p1, uint32_t color) {
 		switch (mSettings->line_algo) {
 		case LineAlgorithm::DDA:
-			Display::draw_DDA(x0, y0, x1, y1, color);
+			Display::draw_DDA(p0.x, p0.y, p1.x, p1.y, color);
 			break;
 		case LineAlgorithm::Bresenham:
-			Display::draw_bresenham(x0, y0, x1, y1, color);
+			Display::draw_bresenham(p0.x, p0.y, p1.x, p1.y, color);
 			break;
 		case LineAlgorithm::Wu:
-			Display::draw_wu(x0, y0, x1, y1, color);
+			Display::draw_wu(p0.x, p0.y, p1.x, p1.y, color);
 			break;
 		}
 	}

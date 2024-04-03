@@ -8,6 +8,7 @@
 #include <glm/vec2.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include "../model.h"
+#include "utility.h"
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
@@ -34,13 +35,12 @@ namespace MiniRenderer {
 		void draw_pixel(int x, int y, uint32_t color);
 		void draw_DDA(int x0, int y0, int x1, int y1, uint32_t color);
 		void draw_bresenham(int x0, int y0, int x1, int y1, uint32_t color);
-		void draw_line(int x0, int y0, int x1, int y1, uint32_t color);
+		void draw_line(glm::vec2 p0, glm::vec2 p1, uint32_t color);
 		void draw_wu(int x0, int y0, int x1, int y1, uint32_t color);
 		void plot(int x, int y, float intensity, uint32_t color);
 		float fpart(float x);
 		float rfpart(float x);
 		int ipart(float x);
-		void draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color);
 		uint32_t blendColors(uint32_t color, uint8_t alpha);
 		void draw_rect(int x, int y, int width, int height, uint32_t color);
 		glm::vec2 project(glm::vec3 point);
