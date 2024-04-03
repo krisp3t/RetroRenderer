@@ -15,6 +15,6 @@ namespace MiniRenderer {
 		void loop();
 	private:
 		static Application* sInstance;
-		std::unique_ptr<Display> display;
+		std::unique_ptr<Display> mDisplay;
 	};
 }

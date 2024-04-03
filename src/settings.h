@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 
 namespace MiniRenderer
 {
@@ -33,5 +34,11 @@ namespace MiniRenderer
 		bool draw_wireframe = false;
 		OpenWindows open_windows;
 		Camera camera;
+		int& winWidth;
+		int& winHeight;
+		std::string filename;
+		std::string filepath;
+
+		Settings(int& width, int& height) : winWidth(width), winHeight(height) {}
 	};
 }

@@ -2,7 +2,14 @@
 
 
 namespace MiniRenderer {
+	bool Display::is_running() {
+		return mIsRunning;
+	}
+
 	void Display::initialize_buffers() {
+		// We write to the color buffer in 32-bit ARGB format
+		// On every frame, we copy the color buffer to a texture
+		// which is then copied to GPU and rendered to the screen
 		mColorBuffer = new uint32_t[mWinWidth * mWinHeight];
 		mColorBufferTexture = SDL_CreateTexture(
 			mRenderer,
@@ -50,26 +57,12 @@ namespace MiniRenderer {
 		}
 
 		initialize_buffers();
-		mSettings = std::make_unique<Settings>();
+		mSettings = std::make_unique<Settings>(mWinWidth, mWinHeight);
 		mModel = std::make_unique<Model>("head.obj");
-
-		// Setup Dear ImGui context
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-		mIo = &ImGui::GetIO();
-		mIo->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-		ImGui::StyleColorsDark();
-
-		// Setup SDLRenderer2 binding
-		ImGui_ImplSDL2_InitForSDLRenderer(mWindow, mRenderer);
-		ImGui_ImplSDLRenderer2_Init(mRenderer);
-
+		mGui = std::make_unique<GUI>();
+		mGui->initialize_gui(mWindow, mRenderer);
 		mIsRunning = true;
 		return true;
-	}
-
-	bool Display::is_running() {
-		return mIsRunning;
 	}
 
 	void Display::process_input() {
@@ -95,10 +88,9 @@ namespace MiniRenderer {
 			}
 			break;
 		}
-		ImGui_ImplSDL2_ProcessEvent(&event);
-
-
+		mGui->process_input(event);
 	}
+
 	std::string filePathName;
 	std::string filePath;
 
@@ -112,110 +104,10 @@ namespace MiniRenderer {
 	}
 
 	void Display::update() {
-		ImGui_ImplSDLRenderer2_NewFrame();
-		ImGui_ImplSDL2_NewFrame();
-		ImGui::NewFrame();
-
-
-
-		// TODO: Remove this line
-		ImGui::ShowDemoWindow(nullptr);
-
-		// Main settings window
-		ImGui::Begin("Window settings");
-		ImGui::Checkbox("Show renderer window", &mSettings->open_windows.show_renderer_window);
-		ImGui::Checkbox("Show camera window", &mSettings->open_windows.show_camera_window);
-		ImGui::End();
-
-		// Rendering settings window
-		if (mSettings && mSettings->open_windows.show_renderer_window) {
-			ImGui::Begin("Rendering settings");
-			ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / mIo->Framerate, mIo->Framerate);
-			ImGui::Button("Render screenshot (TGA)");
-			ImGui::SeparatorText("Model");
-			/*
-			ImGui::Checkbox("Show model", &mSettings->show_model);
-			ImGui::Checkbox("Show wireframe", &mSettings->show_wireframe);
-			ImGui::Checkbox("Show normals", &mSettings->show_normals);
-			ImGui::Checkbox("Show bounding box", &mSettings->show_bounding_box);
-			*/
-
-			if (ImGui::Button("Open Model")) {
-				IGFD::FileDialogConfig config;
-				config.path = filePath;
-				ImGuiFileDialog::Instance()->OpenDialog("ChooseObjFile", "Choose model (.obj)", ".obj", config);
-			}
-			// display
-			if (ImGuiFileDialog::Instance()->Display("ChooseObjFile")) {
-				if (ImGuiFileDialog::Instance()->IsOk()) {
-					filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-					filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-					mModel = std::make_unique<Model>(filePathName);
-				}
-				ImGuiFileDialog::Instance()->Close();
-			}
-			ImGui::SameLine();
-			ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), filePathName.c_str());
-			ImGui::SameLine();
-			ImGui::Text("loaded");
-			// ImGui::Text("%d vertices, %d faces", mModel->nVerts(), mModel->nFaces());
-			// ImGui::Text(mModel->name.c_str());
-			/*
-			ImGui::SeparatorText("Lighting");
-						ImGui::Checkbox("Enable lighting", &mSettings->enable_lighting);
-			ImGui::Checkbox("Enable textures", &mSettings->enable_textures);
-						ImGui::SliderFloat3("Light position", &mSettings->light.position[0], -100.0f, 100.0f);
-			ImGui::SliderFloat3("Light color", &mSettings->light.color[0], 0.0f, 1.0f);
-						ImGui::SliderFloat("Ambient strength", &mSettings->light.ambient_strength, 0.0f, 1.0f);
-			ImGui::SliderFloat("Diffuse strength", &mSettings->light.diffuse_strength, 0.0f, 1.0f);
-						ImGui::SliderFloat("Specular strength", &mSettings->light.specular_strength, 0.0f, 1.0f);
-			ImGui::SliderFloat("Specular shininess", &mSettings->light.specular_shininess, 0.0f, 100.0f);
-						ImGui::SeparatorText("Shading");
-			ImGui::RadioButton("Flat", reinterpret_cast<int*>(&mSettings->shading), Shading::Flat);
-						ImGui::SameLine();
-			ImGui::RadioButton("Gouraud", reinterpret_cast<int*>(&mSettings->shading), Shading::Gouraud);
-						ImGui::SameLine();
-			ImGui::RadioButton("Phong", reinterpret_cast<int*>(&mSettings->shading), Shading::Phong);
-						ImGui::SeparatorText("Clipping");
-			ImGui::Checkbox("Enable clipping", &mSettings->enable_clipping);
-						ImGui::SliderFloat("Near plane", &mSettings->near_plane, 0.0f, 100.0f);
-			ImGui::SliderFloat("Far plane", &mSettings->far_plane, 0.0f, 100.0f);
-						ImGui::SeparatorText("Culling");
-			ImGui::Checkbox("Enable backface culling", &mSettings->enable_backface_culling);
-						ImGui::SeparatorText("Rasterization");
-			ImGui::RadioButton("Point", reinterpret_cast<int*>(&mSettings->rasterization), Rasterization::Point);
-						ImGui::SameLine();
-			ImGui::RadioButton("Wireframe", reinterpret_cast<int*>(&mSettings->rasterization), Rasterization::Wireframe);
-						ImGui::SameLine();
-			ImGui::RadioButton("Solid", reinterpret_cast<int*>(&mSettings->rasterization), Rasterization::Solid);
-			*/
-
-
-			ImGui::SeparatorText("Line algorithm");
-			ImGui::RadioButton("DDA", reinterpret_cast<int*>(&mSettings->line_algo), LineAlgorithm::DDA);
-			ImGui::SameLine();
-			ImGui::RadioButton("Bresenham", reinterpret_cast<int*>(&mSettings->line_algo), LineAlgorithm::Bresenham);
-			ImGui::SameLine();
-			ImGui::RadioButton("Wu", reinterpret_cast<int*>(&mSettings->line_algo), LineAlgorithm::Wu);
-
-			ImGui::SeparatorText("Triangle algorithm");
-			ImGui::RadioButton("Wireframe", reinterpret_cast<int*>(&mSettings->triangle_algo), TriangleAlgo::Wireframe);
-			ImGui::SameLine();
-			ImGui::RadioButton("Flat", reinterpret_cast<int*>(&mSettings->triangle_algo), TriangleAlgo::Flat);
-			ImGui::SameLine();
-			ImGui::RadioButton("Gouraud", reinterpret_cast<int*>(&mSettings->triangle_algo), TriangleAlgo::Gouraud);
-			ImGui::End();
+		bool modelUpdated = mGui->update(*mSettings);
+		if (modelUpdated) {
+			mModel = std::make_unique<Model>(mSettings->filename);
 		}
-
-		// Camera settings window
-		if (mSettings && mSettings->open_windows.show_camera_window) {
-			ImGui::Begin("Camera settings");
-			ImGui::SliderFloat3("Position", &mSettings->camera.position[0], -100.0f, 100.0f);
-			ImGui::SliderFloat3("Rotation", &mSettings->camera.rotation[0], -180.0f, 180.0f);
-			ImGui::End();
-		}
-		ImGui::Render();
-
 		draw_model();
 	}
 
@@ -318,15 +210,15 @@ namespace MiniRenderer {
 
 	void Display::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
 		switch (mSettings->line_algo) {
-			case LineAlgorithm::DDA:
-				Display::draw_DDA(x0, y0, x1, y1, color);
-				break;
-			case LineAlgorithm::Bresenham:
-				Display::draw_bresenham(x0, y0, x1, y1, color);
-				break;
-			case LineAlgorithm::Wu:
-				Display::draw_wu(x0, y0, x1, y1, color);
-				break;
+		case LineAlgorithm::DDA:
+			Display::draw_DDA(x0, y0, x1, y1, color);
+			break;
+		case LineAlgorithm::Bresenham:
+			Display::draw_bresenham(x0, y0, x1, y1, color);
+			break;
+		case LineAlgorithm::Wu:
+			Display::draw_wu(x0, y0, x1, y1, color);
+			break;
 		}
 	}
 
@@ -431,18 +323,18 @@ namespace MiniRenderer {
 	}
 
 	void Display::render() {
+		// Copy color buffer to texture, which is then rendered to the screen
 		SDL_RenderClear(mRenderer);
 		SDL_UpdateTexture(mColorBufferTexture, nullptr, mColorBuffer, mWinWidth * sizeof(uint32_t));
 		SDL_RenderCopy(mRenderer, mColorBufferTexture, nullptr, nullptr);
-		ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
+		mGui->render();
 		SDL_RenderPresent(mRenderer);
 		Display::clear_color_buffer();
 	}
 
 	void Display::destroy_window() {
-		delete mColorBuffer;
+		delete mColorBuffer,
 		SDL_DestroyTexture(mColorBufferTexture);
-		ImGui_ImplSDLRenderer2_Shutdown();
 		SDL_DestroyRenderer(mRenderer);
 		SDL_DestroyWindow(mWindow);
 		SDL_Quit();

@@ -7,7 +7,6 @@
 #include <glm/vec2.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include "../model.h"
-#include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
@@ -17,6 +16,7 @@ namespace MiniRenderer {
 	class Display
 	{
 	public:
+
 		Display() = default;
 		~Display();
 		void initialize_buffers(void);
@@ -59,5 +59,6 @@ namespace MiniRenderer {
 		glm::vec3 mCameraRot = glm::vec3(0.0f, 0.0f, 0.0f);
 		glm::vec3 mCubeRot = glm::vec3(0.0f, 0.0f, 0.0f);
 		std::unique_ptr<Model> mModel = nullptr;
+
 	};
 }

@@ -7,15 +7,15 @@ namespace MiniRenderer {
 	}
 
 	Application::Application() {
-		display = std::make_unique<Display>();
-		display->initialize_window();
+		mDisplay = std::make_unique<Display>();
+		mDisplay->initialize_window();
 	}
 
 	void Application::loop() {
-		while (display->is_running()) {
-			display->process_input();
-			display->update();
-			display->render();
+		while (mDisplay->is_running()) {
+			mDisplay->process_input();
+			mDisplay->update();
+			mDisplay->render();
 		}
 	}
 }
