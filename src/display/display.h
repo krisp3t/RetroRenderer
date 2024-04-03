@@ -2,6 +2,7 @@
 #include <SDL.h>
 #include <iostream>
 #include <vector>
+#include <functional>
 #include "GUI.h"
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
@@ -24,7 +25,9 @@ namespace MiniRenderer {
 		void destroy_window(void);
 		void process_input(void);
 		void update(void);
-		void draw_model_wireframe();
+		void draw_model_wireframe(std::array<glm::vec3, 3>& vertices);
+		void apply_transformations(std::array<glm::vec3, 3>& vertices);
+		bool backside_cull(std::array<glm::vec3, 3>& vertices);
 		void draw_model(void);
 		void render(void);
 		void clear_color_buffer(void);

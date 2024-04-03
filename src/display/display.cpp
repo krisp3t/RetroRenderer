@@ -104,44 +104,68 @@ namespace MiniRenderer {
 	void Display::update() {
 		GUIState state = mGui->update(*mSettings, *mModel);
 		switch (state) {
-			case GUIState::None:
-				break;
-			case GUIState::LoadModel: 
-				mModel = std::make_unique<Model>(mSettings->filename); 
-				break;
-			case GUIState::SaveScreenshot:
-				break;
+		case GUIState::None:
+			break;
+		case GUIState::LoadModel:
+			mModel = std::make_unique<Model>(mSettings->filename);
+			break;
+		case GUIState::SaveScreenshot:
+			break;
 		}
 		draw_model();
 	}
 
-	void Display::draw_model_wireframe() {
-		for (const auto& face : mModel->faces()) {
-			const std::array<int, 3>& vertex_indices = face.positionIndices;
-			// Draw triangle edges
-			for (int i = 0; i < 3; i++) {
-				glm::vec3 v0 = mModel->vert(vertex_indices[i]);
-				glm::vec3 v1 = mModel->vert(vertex_indices[(i + 1) % 3]);
-				// Transform from normalized device coordinates to screen space
-				int x0 = (v0.x + 1.) * mWinWidth / 2.;
-				int y0 = (-v0.y + 1.) * mWinHeight / 2.;
-				int x1 = (v1.x + 1.) * mWinWidth / 2.;
-				int y1 = (-v1.y + 1.) * mWinHeight / 2.;
-				draw_line(x0, y0, x1, y1, rgbaToHex(mSettings->fg_color));
-			}
+	void Display::draw_model_wireframe(std::array < glm::vec3, 3> & vertices) {
+		// Draw triangle edges
+		for (int i = 0; i < 3; i++) {
+			glm::vec3 v0 = vertices[i];
+			glm::vec3 v1 = vertices[(i + 1) % 3];
+			// Transform from normalized device coordinates to screen space
+			int x0 = (v0.x + 1.) * mWinWidth / 2.;
+			int y0 = (-v0.y + 1.) * mWinHeight / 2.;
+			int x1 = (v1.x + 1.) * mWinWidth / 2.;
+			int y1 = (-v1.y + 1.) * mWinHeight / 2.;
+			draw_line(x0, y0, x1, y1, rgbaToHex(mSettings->fg_color));
 		}
 	}
 
-	void Display::draw_model() {
-		if (mModel == nullptr || (mSettings->triangle_algo != TriangleAlgo::Wireframe)) {
-			return;
-		}
-		switch (mSettings->triangle_algo) {
-		case TriangleAlgo::Wireframe:
-			Display::draw_model_wireframe();
-			break;
+	void Display::apply_transformations(std::array<glm::vec3, 3>& vertices) {
+		for (int i = 0; i < 3; i++) {
+			vertices[i].z -= mSettings->camera.near;
 		}
 	}
+
+	bool Display::backside_cull(std::array<glm::vec3, 3>& vertices) {
+		glm::vec3 normal = glm::cross(vertices[1] - vertices[0], vertices[2] - vertices[0]);
+		glm::vec3 view = glm::vec3(0, 0, 1);
+		return glm::dot(normal, view) < 0;
+	}
+
+    void Display::draw_model() {
+        if (mModel == nullptr || (mSettings->triangle_algo != TriangleAlgo::Wireframe)) {
+            return;
+        }
+        std::function<void(std::array<glm::vec3, 3>&)> draw_triangle = [](std::array<glm::vec3, 3>& vertices) {};
+        switch (mSettings->triangle_algo) {
+        case TriangleAlgo::Wireframe:
+            draw_triangle = [this](std::array<glm::vec3, 3>& vertices) {
+                draw_model_wireframe(vertices);
+            };
+            break;
+        }
+        for (const auto& face : mModel->faces()) {
+            std::array<glm::vec3, 3> vertices = { 				
+                mModel->vert(face.positionIndices[0]),
+                mModel->vert(face.positionIndices[1]),
+                mModel->vert(face.positionIndices[2])
+            };
+            apply_transformations(vertices);
+			if ((mSettings->backface_culling) && (backside_cull(vertices))) {
+				continue;
+			}
+            draw_triangle(vertices);
+        };
+    }
 
 
 

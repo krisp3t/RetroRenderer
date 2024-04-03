@@ -29,17 +29,18 @@ namespace MiniRenderer
 	};
 
 	struct Settings {
+		Settings(int& width, int& height) : winWidth(width), winHeight(height) {}
+
 		LineAlgorithm line_algo = LineAlgorithm::Bresenham;
 		TriangleAlgo triangle_algo = TriangleAlgo::Wireframe;
-		bool draw_wireframe = false;
 		OpenWindows open_windows;
 		Camera camera;
 		int& winWidth;
 		int& winHeight;
 		std::string filename;
 		std::string filepath;
-		float fg_color[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
 
-		Settings(int& width, int& height) : winWidth(width), winHeight(height) {}
+		float fg_color[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
+		bool backface_culling = true;
 	};
 }

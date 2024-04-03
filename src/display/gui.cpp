@@ -103,6 +103,8 @@ namespace MiniRenderer {
 				ImGuiFileDialog::Instance()->Close();
 			}
 
+			ImGui::Checkbox("Backface culling", &(s.backface_culling));
+
 
 			// ImGui::Text(mModel->name.c_str());
 			/*
