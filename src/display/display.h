@@ -26,6 +26,9 @@ namespace MiniRenderer {
 		void destroy_window(void);
 		void process_input(void);
 		void update(void);
+		void fill_flat_bottom_triangle(glm::vec2 v0, glm::vec2 v1, glm::vec2 mid);
+		void fill_flat_top_triangle(glm::vec2 v1, glm::vec2 mid, glm::vec2 v2);
+		void draw_model_flat(std::array<glm::vec3, 3>& vertices);
 		void draw_model_wireframe(std::array<glm::vec3, 3>& vertices);
 		void apply_transformations(std::array<glm::vec3, 3>& vertices);
 		bool backside_cull(std::array<glm::vec3, 3>& vertices);

@@ -115,14 +115,79 @@ namespace MiniRenderer {
 		draw_model();
 	}
 
-	void Display::draw_model_wireframe(std::array < glm::vec3, 3> & vertices) {
+    void Display::fill_flat_bottom_triangle(glm::vec2 v0, glm::vec2 v1, glm::vec2 mid) {
+        float invslope1 = (float)(v1.x - v0.x) / (v1.y - v0.y);
+        float invslope2 = (float)(mid.x - v0.x) / (mid.y - v0.y);
+        int x_start = static_cast<int>(v0.x);
+        int x_end = static_cast<int>(v0.x);
+
+        for (int y = static_cast<int>(v0.y); y <= static_cast<int>(v1.y); y++) {
+            x_start += static_cast<int>(invslope1);
+            x_end += static_cast<int>(invslope2);
+			if (x_start >= x_end) {
+				break;
+			}
+			uint32_t* ptr = mColorBuffer + (y * mWinWidth) + x_start;
+			uint32_t color = 0xFFF0FFFF;
+
+			// memset(ptr, color, (x_end - x_start) * sizeof(uint32_t)); // faster than draw_line
+			/*
+			__m256i colorSIMD = _mm256_set1_epi32(0xFF00FF00);
+			int blockCount = static_cast<int>(mWinWidth * mWinHeight / 8);
+			__m256i* blocks = (__m256i*) mColorBuffer;
+
+			//SIMD as much as possible
+			for (int block = 0; block < blockCount; ++block) {
+				blocks[block] = colorSIMD;
+			}
+
+			//set any remaining pixels individually
+			for (int pixel = blockCount * 8; pixel < mWinWidth * mWinHeight; ++pixel) {
+				mColorBuffer[pixel] = 0xFFFF0000;
+			}
+			*/
+        }
+    }
+
+	void Display::fill_flat_top_triangle(glm::vec2 v1, glm::vec2 mid, glm::vec2 v2) {
+		float invslope1 = (float)(mid.x - v1.x) / (mid.y - v1.y);
+		float invslope2 = (float)(v2.x - v1.x) / (v2.y - v1.y);
+		float x_start = v1.x;
+		float x_end = v1.x;
+
+		for (int y = v1.y; y <= v2.y; y++) {
+			x_start += invslope1;
+			x_end += invslope2;
+			// draw_line(p0, p1, rgbaToHex(mSettings->fg_color));
+			//draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), rgbaToHex(mSettings->fg_color));
+		}
+	}
+
+	void Display::draw_model_flat(std::array <glm::vec3, 3>& vertices) {
+		// Sort vertices by y-coordinate (y0 <= y1 <= y2)
+		std::sort(vertices.begin(), vertices.end(), [](const glm::vec3& a, const glm::vec3& b) {
+			return a.y > b.y;
+		});
+		// Find the triangle midpoint
+		float mid_y = vertices[1].y;
+		float mid_x = vertices[0].x + ((vertices[1].y - vertices[0].y) / (vertices[2].y - vertices[0].y)) * (vertices[2].x - vertices[0].x);
+		glm::vec2 mid = NDC_to_Screen(glm::vec2(mid_x, mid_y), mWinWidth, mWinHeight);
+		glm::vec2 v0 = NDC_to_Screen(glm::vec2(vertices[0].x, vertices[0].y), mWinWidth, mWinHeight);
+		glm::vec2 v1 = NDC_to_Screen(glm::vec2(vertices[1].x, vertices[1].y), mWinWidth, mWinHeight);
+		glm::vec2 v2 = NDC_to_Screen(glm::vec2(vertices[2].x, vertices[2].y), mWinWidth, mWinHeight);
+
+		fill_flat_bottom_triangle(v0, v1, mid);
+		fill_flat_top_triangle(v1, mid, v2);
+	}
+
+	void Display::draw_model_wireframe(std::array <glm::vec3, 3>& vertices) {
 		// Draw triangle edges
 		for (int i = 0; i < 3; i++) {
 			glm::vec3 v0 = vertices[i];
 			glm::vec3 v1 = vertices[(i + 1) % 3];
 			glm::vec2 s0 = NDC_to_Screen(glm::vec2(v0.x, v0.y), mWinWidth, mWinHeight);
 			glm::vec2 s1 = NDC_to_Screen(glm::vec2(v1.x, v1.y), mWinWidth, mWinHeight);
-			draw_line(s0, s1, rgbaToHex(mSettings->fg_color));
+			draw_line(s0, s1, rgbaToHexArgb(mSettings->fg_color));
 		}
 	}
 
@@ -138,31 +203,36 @@ namespace MiniRenderer {
 		return glm::dot(normal, view) < 0;
 	}
 
-    void Display::draw_model() {
-        if (mModel == nullptr || (mSettings->triangle_algo != TriangleAlgo::Wireframe)) {
-            return;
-        }
-        std::function<void(std::array<glm::vec3, 3>&)> draw_triangle = [](std::array<glm::vec3, 3>& vertices) {};
-        switch (mSettings->triangle_algo) {
-        case TriangleAlgo::Wireframe:
-            draw_triangle = [this](std::array<glm::vec3, 3>& vertices) {
-                draw_model_wireframe(vertices);
-            };
-            break;
-        }
-        for (const auto& face : mModel->faces()) {
-            std::array<glm::vec3, 3> vertices = { 				
-                mModel->vert(face.positionIndices[0]),
-                mModel->vert(face.positionIndices[1]),
-                mModel->vert(face.positionIndices[2])
-            };
-            apply_transformations(vertices);
+	void Display::draw_model() {
+		if (mModel == nullptr) {
+			return;
+		}
+		std::function<void(std::array<glm::vec3, 3>&)> draw_triangle = [](std::array<glm::vec3, 3>& vertices) {};
+		switch (mSettings->triangle_algo) {
+		case TriangleAlgo::Wireframe:
+			draw_triangle = [this](std::array<glm::vec3, 3>& vertices) {
+				draw_model_wireframe(vertices);
+				};
+			break;
+		case TriangleAlgo::Flat:
+			draw_triangle = [this](std::array<glm::vec3, 3>& vertices) {
+				draw_model_flat(vertices);
+				};
+			break;
+		}
+		for (const auto& face : mModel->faces()) {
+			std::array<glm::vec3, 3> vertices = {
+				mModel->vert(face.positionIndices[0]),
+				mModel->vert(face.positionIndices[1]),
+				mModel->vert(face.positionIndices[2])
+			};
+			apply_transformations(vertices);
 			if ((mSettings->backface_culling) && (backside_cull(vertices))) {
 				continue;
 			}
-            draw_triangle(vertices);
-        };
-    }
+			draw_triangle(vertices);
+		};
+	}
 
 
 
