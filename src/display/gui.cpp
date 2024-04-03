@@ -1,47 +1,45 @@
 #include "gui.h"
 
 namespace MiniRenderer {
-    bool GUI::initialize_gui(SDL_Window* window, SDL_Renderer* renderer) {
-        mWindow = window;
-        mRenderer = renderer;
+	bool GUI::initialize_gui(SDL_Window* window, SDL_Renderer* renderer) {
+		mWindow = window;
+		mRenderer = renderer;
 
-        // Setup Dear ImGui context
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        mIo = &ImGui::GetIO();
-        mIo->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-        ImGui::StyleColorsDark();
+		// Setup Dear ImGui context
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		mIo = &ImGui::GetIO();
+		mIo->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+		ImGui::StyleColorsDark();
 
-        // Setup SDLRenderer2 binding
-        ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
-        ImGui_ImplSDLRenderer2_Init(renderer);
+		// Setup SDLRenderer2 binding
+		ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
+		ImGui_ImplSDLRenderer2_Init(renderer);
 
-        return true;
-    }
+		return true;
+	}
 
-    void GUI::destroy_gui() {
+	void GUI::destroy_gui() {
 		ImGui_ImplSDLRenderer2_Shutdown();
 		ImGui_ImplSDL2_Shutdown();
 		ImGui::DestroyContext();
 	}
 
-    GUI::~GUI() {
-        GUI::destroy_gui();
-    }
+	GUI::~GUI() {
+		GUI::destroy_gui();
+	}
 
-    void GUI::process_input(SDL_Event& event) {
-        ImGui_ImplSDL2_ProcessEvent(&event);
-    }
+	void GUI::process_input(SDL_Event& event) {
+		ImGui_ImplSDL2_ProcessEvent(&event);
+	}
 
-	/**
-	* @brief Update the GUI with the current settings
-	* @param s The current settings
-	* @return bool Returns true if new model has been loaded, false otherwise
-	*/
-    bool GUI::update(Settings& s) {
+
+	GUIState GUI::update(Settings& s, const Model& m) {
 		ImGui_ImplSDLRenderer2_NewFrame();
 		ImGui_ImplSDL2_NewFrame();
 		ImGui::NewFrame();
+
+		GUIState state = GUIState::None;
 
 		// TODO: Remove this line
 		ImGui::ShowDemoWindow(nullptr);
@@ -52,12 +50,10 @@ namespace MiniRenderer {
 		ImGui::Checkbox("Show camera window", &(s.open_windows.show_camera_window));
 		ImGui::End();
 
-		bool model_updated = false;
 		// Rendering settings window
 		if (s.open_windows.show_renderer_window) {
 			ImGui::Begin("Rendering settings");
 			ImGui::Text("%.3f ms/frame (%.1f FPS) at %dx%d", 1000.0f / mIo->Framerate, mIo->Framerate, s.winWidth, s.winHeight);
-			ImGui::Button("Render screenshot (TGA)");
 			ImGui::SeparatorText("Model");
 			/*
 			ImGui::Checkbox("Show model", &mSettings->show_model);
@@ -71,20 +67,43 @@ namespace MiniRenderer {
 				config.path = s.filepath;
 				ImGuiFileDialog::Instance()->OpenDialog("ChooseObjFile", "Choose model (.obj)", ".obj", config);
 			}
-			// display
+
 			if (ImGuiFileDialog::Instance()->Display("ChooseObjFile")) {
 				if (ImGuiFileDialog::Instance()->IsOk()) {
 					s.filename = ImGuiFileDialog::Instance()->GetFilePathName();
 					s.filepath = ImGuiFileDialog::Instance()->GetCurrentPath();
-					model_updated = true;
+					state = GUIState::LoadModel;
 				}
 				ImGuiFileDialog::Instance()->Close();
 			}
+
 			ImGui::SameLine();
 			ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), s.filename.c_str());
 			ImGui::SameLine();
 			ImGui::Text("loaded");
-			// ImGui::Text("%d vertices, %d faces", mModel->nVerts(), mModel->nFaces());
+			ImGui::SameLine();
+
+			ImGui::Text("with %d vertices, %d faces", m.nVerts(), m.nFaces());
+
+			if (ImGui::Button("Render .tga screenshot")) {
+				IGFD::FileDialogConfig config;
+				config.path = s.filepath;
+				ImGuiFileDialog::Instance()->OpenDialog("SaveTgaFile", "Save screenshot (.tga)", ".tga", config);
+			}
+
+			if (ImGuiFileDialog::Instance()->Display("SaveTgaFile")) {
+				const auto path = ImGuiFileDialog::Instance()->GetFilePathName();
+				if (ImGuiFileDialog::Instance()->IsOk()) {
+					TGAImage image(s.winWidth, s.winHeight, 2 << 5);
+					if (image.write_tga_file(path))
+						SDL_Log("Saved screenshot to %s", path.c_str());
+					else
+						SDL_Log("Failed to save screenshot to %s", path.c_str());
+				}
+				ImGuiFileDialog::Instance()->Close();
+			}
+
+
 			// ImGui::Text(mModel->name.c_str());
 			/*
 			ImGui::SeparatorText("Lighting");
@@ -142,11 +161,11 @@ namespace MiniRenderer {
 			ImGui::End();
 		}
 		ImGui::Render();
-		return model_updated;
-    }
+		return state;
+	}
 
-    void GUI::render() {
-
+	void GUI::render() {
 		ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
 	}
 }
+

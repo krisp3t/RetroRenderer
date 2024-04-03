@@ -19,12 +19,11 @@ private:
 	std::vector<glm::vec3> mVerts;
 	std::vector<Face> mFaces;
 public:
-
 	Model();
 	Model(const std::string_view filepath);
 	~Model();
-	int nVerts();
-	int nFaces();
+	int nVerts() const;
+	int nFaces() const;
 	glm::vec3 vert(int ix);
 	Face face(int ix);
 	std::vector<Face> faces();

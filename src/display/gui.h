@@ -7,10 +7,17 @@
 #include "utility.h"
 #include <SDL.h>
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
-
-
+#include "../model.h"
+#include "../tgaimage.h"
 
 namespace MiniRenderer {
+    enum GUIState {
+        Error,
+        None,
+        LoadModel,
+        SaveScreenshot
+    };
+
     class GUI
     {
     public:
@@ -18,7 +25,7 @@ namespace MiniRenderer {
         ~GUI();
         bool initialize_gui(SDL_Window* window, SDL_Renderer* renderer);
         void process_input(SDL_Event& event);
-        bool update(Settings& settings);
+        GUIState update(Settings& s, const Model& m);
         void render();
         void destroy_gui();
     private:

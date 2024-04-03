@@ -58,7 +58,8 @@ namespace MiniRenderer {
 
 		initialize_buffers();
 		mSettings = std::make_unique<Settings>(mWinWidth, mWinHeight);
-		mModel = std::make_unique<Model>("head.obj");
+		mSettings->filename = "head.obj";
+		mModel = std::make_unique<Model>(mSettings->filename);
 		mGui = std::make_unique<GUI>();
 		mGui->initialize_gui(mWindow, mRenderer);
 		mIsRunning = true;
@@ -91,9 +92,6 @@ namespace MiniRenderer {
 		mGui->process_input(event);
 	}
 
-	std::string filePathName;
-	std::string filePath;
-
 	glm::vec2 Display::project(glm::vec3 point)
 	{
 		float fov_factor = 1.0f / tan(mSettings->camera.fov / 2.0f);
@@ -104,32 +102,45 @@ namespace MiniRenderer {
 	}
 
 	void Display::update() {
-		bool modelUpdated = mGui->update(*mSettings);
-		if (modelUpdated) {
-			mModel = std::make_unique<Model>(mSettings->filename);
+		GUIState state = mGui->update(*mSettings, *mModel);
+		switch (state) {
+			case GUIState::None:
+				break;
+			case GUIState::LoadModel: 
+				mModel = std::make_unique<Model>(mSettings->filename); 
+				break;
+			case GUIState::SaveScreenshot:
+				break;
 		}
 		draw_model();
+	}
+
+	void Display::draw_model_wireframe() {
+		for (const auto& face : mModel->faces()) {
+			const std::array<int, 3>& vertex_indices = face.positionIndices;
+			// Draw triangle edges
+			for (int i = 0; i < 3; i++) {
+				glm::vec3 v0 = mModel->vert(vertex_indices[i]);
+				glm::vec3 v1 = mModel->vert(vertex_indices[(i + 1) % 3]);
+				// Transform from normalized device coordinates to screen space
+				int x0 = (v0.x + 1.) * mWinWidth / 2.;
+				int y0 = (-v0.y + 1.) * mWinHeight / 2.;
+				int x1 = (v1.x + 1.) * mWinWidth / 2.;
+				int y1 = (-v1.y + 1.) * mWinHeight / 2.;
+				draw_line(x0, y0, x1, y1, rgbaToHex(mSettings->fg_color));
+			}
+		}
 	}
 
 	void Display::draw_model() {
 		if (mModel == nullptr || (mSettings->triangle_algo != TriangleAlgo::Wireframe)) {
 			return;
 		}
-		for (const auto& face : mModel->faces()) {
-			const std::array<int, 3>& vertex_indices = face.positionIndices;
-			for (int i = 0; i < 3; i++) {
-				glm::vec3 v0 = mModel->vert(vertex_indices[i]);
-				glm::vec3 v1 = mModel->vert(vertex_indices[(i + 1) % 3]);
-				if (mSettings->triangle_algo == TriangleAlgo::Wireframe) {
-					int x0 = (v0.x + 1.) * mWinWidth / 2.;
-					int y0 = (v0.y + 1.) * mWinHeight / 2.;
-					int x1 = (v1.x + 1.) * mWinWidth / 2.;
-					int y1 = (v1.y + 1.) * mWinHeight / 2.;
-					draw_line(x0, y0, x1, y1, rgbaToHex(mSettings->fg_color));
-				}
-			}
+		switch (mSettings->triangle_algo) {
+		case TriangleAlgo::Wireframe:
+			Display::draw_model_wireframe();
+			break;
 		}
-
 	}
 
 
@@ -334,7 +345,7 @@ namespace MiniRenderer {
 
 	void Display::destroy_window() {
 		delete mColorBuffer,
-		SDL_DestroyTexture(mColorBufferTexture);
+			SDL_DestroyTexture(mColorBufferTexture);
 		SDL_DestroyRenderer(mRenderer);
 		SDL_DestroyWindow(mWindow);
 		SDL_Quit();

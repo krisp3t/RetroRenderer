@@ -24,6 +24,7 @@ namespace MiniRenderer {
 		void destroy_window(void);
 		void process_input(void);
 		void update(void);
+		void draw_model_wireframe();
 		void draw_model(void);
 		void render(void);
 		void clear_color_buffer(void);

@@ -48,11 +48,11 @@ Model::Model(const std::string_view filepath) {
 Model::~Model() {
 }
 
-int Model::nVerts() {
+int Model::nVerts() const {
     return mVerts.size();
 }
 
-int Model::nFaces() {
+int Model::nFaces() const {
     return mFaces.size();
 }
 
