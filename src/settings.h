@@ -38,6 +38,7 @@ namespace MiniRenderer
 		int& winHeight;
 		std::string filename;
 		std::string filepath;
+		float fg_color[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
 
 		Settings(int& width, int& height) : winWidth(width), winHeight(height) {}
 	};

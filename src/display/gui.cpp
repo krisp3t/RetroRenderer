@@ -130,6 +130,7 @@ namespace MiniRenderer {
 			ImGui::RadioButton("Flat", reinterpret_cast<int*>(&s.triangle_algo), TriangleAlgo::Flat);
 			ImGui::SameLine();
 			ImGui::RadioButton("Gouraud", reinterpret_cast<int*>(&s.triangle_algo), TriangleAlgo::Gouraud);
+			ImGui::ColorEdit4("Line color", &s.fg_color[0]);
 			ImGui::End();
 		}
 

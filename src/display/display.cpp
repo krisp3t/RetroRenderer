@@ -125,7 +125,7 @@ namespace MiniRenderer {
 					int y0 = (v0.y + 1.) * mWinHeight / 2.;
 					int x1 = (v1.x + 1.) * mWinWidth / 2.;
 					int y1 = (v1.y + 1.) * mWinHeight / 2.;
-					draw_line(x0, y0, x1, y1, 0xFFFF0000);
+					draw_line(x0, y0, x1, y1, rgbaToHex(mSettings->fg_color));
 				}
 			}
 		}
