@@ -125,12 +125,16 @@ namespace MiniRenderer {
 		uint32_t color = rgbaToHexArgb(mSettings->fg_color);
 
 		// Scanline from top to flat line
-		for (int y = static_cast<int>(v0.y); y <= static_cast<int>(v1.y); y++) {
-
+		for (int y = std::floor(v0.y); y <= std::ceil(v1.y); y++) {
 #ifdef AVX_SUPPORTED
 			__m256i colorSIMD = _mm256_set1_epi32(color);
 			int ix_start = std::floor(x_start < x_end ? x_start : x_end);
 			int ix_end = std::ceil(x_end > x_start ? x_end : x_start);
+			if (ix_start == ix_end) {
+				x_start += invslope1;
+				x_end += invslope2;
+				continue;
+			}
 			int pixels_to_write = ix_end - ix_start;
 			int blockCount = pixels_to_write / 8;
 			__m256i* blocks = reinterpret_cast<__m256i*>(&mColorBuffer[mWinWidth * y + ix_start]);
@@ -139,9 +143,11 @@ namespace MiniRenderer {
 				_mm256_storeu_si256(blocks + block, colorSIMD);
 			}
 			// Set any remaining pixels individually
-			for (int pixel = blockCount * 8 + ix_start; pixel < ix_end; pixel++) {
+			for (int pixel = blockCount * 8 + ix_start; pixel <= ix_end; pixel++) {
 				mColorBuffer[mWinWidth * y + pixel] = color;
 			}
+			mColorBuffer[mWinWidth * y + ix_start] = color;
+			mColorBuffer[mWinWidth * y + ix_end] = color;
 #else
 			draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), color);
 #endif
@@ -158,12 +164,17 @@ namespace MiniRenderer {
 		uint32_t color = rgbaToHexArgb(mSettings->fg_color);
 
 		// Scanline from bottom to flat line
-		for (int y = static_cast<int>(v2.y); y >= static_cast<int>(v1.y); y--) {
+		for (int y = std::ceil(v2.y); y >= std::floor(v1.y); y--) {
 #ifdef AVX_SUPPORTED
 			__m256i colorSIMD = _mm256_set1_epi32(color);
 
 			int ix_start = std::floor(x_start < x_end ? x_start : x_end);
 			int ix_end = std::ceil(x_end > x_start ? x_end : x_start);
+			if (ix_start == ix_end) {
+				x_start -= invslope1;
+				x_end -= invslope2;
+				continue;
+			}
 			int pixels_to_write = ix_end - ix_start;
 			int blockCount = pixels_to_write / 8;
 			__m256i* blocks = reinterpret_cast<__m256i*>(&mColorBuffer[mWinWidth * y + ix_start]);
@@ -172,9 +183,11 @@ namespace MiniRenderer {
 				_mm256_storeu_si256(blocks + block, colorSIMD);
 			}
 			// Set any remaining pixels individually
-			for (int pixel = blockCount * 8 + ix_start; pixel < ix_end; pixel++) {
+			for (int pixel = blockCount * 8 + ix_start; pixel <= ix_end; pixel++) {
 				mColorBuffer[mWinWidth * y + pixel] = color;
 			}
+			mColorBuffer[mWinWidth * y + ix_start] = color;
+			mColorBuffer[mWinWidth * y + ix_end] = color;
 #else
 			draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), color);
 #endif
@@ -219,7 +232,7 @@ namespace MiniRenderer {
 
 	bool Display::backside_cull(std::array<glm::vec3, 3>& vertices) {
 		glm::vec3 normal = glm::cross(vertices[1] - vertices[0], vertices[2] - vertices[0]);
-		glm::vec3 view = glm::vec3(0, 0, 1);
+		glm::vec3 view = glm::vec3(0, 0, mSettings->camera.near);
 		return glm::dot(normal, view) < 0;
 	}
 
