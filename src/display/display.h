@@ -3,12 +3,22 @@
 #include <iostream>
 #include <vector>
 #include <functional>
-#include "GUI.h"
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include "../model.h"
 #include "utility.h"
+#include "GUI.h"
+
+#ifdef __AVX__
+#include <immintrin.h>
+#define AVX_SUPPORTED true
+#else
+#define AVX_SUPPORTED false
+#endif
+
+
+
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function

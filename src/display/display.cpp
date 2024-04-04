@@ -55,6 +55,7 @@ namespace MiniRenderer {
 			fprintf(stderr, "Error creating SDL renderer.\n");
 			return false;
 		}
+		SDL_Log("AVX support: %s", AVX_SUPPORTED ? "true" : "false");
 
 		initialize_buffers();
 		mSettings = std::make_unique<Settings>(mWinWidth, mWinHeight);
