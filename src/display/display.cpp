@@ -124,16 +124,13 @@ namespace MiniRenderer {
 		float x_end = v0.x;
 		uint32_t color = rgbaToHexArgb(mSettings->fg_color);
 
+		// Scanline from top to flat line
 		for (int y = static_cast<int>(v0.y); y <= static_cast<int>(v1.y); y++) {
-			x_start += invslope1;
-			x_end += invslope2;
-			if (x_start >= x_end) {
-				break;
-			}
+
 #ifdef AVX_SUPPORTED
 			__m256i colorSIMD = _mm256_set1_epi32(color);
-			int ix_start = static_cast<int>(x_start);
-			int ix_end = static_cast<int>(x_end);
+			int ix_start = std::floor(x_start < x_end ? x_start : x_end);
+			int ix_end = std::ceil(x_end > x_start ? x_end : x_start);
 			int pixels_to_write = ix_end - ix_start;
 			int blockCount = pixels_to_write / 8;
 			__m256i* blocks = reinterpret_cast<__m256i*>(&mColorBuffer[mWinWidth * y + ix_start]);
@@ -141,7 +138,6 @@ namespace MiniRenderer {
 			for (int block = 0; block < blockCount; block++) {
 				_mm256_storeu_si256(blocks + block, colorSIMD);
 			}
-
 			// Set any remaining pixels individually
 			for (int pixel = blockCount * 8 + ix_start; pixel < ix_end; pixel++) {
 				mColorBuffer[mWinWidth * y + pixel] = color;
@@ -149,20 +145,41 @@ namespace MiniRenderer {
 #else
 			draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), color);
 #endif
+			x_start += invslope1;
+			x_end += invslope2;
 		}
 	}
 
 	void Display::fill_flat_top_triangle(glm::vec2 v1, glm::vec2 mid, glm::vec2 v2) {
-		float invslope1 = (float)(mid.x - v1.x) / (mid.y - v1.y);
-		float invslope2 = (float)(v2.x - v1.x) / (v2.y - v1.y);
-		float x_start = v1.x;
-		float x_end = v1.x;
+		float invslope1 = (float)(v2.x - v1.x) / (v2.y - v1.y);
+		float invslope2 = (float)(v2.x - mid.x) / (v2.y - mid.y);
+		float x_start = v2.x;
+		float x_end = v2.x;
+		uint32_t color = rgbaToHexArgb(mSettings->fg_color);
 
-		for (int y = v1.y; y <= v2.y; y++) {
+		// Scanline from bottom to flat line
+		for (int y = static_cast<int>(v2.y); y >= static_cast<int>(v1.y); y--) {
+#ifdef AVX_SUPPORTED
+			__m256i colorSIMD = _mm256_set1_epi32(color);
+
+			int ix_start = std::floor(x_start < x_end ? x_start : x_end);
+			int ix_end = std::ceil(x_end > x_start ? x_end : x_start);
+			int pixels_to_write = ix_end - ix_start;
+			int blockCount = pixels_to_write / 8;
+			__m256i* blocks = reinterpret_cast<__m256i*>(&mColorBuffer[mWinWidth * y + ix_start]);
+			// Write to blocks (8 pixels at a time)
+			for (int block = 0; block < blockCount; block++) {
+				_mm256_storeu_si256(blocks + block, colorSIMD);
+			}
+			// Set any remaining pixels individually
+			for (int pixel = blockCount * 8 + ix_start; pixel < ix_end; pixel++) {
+				mColorBuffer[mWinWidth * y + pixel] = color;
+			}
+#else
+			draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), color);
+#endif
 			x_start -= invslope1;
 			x_end -= invslope2;
-			// draw_line(p0, p1, rgbaToHex(mSettings->fg_color));
-			//draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), rgbaToHex(mSettings->fg_color));
 		}
 	}
 
@@ -180,7 +197,7 @@ namespace MiniRenderer {
 		glm::vec2 v2 = NDC_to_Screen(glm::vec2(vertices[2].x, vertices[2].y), mWinWidth, mWinHeight);
 
 		fill_flat_bottom_triangle(v0, v1, mid);
-		// fill_flat_top_triangle(v1, mid, v2);
+		fill_flat_top_triangle(v1, mid, v2);
 	}
 
 	void Display::draw_model_wireframe(std::array <glm::vec3, 3>& vertices) {
