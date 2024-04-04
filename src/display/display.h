@@ -62,7 +62,7 @@ namespace MiniRenderer {
 		// SDL window and renderer
 		SDL_Window* mWindow = nullptr;
 		SDL_Renderer* mRenderer = nullptr;
-		uint32_t* mColorBuffer = nullptr;
+		std::unique_ptr<uint32_t[]> mColorBuffer = nullptr;
 		SDL_Texture* mColorBufferTexture = nullptr;
 		std::unique_ptr<GUI> mGui;
 		std::unique_ptr<Settings> mSettings;

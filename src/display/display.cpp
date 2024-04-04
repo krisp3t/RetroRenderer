@@ -10,7 +10,8 @@ namespace MiniRenderer {
 		// We write to the color buffer in 32-bit ARGB format
 		// On every frame, we copy the color buffer to a texture
 		// which is then copied to GPU and rendered to the screen
-		mColorBuffer = new uint32_t[mWinWidth * mWinHeight];
+
+		mColorBuffer = std::make_unique<uint32_t[]>(mWinWidth * mWinHeight);
 		mColorBufferTexture = SDL_CreateTexture(
 			mRenderer,
 			SDL_PIXELFORMAT_ARGB8888,
@@ -116,39 +117,36 @@ namespace MiniRenderer {
 		draw_model();
 	}
 
-    void Display::fill_flat_bottom_triangle(glm::vec2 v0, glm::vec2 v1, glm::vec2 mid) {
-        float invslope1 = (float)(v1.x - v0.x) / (v1.y - v0.y);
-        float invslope2 = (float)(mid.x - v0.x) / (mid.y - v0.y);
-        int x_start = static_cast<int>(v0.x);
-        int x_end = static_cast<int>(v0.x);
+	void Display::fill_flat_bottom_triangle(glm::vec2 v0, glm::vec2 v1, glm::vec2 mid) {
+		float invslope1 = (float)(v1.x - v0.x) / (v1.y - v0.y);
+		float invslope2 = (float)(mid.x - v0.x) / (mid.y - v0.y);
+		int x_start = static_cast<int>(v0.x);
+		int x_end = static_cast<int>(v0.x);
 
-        for (int y = static_cast<int>(v0.y); y <= static_cast<int>(v1.y); y++) {
-            x_start += static_cast<int>(invslope1);
-            x_end += static_cast<int>(invslope2);
+		for (int y = static_cast<int>(v0.y); y <= static_cast<int>(v1.y); y++) {
+			x_start += static_cast<int>(invslope1);
+			x_end += static_cast<int>(invslope2);
 			if (x_start >= x_end) {
 				break;
 			}
-			uint32_t* ptr = mColorBuffer + (y * mWinWidth) + x_start;
-			uint32_t color = 0xFFF0FFFF;
-
-			// memset(ptr, color, (x_end - x_start) * sizeof(uint32_t)); // faster than draw_line
-			/*
-			__m256i colorSIMD = _mm256_set1_epi32(0xFF00FF00);
-			int blockCount = static_cast<int>(mWinWidth * mWinHeight / 8);
-			__m256i* blocks = (__m256i*) mColorBuffer;
-
-			//SIMD as much as possible
+#ifdef AVX_SUPPORTED
+			__m256i colorSIMD = _mm256_set1_epi32(rgbaToHexArgb(mSettings->fg_color));
+			int blockCount = (x_end - x_start) / 8;
+			__m256i* blocks = reinterpret_cast<__m256i*>(&mColorBuffer[mWinWidth * y + x_start]);
+			// Write to blocks (8 pixels at a time)
 			for (int block = 0; block < blockCount; ++block) {
-				blocks[block] = colorSIMD;
+				_mm256_storeu_si256(blocks + block, colorSIMD);
 			}
 
-			//set any remaining pixels individually
-			for (int pixel = blockCount * 8; pixel < mWinWidth * mWinHeight; ++pixel) {
-				mColorBuffer[pixel] = 0xFFFF0000;
+			// Set any remaining pixels individually
+			for (int pixel = blockCount * 8 + x_start; pixel < x_end; ++pixel) {
+				mColorBuffer[mWinWidth * y + pixel] = 0xFFFF0000;
 			}
-			*/
-        }
-    }
+#else
+			draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), rgbaToHexArgb(mSettings->fg_color));
+#endif
+		}
+	}
 
 	void Display::fill_flat_top_triangle(glm::vec2 v1, glm::vec2 mid, glm::vec2 v2) {
 		float invslope1 = (float)(mid.x - v1.x) / (mid.y - v1.y);
@@ -157,8 +155,8 @@ namespace MiniRenderer {
 		float x_end = v1.x;
 
 		for (int y = v1.y; y <= v2.y; y++) {
-			x_start += invslope1;
-			x_end += invslope2;
+			x_start -= invslope1;
+			x_end -= invslope2;
 			// draw_line(p0, p1, rgbaToHex(mSettings->fg_color));
 			//draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), rgbaToHex(mSettings->fg_color));
 		}
@@ -168,7 +166,7 @@ namespace MiniRenderer {
 		// Sort vertices by y-coordinate (y0 <= y1 <= y2)
 		std::sort(vertices.begin(), vertices.end(), [](const glm::vec3& a, const glm::vec3& b) {
 			return a.y > b.y;
-		});
+			});
 		// Find the triangle midpoint
 		float mid_y = vertices[1].y;
 		float mid_x = vertices[0].x + ((vertices[1].y - vertices[0].y) / (vertices[2].y - vertices[0].y)) * (vertices[2].x - vertices[0].x);
@@ -178,7 +176,7 @@ namespace MiniRenderer {
 		glm::vec2 v2 = NDC_to_Screen(glm::vec2(vertices[2].x, vertices[2].y), mWinWidth, mWinHeight);
 
 		fill_flat_bottom_triangle(v0, v1, mid);
-		fill_flat_top_triangle(v1, mid, v2);
+		// fill_flat_top_triangle(v1, mid, v2);
 	}
 
 	void Display::draw_model_wireframe(std::array <glm::vec3, 3>& vertices) {
@@ -238,22 +236,7 @@ namespace MiniRenderer {
 
 
 	void Display::clear_color_buffer() {
-		memset(mColorBuffer, 0x00000000, mWinWidth * mWinHeight * sizeof(uint32_t));
-		/*
-		__m256i colorSIMD = _mm256_set1_epi32(0xFF00FF00);
-		int blockCount = static_cast<int>(mWinWidth * mWinHeight / 8);
-		__m256i* blocks = (__m256i*) mColorBuffer;
-
-		//SIMD as much as possible
-		for (int block = 0; block < blockCount; ++block) {
-			blocks[block] = colorSIMD;
-		}
-
-		//set any remaining pixels individually
-		for (int pixel = blockCount * 8; pixel < mWinWidth * mWinHeight; ++pixel) {
-			mColorBuffer[pixel] = 0xFFFF0000;
-		}
-		*/
+		memset(mColorBuffer.get(), 0x00000000, mWinWidth * mWinHeight * sizeof(uint32_t));
 	}
 
 	void Display::draw_pixel(int x, int y, uint32_t color) {
@@ -428,7 +411,7 @@ namespace MiniRenderer {
 	void Display::render() {
 		// Copy color buffer to texture, which is then rendered to the screen
 		SDL_RenderClear(mRenderer);
-		SDL_UpdateTexture(mColorBufferTexture, nullptr, mColorBuffer, mWinWidth * sizeof(uint32_t));
+		SDL_UpdateTexture(mColorBufferTexture, nullptr, mColorBuffer.get(), mWinWidth * sizeof(uint32_t));
 		SDL_RenderCopy(mRenderer, mColorBufferTexture, nullptr, nullptr);
 		mGui->render();
 		SDL_RenderPresent(mRenderer);
@@ -436,8 +419,7 @@ namespace MiniRenderer {
 	}
 
 	void Display::destroy_window() {
-		delete mColorBuffer,
-			SDL_DestroyTexture(mColorBufferTexture);
+		SDL_DestroyTexture(mColorBufferTexture);
 		SDL_DestroyRenderer(mRenderer);
 		SDL_DestroyWindow(mWindow);
 		SDL_Quit();
