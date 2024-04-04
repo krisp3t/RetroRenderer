@@ -120,30 +120,34 @@ namespace MiniRenderer {
 	void Display::fill_flat_bottom_triangle(glm::vec2 v0, glm::vec2 v1, glm::vec2 mid) {
 		float invslope1 = (float)(v1.x - v0.x) / (v1.y - v0.y);
 		float invslope2 = (float)(mid.x - v0.x) / (mid.y - v0.y);
-		int x_start = static_cast<int>(v0.x);
-		int x_end = static_cast<int>(v0.x);
+		float x_start = v0.x;
+		float x_end = v0.x;
+		uint32_t color = rgbaToHexArgb(mSettings->fg_color);
 
 		for (int y = static_cast<int>(v0.y); y <= static_cast<int>(v1.y); y++) {
-			x_start += static_cast<int>(invslope1);
-			x_end += static_cast<int>(invslope2);
+			x_start += invslope1;
+			x_end += invslope2;
 			if (x_start >= x_end) {
 				break;
 			}
 #ifdef AVX_SUPPORTED
-			__m256i colorSIMD = _mm256_set1_epi32(rgbaToHexArgb(mSettings->fg_color));
-			int blockCount = (x_end - x_start) / 8;
-			__m256i* blocks = reinterpret_cast<__m256i*>(&mColorBuffer[mWinWidth * y + x_start]);
+			__m256i colorSIMD = _mm256_set1_epi32(color);
+			int ix_start = static_cast<int>(x_start);
+			int ix_end = static_cast<int>(x_end);
+			int pixels_to_write = ix_end - ix_start;
+			int blockCount = pixels_to_write / 8;
+			__m256i* blocks = reinterpret_cast<__m256i*>(&mColorBuffer[mWinWidth * y + ix_start]);
 			// Write to blocks (8 pixels at a time)
-			for (int block = 0; block < blockCount; ++block) {
+			for (int block = 0; block < blockCount; block++) {
 				_mm256_storeu_si256(blocks + block, colorSIMD);
 			}
 
 			// Set any remaining pixels individually
-			for (int pixel = blockCount * 8 + x_start; pixel < x_end; ++pixel) {
-				mColorBuffer[mWinWidth * y + pixel] = 0xFFFF0000;
+			for (int pixel = blockCount * 8 + ix_start; pixel < ix_end; pixel++) {
+				mColorBuffer[mWinWidth * y + pixel] = color;
 			}
 #else
-			draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), rgbaToHexArgb(mSettings->fg_color));
+			draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), color);
 #endif
 		}
 	}
