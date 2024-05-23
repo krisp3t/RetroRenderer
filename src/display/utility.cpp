@@ -20,9 +20,10 @@ namespace MiniRenderer {
 	}
 
 	glm::vec2 NDC_to_Screen(const glm::vec2& ndc, const int winWidth, const int winHeight) {
+		assert (winWidth > 0 && winHeight > 0);
 		// round to nearest pixel
-		int x = (int)((ndc.x + 1) * winWidth / 2 + 0.5);
-		int y = (int)((1 - ndc.y) * winHeight / 2 + 0.5);
+		int x = static_cast<int>((ndc.x + 1) * winWidth / 2 + 0.5);
+		int y = static_cast<int>((1 - ndc.y) * winHeight / 2 + 0.5);
 		return glm::vec2(x, y);
 	}
 }

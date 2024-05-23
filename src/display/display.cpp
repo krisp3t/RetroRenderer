@@ -122,32 +122,37 @@ namespace MiniRenderer {
 		float invslope2 = (float)(mid.x - v0.x) / (mid.y - v0.y);
 		float x_start = v0.x;
 		float x_end = v0.x;
+		int y_start = std::max(static_cast<int>(std::floor(v0.y)), 0);
+		int y_end = std::min(static_cast<int>(std::ceil(v1.y)), mWinHeight - 1);
 		uint32_t color = rgbaToHexArgb(mSettings->fg_color);
 
 		// Scanline from top to flat line
-		for (int y = std::floor(v0.y); y <= std::ceil(v1.y); y++) {
+		for (int y = y_start; y <= y_end; y++) {
 #ifdef AVX_SUPPORTED
 			__m256i colorSIMD = _mm256_set1_epi32(color);
-			int ix_start = std::floor(x_start < x_end ? x_start : x_end);
-			int ix_end = std::ceil(x_end > x_start ? x_end : x_start);
-			if (ix_start == ix_end) {
+			int ix_start = std::max(
+				static_cast<int>(std::floor(x_start < x_end ? x_start : x_end)),
+				0);
+			int ix_end = std::min(
+				static_cast<int>(std::ceil(x_end > x_start ? x_end : x_start)),
+				mWinWidth - 1);
+			if (ix_start >= ix_end) {
 				x_start += invslope1;
 				x_end += invslope2;
 				continue;
 			}
 			int pixels_to_write = ix_end - ix_start;
-			int blockCount = pixels_to_write / 8;
+			constexpr int BLOCK_SIZE = 8;
+			int blockCount = pixels_to_write / BLOCK_SIZE;
 			__m256i* blocks = reinterpret_cast<__m256i*>(&mColorBuffer[mWinWidth * y + ix_start]);
 			// Write to blocks (8 pixels at a time)
 			for (int block = 0; block < blockCount; block++) {
 				_mm256_storeu_si256(blocks + block, colorSIMD);
 			}
 			// Set any remaining pixels individually
-			for (int pixel = blockCount * 8 + ix_start; pixel <= ix_end; pixel++) {
+			for (int pixel = blockCount * BLOCK_SIZE + ix_start; pixel <= ix_end; pixel++) {
 				mColorBuffer[mWinWidth * y + pixel] = color;
 			}
-			mColorBuffer[mWinWidth * y + ix_start] = color;
-			mColorBuffer[mWinWidth * y + ix_end] = color;
 #else
 			draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), color);
 #endif
@@ -161,33 +166,39 @@ namespace MiniRenderer {
 		float invslope2 = (float)(v2.x - mid.x) / (v2.y - mid.y);
 		float x_start = v2.x;
 		float x_end = v2.x;
+		int y_start = std::min(static_cast<int>(std::ceil(v2.y)), mWinHeight - 1);
+		int y_end = std::max(static_cast<int>(std::floor(v1.y)), 0);
+
 		uint32_t color = rgbaToHexArgb(mSettings->fg_color);
 
 		// Scanline from bottom to flat line
-		for (int y = std::ceil(v2.y); y >= std::floor(v1.y); y--) {
+		for (int y = y_start; y >= y_end; y--) {
 #ifdef AVX_SUPPORTED
 			__m256i colorSIMD = _mm256_set1_epi32(color);
 
-			int ix_start = std::floor(x_start < x_end ? x_start : x_end);
-			int ix_end = std::ceil(x_end > x_start ? x_end : x_start);
-			if (ix_start == ix_end) {
+			int ix_start = std::max(
+				static_cast<int>(std::floor(x_start < x_end ? x_start : x_end)),
+				0);
+			int ix_end = std::min(
+				static_cast<int>(std::ceil(x_end > x_start ? x_end : x_start)),
+				mWinWidth - 1);
+			if (ix_start >= ix_end) {
 				x_start -= invslope1;
 				x_end -= invslope2;
 				continue;
 			}
 			int pixels_to_write = ix_end - ix_start;
-			int blockCount = pixels_to_write / 8;
+			constexpr int BLOCK_SIZE = 8;
+			int blockCount = pixels_to_write / BLOCK_SIZE;
 			__m256i* blocks = reinterpret_cast<__m256i*>(&mColorBuffer[mWinWidth * y + ix_start]);
 			// Write to blocks (8 pixels at a time)
 			for (int block = 0; block < blockCount; block++) {
 				_mm256_storeu_si256(blocks + block, colorSIMD);
 			}
 			// Set any remaining pixels individually
-			for (int pixel = blockCount * 8 + ix_start; pixel <= ix_end; pixel++) {
+			for (int pixel = blockCount * BLOCK_SIZE + ix_start; pixel <= ix_end; pixel++) {
 				mColorBuffer[mWinWidth * y + pixel] = color;
 			}
-			mColorBuffer[mWinWidth * y + ix_start] = color;
-			mColorBuffer[mWinWidth * y + ix_end] = color;
 #else
 			draw_line(glm::vec2(x_start, y), glm::vec2(x_end, y), color);
 #endif
@@ -250,6 +261,7 @@ namespace MiniRenderer {
 			return;
 		}
 		std::function<void(std::array<glm::vec3, 3>&)> draw_triangle = [](std::array<glm::vec3, 3>& vertices) {};
+		// choose draw_triangle algorithm
 		switch (mSettings->triangle_algo) {
 		case TriangleAlgo::Wireframe:
 			draw_triangle = [this](std::array<glm::vec3, 3>& vertices) {
