@@ -12,6 +12,8 @@ struct Face {
 	std::array<int, 3> positionIndices;
 	std::array<int, 3> texIndices;
 	std::array<int, 3> normalIndices;
+	Face(const std::array<int, 3>& positions, const std::array<int, 3>& tex, const std::array<int, 3>& normals)
+		: positionIndices(positions), texIndices(tex), normalIndices(normals) {}
 };
 
 class Model {

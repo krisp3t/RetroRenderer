@@ -209,8 +209,17 @@ namespace MiniRenderer {
 		glm::vec2 v1 = NDC_to_Screen(glm::vec2(vertices[1].x, vertices[1].y), mWinWidth, mWinHeight);
 		glm::vec2 v2 = NDC_to_Screen(glm::vec2(vertices[2].x, vertices[2].y), mWinWidth, mWinHeight);
 
-		fill_flat_bottom_triangle(v0, v1, mid);
-		fill_flat_top_triangle(v1, mid, v2);
+		// Prevent division by zero
+		if (v0.y == v1.y) {
+			fill_flat_top_triangle(v0, v1, v2);
+		}
+		else if (v1.y == v2.y) {
+			fill_flat_bottom_triangle(v0, v1, v2);
+		}
+		else {
+			fill_flat_bottom_triangle(v0, v1, mid);
+			fill_flat_top_triangle(v1, mid, v2);
+		}
 	}
 
 	void Display::draw_model_wireframe(std::array <glm::vec3, 3>& vertices) {

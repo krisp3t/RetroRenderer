@@ -62,12 +62,19 @@ namespace MiniRenderer {
 			ImGui::Checkbox("Show bounding box", &mSettings->show_bounding_box);
 			*/
 
+
+			// Model info
+			ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), s.filename.c_str());
+			ImGui::SameLine();
+			ImGui::Text("loaded");
+			ImGui::SameLine();
+			ImGui::Text("with %d vertices, %d triangle faces", m.nVerts(), m.nFaces());
+
 			if (ImGui::Button("Open Model")) {
 				IGFD::FileDialogConfig config;
 				config.path = s.filepath;
 				ImGuiFileDialog::Instance()->OpenDialog("ChooseObjFile", "Choose model (.obj)", ".obj", config);
 			}
-
 			if (ImGuiFileDialog::Instance()->Display("ChooseObjFile")) {
 				if (ImGuiFileDialog::Instance()->IsOk()) {
 					s.filename = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -76,21 +83,12 @@ namespace MiniRenderer {
 				}
 				ImGuiFileDialog::Instance()->Close();
 			}
-
 			ImGui::SameLine();
-			ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), s.filename.c_str());
-			ImGui::SameLine();
-			ImGui::Text("loaded");
-			ImGui::SameLine();
-
-			ImGui::Text("with %d vertices, %d faces", m.nVerts(), m.nFaces());
-
 			if (ImGui::Button("Render .tga screenshot")) {
 				IGFD::FileDialogConfig config;
 				config.path = s.filepath;
 				ImGuiFileDialog::Instance()->OpenDialog("SaveTgaFile", "Save screenshot (.tga)", ".tga", config);
 			}
-
 			if (ImGuiFileDialog::Instance()->Display("SaveTgaFile")) {
 				const auto path = ImGuiFileDialog::Instance()->GetFilePathName();
 				if (ImGuiFileDialog::Instance()->IsOk()) {
@@ -103,9 +101,8 @@ namespace MiniRenderer {
 				ImGuiFileDialog::Instance()->Close();
 			}
 
+
 			ImGui::Checkbox("Backface culling", &(s.backface_culling));
-
-
 			// ImGui::Text(mModel->name.c_str());
 			/*
 			ImGui::SeparatorText("Lighting");

@@ -22,24 +22,26 @@ Model::Model(const std::string_view filepath) {
         }
         // Faces
 		else if (!line.compare(0, 2, "f ")) {
-            // we only support triangles (not quads)
             // each vertex is made of 3 indices: position, texture, normal
-            std::array<int, 3> positionIndices, texIndices, normalIndices;
+            std::vector<int> positionIndices, texIndices, normalIndices;
 			int ixPosition, ixTexture, ixNormal;
 			iss >> trash;
             int count = 0;
 			while (iss >> ixPosition >> trash >> ixTexture >> trash >> ixNormal) {
-                if (count >= 3) {
-					std::cerr << "Error: renderer only supports triangles in obj file" << std::endl;
-					return;
-                }
                 // wavefront indices start at 1, not 0
-                positionIndices[count] = --ixPosition;
-                texIndices[count] = --ixTexture;
-                normalIndices[count] = --ixNormal;
+                positionIndices.push_back(ixPosition - 1);
+                texIndices.push_back(ixTexture - 1);
+                normalIndices.push_back(ixNormal - 1);
                 count++;
 			}
-            mFaces.emplace_back(std::move(positionIndices), std::move(texIndices), std::move(normalIndices));
+            // convert non-triangle faces to triangles, store triangles
+            while (count >= 3) {
+				mFaces.emplace_back(
+                    std::array<int, 3>{positionIndices[0], positionIndices[count - 2], positionIndices[count - 1]},
+                    std::array<int, 3>{texIndices[0], texIndices[count - 2], texIndices[count - 1]},
+                    std::array<int, 3>{normalIndices[0], normalIndices[count - 2], normalIndices[count - 1]});
+				count--;
+			}
 		}
 	}
     infile.close();
