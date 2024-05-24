@@ -29,14 +29,14 @@ namespace MiniRenderer
 	};
 
 	struct Settings {
-		Settings(int& width, int& height) : winWidth(width), winHeight(height) {}
+		Settings(int width, int height) : winWidth(width), winHeight(height) {}
 
 		LineAlgorithm line_algo = LineAlgorithm::Bresenham;
 		TriangleAlgo triangle_algo = TriangleAlgo::Wireframe;
 		OpenWindows open_windows;
 		Camera camera;
-		int& winWidth;
-		int& winHeight;
+		int winWidth;
+		int winHeight;
 		std::string filename;
 		std::string filepath;
 
