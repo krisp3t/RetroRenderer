@@ -56,6 +56,7 @@ namespace MiniRenderer {
 		int ipart(float x);
 		uint32_t blendColors(uint32_t color, uint8_t alpha);
 		void draw_rect(int x, int y, int width, int height, uint32_t color);
+		void update_screen();
 		glm::vec2 project(glm::vec3 point);
 		bool is_running();
 	private:

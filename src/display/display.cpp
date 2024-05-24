@@ -10,7 +10,6 @@ namespace MiniRenderer {
 		// We write to the color buffer in 32-bit ARGB format
 		// On every frame, we copy the color buffer to a texture
 		// which is then copied to GPU and rendered to the screen
-
 		mColorBuffer = std::make_unique<uint32_t[]>(mWinWidth * mWinHeight);
 		mColorBufferTexture = SDL_CreateTexture(
 			mRenderer,
@@ -26,11 +25,9 @@ namespace MiniRenderer {
 			printf("Error: %s\n", SDL_GetError());
 			return false;
 		}
-
 #ifdef SDL_HINT_IME_SHOW_UI
 		SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
 #endif
-
 		SDL_DisplayMode display_mode;
 		SDL_GetCurrentDisplayMode(0, &display_mode);
 		mWinWidth = 1280;
@@ -43,13 +40,11 @@ namespace MiniRenderer {
 			mWinHeight,
 			SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
 		);
-
 		if (mWindow == nullptr)
 		{
 			fprintf(stderr, "Error creating SDL window.\n");
 			return false;
 		}
-
 		mRenderer = SDL_CreateRenderer(mWindow, -1, SDL_RENDERER_ACCELERATED);
 		if (mRenderer == nullptr)
 		{
@@ -57,7 +52,6 @@ namespace MiniRenderer {
 			return false;
 		}
 		SDL_Log("AVX support: %s", AVX_SUPPORTED ? "true" : "false");
-
 		initialize_buffers();
 		mSettings = std::make_unique<Settings>(mWinWidth, mWinHeight);
 		mSettings->filename = "head.obj";
@@ -463,10 +457,24 @@ namespace MiniRenderer {
 		}
 	}
 
+	void Display::update_screen() {
+		int pitch = mWinWidth * sizeof(uint32_t);
+		void* pixels;
+		if (SDL_LockTexture(mColorBufferTexture, nullptr, &pixels, &pitch) == 0) {
+			memcpy(pixels, mColorBuffer.get(), pitch * mWinHeight);
+			SDL_UnlockTexture(mColorBufferTexture);
+		}
+		else {
+			SDL_Log("Failed to lock color buffer texture: %s", SDL_GetError());
+			return;
+		}
+	}
+
 	void Display::render() {
 		// Copy color buffer to texture, which is then rendered to the screen
 		SDL_RenderClear(mRenderer);
-		SDL_UpdateTexture(mColorBufferTexture, nullptr, mColorBuffer.get(), mWinWidth * sizeof(uint32_t));
+		//SDL_UpdateTexture(mColorBufferTexture, nullptr, mColorBuffer.get(), mWinWidth * sizeof(uint32_t));
+		update_screen();
 		SDL_RenderCopy(mRenderer, mColorBufferTexture, nullptr, nullptr);
 		mGui->render();
 		SDL_RenderPresent(mRenderer);
