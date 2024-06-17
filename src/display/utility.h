@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <glm/vec2.hpp>
 
-namespace MiniRenderer 
+namespace KrisRenderer 
 {
 	uint32_t rgbaToHexArgb(float(&fg_color)[4]);
 	uint32_t rgbaToHexRgba(float(&fg_color)[4]);

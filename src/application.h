@@ -1,26 +1,19 @@
 #pragma once
-
-#include <iostream>
 #include <memory>
-#include <SDL.h>
-#include "display/display.h"
-#include "resourcemanager.h"
 
-namespace MiniRenderer {
-	class Application 
+// Meyers Singleton
+namespace KrisRenderer
+{
+	class Application
 	{
 	public:
-		Application();
+		static Application& Get();
 		Application(const Application&) = delete;
-		Application& operator=(const Application&) = delete;
-
-		static Application& get();
-		void loop();
+		void operator=(const Application&) = delete;
+		void Loop();
 	private:
-		static Application* sInstance;
-		std::unique_ptr<Display> mDisplay;
-		SDL_Window* mWindow;
-		SDL_Renderer* mRenderer;
-		std::unique_ptr<GUI> mGui;
+		Application();
+		// std::unique_ptr<Window> mWindow;
+		// std::unique_ptr<Renderer> mRenderer;
 	};
 }

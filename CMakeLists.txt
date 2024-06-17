@@ -6,15 +6,14 @@ if (POLICY CMP0141)
 	set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-project("MiniRenderer")
-
+project("KrisRenderer")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
 file(GLOB IMGUI_FILE_DIALOG lib/ImGuiFileDialog/ImGuiFileDialog.cpp)
 file(GLOB LIB ${IMGUI_FILE_DIALOG})
-file(GLOB SOURCES src/*.h src/*.cpp src/display/*.h src/display/*.cpp ${LIB})
+file(GLOB SOURCES src/*.h src/*.cpp ${LIB})
 
 
 find_package(SDL2 CONFIG REQUIRED)

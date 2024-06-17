@@ -1,6 +1,6 @@
 #include "display.h"
 
-namespace MiniRenderer {
+namespace KrisRenderer {
 	Display::Display()
 	{
 		mWinWidth = 1280;
@@ -44,7 +44,7 @@ namespace MiniRenderer {
 		mWinWidth = 1280;
 		mWinHeight = 720;
 		mWindow = SDL_CreateWindow(
-			"MiniRenderer",
+			"KrisRenderer",
 			SDL_WINDOWPOS_CENTERED,
 			SDL_WINDOWPOS_CENTERED,
 			mWinWidth,

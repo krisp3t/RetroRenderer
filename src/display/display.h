@@ -15,7 +15,7 @@
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
 #endif
 
-namespace MiniRenderer {
+namespace KrisRenderer {
 	class Display
 	{
 	public:

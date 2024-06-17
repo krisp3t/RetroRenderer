@@ -10,7 +10,7 @@
 #include "../model.h"
 #include "../tgaimage.h"
 
-namespace MiniRenderer {
+namespace KrisRenderer {
     enum GUIState {
         Error,
         None,

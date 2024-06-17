@@ -1,6 +1,6 @@
 #include "gui.h"
 
-namespace MiniRenderer {
+namespace KrisRenderer {
 	bool GUI::initialize_gui(SDL_Window* window, SDL_Renderer* renderer) {
 		mWindow = window;
 		mRenderer = renderer;

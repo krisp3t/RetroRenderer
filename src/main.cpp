@@ -1,11 +1,15 @@
-
-#include <iostream>
 #include "application.h"
 
-using namespace MiniRenderer;
-
-int main(int, char**) {
-	auto app = std::make_unique<Application>();
-	app->loop();
-	return 0;
+namespace KrisRenderer
+{
+	int Main()
+	{
+		Application& app = Application::Get();
+		app.Loop();
+		return 0;
+	}
+}
+int main()
+{
+	return KrisRenderer::Main();
 }

@@ -1,5 +1,5 @@
 
-namespace MiniRenderer {
+namespace KrisRenderer {
 	namespace Draw {
 		static void draw_pixel(int x, int y, uint32_t color, &uint32_t[] colorBuffer) {
 			if (x >= 0 && x < mWinWidth && y >= 0 && y < mWinHeight) {

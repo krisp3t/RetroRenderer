@@ -9,7 +9,7 @@
 #include "display.h"
 
 
-namespace MiniRenderer {
+namespace KrisRenderer {
 	namespace Draw {
 		void draw_pixel(int x, int y, uint32_t color, uint32_t colorBuffer[]);
 		void draw_triangle(std::array<glm::vec3, 3>& vertices, TriangleAlgo algo);

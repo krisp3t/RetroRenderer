@@ -1,6 +1,6 @@
 #include "utility.h"
 
-namespace MiniRenderer {
+namespace KrisRenderer {
 	uint32_t rgbaToHexArgb(float (&fg_color)[4]) {
 		short r = fg_color[0] * 255;
 		short g = fg_color[1] * 255;
