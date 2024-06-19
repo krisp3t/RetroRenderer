@@ -1,3 +1,5 @@
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_dx11.h>
 #include "DX11Renderer.h"
 #include "DX11Globals.h"
 #include "../Application.h"
@@ -59,6 +61,17 @@ namespace KrisRenderer
 		pSwapChain->GetBuffer(0, __uuidof(ID3D11Resource), reinterpret_cast<void**>(&pBackBuffer));
 		DX11Globals::sDx11Device->CreateRenderTargetView(pBackBuffer, nullptr, &g_pRenderTargetView);
 		pBackBuffer->Release();
+		
+		// Setup Dear ImGui context
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGuiIO& io = ImGui::GetIO(); (void)io;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+		ImGui::StyleColorsDark();
+		// Setup Platform/Renderer backends
+		ImGui_ImplSDL2_InitForD3D(window.GetWindow());
+		ImGui_ImplDX11_Init(DX11Globals::sDx11Device, DX11Globals::sDx11DeviceContext);
 	}
 
 	DX11Renderer::~DX11Renderer()
@@ -82,7 +95,9 @@ namespace KrisRenderer
 
 	void DX11Renderer::Render()
 	{
+		ImGui_ImplDX11_NewFrame();
+		ImGui::NewFrame();
 		ClearBuffers(1, 0, 0);
-		pSwapChain->Present(0u, 0u);
+		pSwapChain->Present(0u, 0u); // swap buffers
 	}
 }
