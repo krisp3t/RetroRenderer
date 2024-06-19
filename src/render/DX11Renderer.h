@@ -19,6 +19,7 @@ namespace KrisRenderer
 		~DX11Renderer() override;
 		void InitializeBuffers() override;
 		void ClearBuffers(float red, float green, float blue) noexcept;
+		void BeginFrame() override;
 		void Render() override;
 	private:
 		IDXGISwapChain* pSwapChain = nullptr;

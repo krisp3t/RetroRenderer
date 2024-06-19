@@ -99,6 +99,7 @@ namespace KrisRenderer
 
 	void Window::Update()
 	{
+		mRenderer->BeginFrame();
 	}
 
 	void Window::Render()

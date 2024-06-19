@@ -37,6 +37,14 @@ namespace KrisRenderer
 			size.second
 		);
 	}
+	void SWRenderer::ClearBuffers()
+	{
+		memset(mColorBuffer.get(), 0x00000000, mWindow.GetSize().first * mWindow.GetSize().second * sizeof(uint32_t));
+	}
+	void SWRenderer::BeginFrame()
+	{
+		ClearBuffers();
+	}
 	void SWRenderer::Render()
 	{
 		SDL_UpdateTexture(mColorBufferTexture, nullptr, mColorBuffer.get(), mWindow.GetSize().first * sizeof(uint32_t));

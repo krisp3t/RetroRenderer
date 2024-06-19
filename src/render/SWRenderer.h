@@ -12,6 +12,7 @@ namespace KrisRenderer
 		public:
 			SWRenderer(const Window& window);
 			~SWRenderer() override;
+			void BeginFrame() override;
 			void InitializeBuffers() override;
 			void ClearBuffers();
 			void Render() override;

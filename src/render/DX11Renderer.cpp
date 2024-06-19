@@ -76,6 +76,9 @@ namespace KrisRenderer
 
 	DX11Renderer::~DX11Renderer()
 	{
+		ImGui_ImplDX11_Shutdown();
+		ImGui_ImplSDL2_Shutdown();
+		ImGui::DestroyContext();
 		if (DX11Globals::sDx11DeviceContext) DX11Globals::sDx11DeviceContext->Release();
 		if (pSwapChain) pSwapChain->Release();
 		if (DX11Globals::sDx11Device) DX11Globals::sDx11Device->Release();
@@ -90,14 +93,24 @@ namespace KrisRenderer
 	void DX11Renderer::ClearBuffers(float red, float green, float blue) noexcept
 	{
 		const float color[] = { red, green, blue, 1.0f };
+		DX11Globals::sDx11DeviceContext->OMSetRenderTargets(1, &g_pRenderTargetView, nullptr);
 		DX11Globals::sDx11DeviceContext->ClearRenderTargetView(g_pRenderTargetView, color);
+	}
+
+	void DX11Renderer::BeginFrame()
+	{
+		ImGui_ImplDX11_NewFrame();
+		ImGui_ImplSDL2_NewFrame();
+		ImGui::NewFrame();
+		bool show_demo_window = true;
+		ImGui::ShowDemoWindow(&show_demo_window);
 	}
 
 	void DX11Renderer::Render()
 	{
-		ImGui_ImplDX11_NewFrame();
-		ImGui::NewFrame();
-		ClearBuffers(1, 0, 0);
+		ImGui::Render();
+		ClearBuffers(1, 0.5, 0);
+		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 		pSwapChain->Present(0u, 0u); // swap buffers
 	}
 }
