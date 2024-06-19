@@ -9,7 +9,8 @@ namespace KrisRenderer
 		return 0;
 	}
 }
-int main()
+
+int main(int argc, char* argv[])
 {
 	return KrisRenderer::Main();
 }

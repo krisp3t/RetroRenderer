@@ -8,13 +8,12 @@ endif()
 
 project("KrisRenderer")
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+	set(CMAKE_BUILD_TYPE Release)
 endif()
 
 file(GLOB IMGUI_FILE_DIALOG lib/ImGuiFileDialog/ImGuiFileDialog.cpp)
 file(GLOB LIB ${IMGUI_FILE_DIALOG})
-file(GLOB SOURCES src/*.h src/*.cpp ${LIB})
-
+file(GLOB SOURCES src/*.h src/*.cpp src/window/*.h src/window/*.cpp ${LIB})
 
 find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
@@ -27,8 +26,11 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
 	set(CMAKE_CXX_STANDARD 20)
 	set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE NDEBUG)
+endif()
 
-target_compile_options(${PROJECT_NAME} PRIVATE /arch:AVX)
+target_compile_options(${PROJECT_NAME} PRIVATE /arch:AVX /Ot /fp:fast)
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
 target_link_libraries(${PROJECT_NAME}
@@ -38,5 +40,4 @@ target_link_libraries(${PROJECT_NAME}
 )
  target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
  target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
-
 

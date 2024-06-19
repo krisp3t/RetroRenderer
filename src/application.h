@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include "window/Window.h"
 
 // Meyers Singleton
 namespace KrisRenderer
@@ -13,7 +14,7 @@ namespace KrisRenderer
 		void Loop();
 	private:
 		Application();
-		// std::unique_ptr<Window> mWindow;
+		static std::unique_ptr<Window> sWindow;
 		// std::unique_ptr<Renderer> mRenderer;
 	};
 }

@@ -4,7 +4,7 @@ namespace KrisRenderer
 {
 	constexpr int DEFAULT_WIN_WIDTH = 1280;
 	constexpr int DEFAULT_WIN_HEIGHT = 720;
-	// constexpr std::string_view DEFAULT_MODEL = "head.obj";
+	std::unique_ptr<Window> Application::sWindow = nullptr;
 
 	Application& Application::Get()
 	{
@@ -14,6 +14,8 @@ namespace KrisRenderer
 
 	Application::Application()
 	{
+		sWindow = std::make_unique<Window>(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT);
+
 		/*
 		mDisplay = std::make_unique<Display>(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT);
 		mDisplay->initialize_window();
