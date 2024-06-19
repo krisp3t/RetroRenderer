@@ -1,11 +1,12 @@
 #pragma once
 #include <memory>
 #include <SDL.h>
-#include "../window/Window.h"
+#include "IRenderer.h"
 
 namespace KrisRenderer
 {
 	class Window;
+
 	class SWRenderer : public IRenderer
 	{
 		public:
@@ -13,7 +14,7 @@ namespace KrisRenderer
 			~SWRenderer() override;
 			void InitializeBuffers() override;
 			void ClearBuffers();
-			void Render();
+			void Render() override;
 		private:
 			const Window &mWindow;
 			SDL_Renderer* mRenderer;

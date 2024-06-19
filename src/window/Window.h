@@ -3,8 +3,6 @@
 #include <utility>
 #include <cassert>
 #include <memory>
-#include "../render/IRenderer.h"
-#include "../render/SWRenderer.h"
 #include "../defines.h"
 
 
@@ -14,6 +12,7 @@
 
 namespace KrisRenderer
 {
+	class IRenderer;
 	class Window
 	{
 	public:

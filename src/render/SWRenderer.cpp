@@ -1,7 +1,9 @@
 #include "SWRenderer.h"
+#include "../window/Window.h"
 
 namespace KrisRenderer
 {
+
 	SWRenderer::SWRenderer(const Window &window)
 		: mWindow(window)
 	{

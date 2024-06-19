@@ -1,4 +1,5 @@
 #include "Window.h"
+#include "../render/DX11Renderer.h"
 
 namespace KrisRenderer
 {
@@ -44,15 +45,7 @@ namespace KrisRenderer
 			return false;
 		}
 		SDL_Log("AVX support: %s", AVX_SUPPORTED ? "true" : "false");
-		mRenderer = std::make_unique<SWRenderer>(*this);
-		/*
-		mRenderer = SDL_CreateRenderer(mWindow, -1, SDL_RENDERER_ACCELERATED);
-		if (mRenderer == nullptr)
-		{
-			SDL_Log("Unable to create renderer: %s", SDL_GetError());
-			return false;
-		}
-		*/
+		mRenderer = std::make_unique<DX11Renderer>(*this);
 		mIsRunning = true;
 		return true;
 	}

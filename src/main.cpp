@@ -1,3 +1,6 @@
+#if WIN32
+#pragma comment(lib, "d3d11.lib")
+#endif
 #include "application.h"
 
 namespace KrisRenderer
