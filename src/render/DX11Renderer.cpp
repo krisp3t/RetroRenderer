@@ -1,4 +1,5 @@
 #include "DX11Renderer.h"
+#include "DX11Globals.h"
 #include "../Application.h"
 #include "../window/Window.h"
 
@@ -34,7 +35,7 @@ namespace KrisRenderer
 		swapCreateFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
-		D3D11CreateDeviceAndSwapChain(
+		HRESULT hr = D3D11CreateDeviceAndSwapChain(
 			nullptr,
 			D3D_DRIVER_TYPE_HARDWARE,
 			nullptr,
@@ -44,32 +45,44 @@ namespace KrisRenderer
 			D3D11_SDK_VERSION,
 			&sd,
 			&pSwapChain,
-			&Application::sDx11Device,
+			&DX11Globals::sDx11Device,
 			nullptr,
-			&Application::sDx11DeviceContext
+			&DX11Globals::sDx11DeviceContext
 		);
+		if (FAILED(hr))
+		{
+			SDL_Log("Failed to initialize DirectX 11 device and swap chain");
+			return;
+		}
+		SDL_Log("Successfully initialized DX11Renderer");
+		ID3D11Resource* pBackBuffer = nullptr; // Gain access to texture subresource in back buffer
+		pSwapChain->GetBuffer(0, __uuidof(ID3D11Resource), reinterpret_cast<void**>(&pBackBuffer));
+		DX11Globals::sDx11Device->CreateRenderTargetView(pBackBuffer, nullptr, &g_pRenderTargetView);
+		pBackBuffer->Release();
 	}
 
 	DX11Renderer::~DX11Renderer()
 	{
-		if (Application::sDx11DeviceContext) Application::sDx11DeviceContext->Release();
+		if (DX11Globals::sDx11DeviceContext) DX11Globals::sDx11DeviceContext->Release();
 		if (pSwapChain) pSwapChain->Release();
-		if (Application::sDx11Device) Application::sDx11Device->Release();
+		if (DX11Globals::sDx11Device) DX11Globals::sDx11Device->Release();
 	}
+
 
 	void DX11Renderer::InitializeBuffers()
 	{
 		ID3D11Texture2D* pBackBuffer = nullptr;
 	}
 
-	void DX11Renderer::ClearBuffers()
+	void DX11Renderer::ClearBuffers(float red, float green, float blue) noexcept
 	{
-		ID3D11Texture2D* pBackBuffer = nullptr;
+		const float color[] = { red, green, blue, 1.0f };
+		DX11Globals::sDx11DeviceContext->ClearRenderTargetView(g_pRenderTargetView, color);
 	}
 
 	void DX11Renderer::Render()
 	{
-		ID3D11Texture2D* pBackBuffer = nullptr;
-
+		ClearBuffers(1, 0, 0);
+		pSwapChain->Present(0u, 0u);
 	}
 }

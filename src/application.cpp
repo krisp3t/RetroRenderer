@@ -6,10 +6,6 @@ namespace KrisRenderer
 	constexpr int DEFAULT_WIN_WIDTH = 1280;
 	constexpr int DEFAULT_WIN_HEIGHT = 720;
 	std::unique_ptr<Window> Application::sWindow = nullptr;
-	#if WIN32
-	ID3D11Device* Application::sDx11Device = nullptr;
-	ID3D11DeviceContext* Application::sDx11DeviceContext = nullptr;
-	#endif
 
 	Application& Application::Get()
 	{

@@ -1,4 +1,6 @@
 #pragma once
+#pragma comment(lib, "d3d11.lib")
+
 #include <memory>
 #include <d3d11.h>
 #include <SDL_syswm.h>
@@ -16,9 +18,10 @@ namespace KrisRenderer
 		DX11Renderer& operator=(const DX11Renderer&) = delete;
 		~DX11Renderer() override;
 		void InitializeBuffers() override;
-		void ClearBuffers();
+		void ClearBuffers(float red, float green, float blue) noexcept;
 		void Render() override;
 	private:
-		IDXGISwapChain* pSwapChain;
+		IDXGISwapChain* pSwapChain = nullptr;
+		ID3D11RenderTargetView* g_pRenderTargetView = nullptr;
 	};
 }
