@@ -29,8 +29,11 @@ namespace KrisRenderer
 		std::pair<int, int> GetSize() const;
 
 		SDL_Window* GetWindow() const;
+		bool IsRunning() const;
+		void HandleEvents();
+		void Update();
+		void Render();
 		// std::unique_ptr<IRenderer> GetRenderer() const;
-		// void process_input();
 	private:
 		SDL_Window* mWindow = nullptr;
 		std::unique_ptr<IRenderer> mRenderer;

@@ -11,7 +11,9 @@ namespace KrisRenderer
 		public:
 			SWRenderer(const Window& window);
 			~SWRenderer() override;
-			void InitializeBuffers();
+			void InitializeBuffers() override;
+			void ClearBuffers();
+			void Render();
 		private:
 			const Window &mWindow;
 			SDL_Renderer* mRenderer;

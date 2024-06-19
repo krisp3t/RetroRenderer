@@ -61,9 +61,55 @@ namespace KrisRenderer
 	{
 		return std::pair<uint32_t, uint32_t>{mWinWidth, mWinHeight};
 	}
+
 	SDL_Window* Window::GetWindow() const
 	{
 		return mWindow;
 	}
 
+	bool Window::IsRunning() const
+	{
+		return mIsRunning;
+	}
+
+	void Window::HandleEvents()
+	{
+		SDL_Event event;
+		SDL_PollEvent(&event);
+		switch (event.type)
+		{
+		case SDL_QUIT:
+			mIsRunning = false;
+			break;
+		case SDL_KEYDOWN:
+			if (event.key.keysym.sym == SDLK_ESCAPE)
+			{
+				mIsRunning = false;
+			}
+			break;
+		case SDL_WINDOWEVENT:
+			if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+			{
+				mWinWidth = event.window.data1;
+				mWinHeight = event.window.data2;
+				SDL_Log("Window %d resized to %dx%d", event.window.windowID, event.window.data1, event.window.data2);
+				mRenderer->InitializeBuffers();
+			}
+			else if (event.window.event == SDL_WINDOWEVENT_CLOSE)
+			{
+				mIsRunning = false;
+			}
+			break;
+		}
+		// IMGUI PROCESS INPUT
+	}
+
+	void Window::Update()
+	{
+	}
+
+	void Window::Render()
+	{
+		mRenderer->Render();
+	}
 }

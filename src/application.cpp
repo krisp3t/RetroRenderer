@@ -30,13 +30,11 @@ namespace KrisRenderer
 
 	void Application::Loop()
 	{
-		/*
-		while (mDisplay->is_running())
+		while (sWindow->IsRunning())
 		{
-			mDisplay->process_input();
-			mDisplay->update();
-			mDisplay->render();
+			sWindow->HandleEvents();
+			sWindow->Update();
+			sWindow->Render();
 		}
-		*/
 	}
 }
