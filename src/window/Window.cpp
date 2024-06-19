@@ -9,8 +9,9 @@ namespace KrisRenderer
 		InitializeWindow();
 	}
 
-	Window::Window(int width, int height)
+	Window::Window(const int width, const int height)
 	{
+		assert(width > 0 && height > 0);
 		mWinWidth = width;
 		mWinHeight = height;
 		InitializeWindow();
@@ -18,7 +19,6 @@ namespace KrisRenderer
 
 	Window::~Window()
 	{
-		SDL_DestroyRenderer(mRenderer);
 		SDL_DestroyWindow(mWindow);
 	}
 
@@ -31,11 +31,11 @@ namespace KrisRenderer
 		}
 
 		mWindow = SDL_CreateWindow(
-			"KrisRenderer (Mode: Software)", 
-			SDL_WINDOWPOS_CENTERED, 
-			SDL_WINDOWPOS_CENTERED, 
-			mWinWidth, 
-			mWinHeight, 
+			"KrisRenderer (Mode: Software)",
+			SDL_WINDOWPOS_CENTERED,
+			SDL_WINDOWPOS_CENTERED,
+			mWinWidth,
+			mWinHeight,
 			SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 
 		if (mWindow == nullptr)
@@ -44,16 +44,26 @@ namespace KrisRenderer
 			return false;
 		}
 		SDL_Log("AVX support: %s", AVX_SUPPORTED ? "true" : "false");
-
+		mRenderer = std::make_unique<SWRenderer>(*this);
+		/*
 		mRenderer = SDL_CreateRenderer(mWindow, -1, SDL_RENDERER_ACCELERATED);
 		if (mRenderer == nullptr)
 		{
 			SDL_Log("Unable to create renderer: %s", SDL_GetError());
 			return false;
 		}
-
+		*/
+		mIsRunning = true;
 		return true;
 	}
 
+	std::pair<int, int> Window::GetSize() const
+	{
+		return std::pair<uint32_t, uint32_t>{mWinWidth, mWinHeight};
+	}
+	SDL_Window* Window::GetWindow() const
+	{
+		return mWindow;
+	}
 
 }

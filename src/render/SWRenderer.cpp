@@ -1,0 +1,38 @@
+#include "SWRenderer.h"
+
+namespace KrisRenderer
+{
+	SWRenderer::SWRenderer(const Window &window)
+		: mWindow(window)
+	{
+		mRenderer = SDL_CreateRenderer(window.GetWindow(), -1, SDL_RENDERER_SOFTWARE);
+		if (mRenderer == nullptr)
+		{
+			SDL_Log("Unable to create renderer: %s", SDL_GetError());
+		}
+		InitializeBuffers();
+
+		SDL_Log("Successfully initiaized SWRenderer");
+	}
+
+	SWRenderer::~SWRenderer()
+	{
+		SDL_DestroyTexture(mColorBufferTexture);
+		SDL_DestroyRenderer(mRenderer);
+	}
+
+	void SWRenderer::InitializeBuffers()
+	{
+		auto size = mWindow.GetSize();
+		uint32_t bufferSize = size.first * size.second;
+
+		mColorBuffer = std::make_unique<uint32_t[]>(bufferSize);
+		mColorBufferTexture = SDL_CreateTexture(
+			mRenderer,
+			SDL_PIXELFORMAT_ARGB8888,
+			SDL_TEXTUREACCESS_STREAMING,
+			size.first,
+			size.second
+		);
+	}
+}
