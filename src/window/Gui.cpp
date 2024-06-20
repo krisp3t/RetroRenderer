@@ -16,7 +16,7 @@ namespace KrisRenderer {
 
 		// TODO: check renderer type
 		ImGui_ImplSDL2_InitForD3D(window);
-		ImGui_ImplDX11_Init(DX11Globals::sDx11Device, DX11Globals::sDx11DeviceContext);
+		ImGui_ImplDX11_Init(DX11Globals::sDx11Device.Get(), DX11Globals::sDx11DeviceContext.Get());
 	}
 
 	Gui::~Gui() 

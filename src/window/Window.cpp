@@ -88,7 +88,7 @@ namespace KrisRenderer
 				mWinWidth = event.window.data1;
 				mWinHeight = event.window.data2;
 				SDL_Log("Window %d resized to %dx%d", event.window.windowID, event.window.data1, event.window.data2);
-				mRenderer->InitializeBuffers();
+				mRenderer->OnResize(mWinWidth, mWinHeight);
 			}
 			else if (event.window.event == SDL_WINDOWEVENT_CLOSE)
 			{
