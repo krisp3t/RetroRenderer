@@ -33,7 +33,7 @@ namespace KrisRenderer
 	{
 		while (sWindow->IsRunning())
 		{
-			sWindow->HandleEvents();
+			sWindow->HandleInput();
 			sWindow->Update();
 			sWindow->Render();
 		}

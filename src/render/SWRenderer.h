@@ -15,7 +15,8 @@ namespace KrisRenderer
 			void BeginFrame() override;
 			void InitializeBuffers() override;
 			void ClearBuffers();
-			void Render() override;
+			void EndFrame() override;
+			void RenderScene() override;
 		private:
 			const Window &mWindow;
 			SDL_Renderer* mRenderer;

@@ -1,4 +1,5 @@
 #include "Window.h"
+#include "Gui.h"
 #include "../render/DX11Renderer.h"
 
 namespace KrisRenderer
@@ -47,6 +48,7 @@ namespace KrisRenderer
 		SDL_Log("AVX support: %s", AVX_SUPPORTED ? "true" : "false");
 		mRenderer = std::make_unique<DX11Renderer>(*this);
 		mIsRunning = true;
+		mGui = std::make_unique<Gui>(GetWindow(), *mRenderer);
 		return true;
 	}
 
@@ -65,7 +67,7 @@ namespace KrisRenderer
 		return mIsRunning;
 	}
 
-	void Window::HandleEvents()
+	void Window::HandleInput()
 	{
 		SDL_Event event;
 		SDL_PollEvent(&event);
@@ -94,16 +96,21 @@ namespace KrisRenderer
 			}
 			break;
 		}
-		// IMGUI PROCESS INPUT
+		mGui->ProcessInput(event);
 	}
 
 	void Window::Update()
 	{
 		mRenderer->BeginFrame();
+		mGui->BeginFrame();
 	}
 
 	void Window::Render()
 	{
-		mRenderer->Render();
+		mRenderer->RenderScene();
+		mGui->RenderScene();
+		mGui->EndFrame();
+		mRenderer->EndFrame();
+
 	}
 }

@@ -13,6 +13,7 @@
 namespace KrisRenderer
 {
 	class IRenderer;
+	class Gui;
 	class Window
 	{
 	public:
@@ -29,13 +30,14 @@ namespace KrisRenderer
 
 		SDL_Window* GetWindow() const;
 		bool IsRunning() const;
-		void HandleEvents();
+		void HandleInput();
 		void Update();
 		void Render();
 		// std::unique_ptr<IRenderer> GetRenderer() const;
 	private:
 		SDL_Window* mWindow = nullptr;
 		std::unique_ptr<IRenderer> mRenderer;
+		std::unique_ptr<Gui> mGui;
 		int mWinWidth;
 		int mWinHeight;
 		bool mIsRunning = true;
