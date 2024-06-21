@@ -1,6 +1,7 @@
 #pragma once
 #include <d3d11.h>
 #include <dxgi1_3.h>
+#include <string_view>
 #include <wrl/client.h>
 #include "IRenderer.h"
 
@@ -21,8 +22,18 @@ namespace KrisRenderer
 		void InitializeBuffers() override;
 		void BeginFrame() override;
 		void EndFrame() override;
+		bool CompileShader(
+			const std::wstring& filename, 
+			const std::string& entryPoint, 
+			const std::string& profile, 
+			ComPtr<ID3DBlob>& shaderBlob) const;
 		void RenderScene() override;
 		void OnResize(int width, int height) override;
+		[[nodiscard]] ComPtr<ID3D11VertexShader> CreateVertexShader(
+			const std::wstring& filename,
+			ComPtr<ID3DBlob>& vertexShaderBlob) const;
+		[[nodiscard]] ComPtr<ID3D11PixelShader> CreatePixelShader(
+			const std::wstring& filename) const;
 	private:
 		ComPtr<IDXGISwapChain1> _SwapChain = nullptr;
 		ComPtr<ID3D11RenderTargetView> _RenderTargetView = nullptr;

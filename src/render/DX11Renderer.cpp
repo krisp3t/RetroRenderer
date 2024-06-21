@@ -4,14 +4,22 @@
 #include "DX11Renderer.h"
 #include "DX11Globals.h"
 #include "SDL_syswm.h"
+#include <DirectXMath.h>
+#include <d3dcompiler.h>
 #include "../Application.h"
 #include "../window/Window.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "winmm.lib")
+#pragma comment(lib, "dxguid.lib")
 
 namespace KrisRenderer
 {
+	template <typename T>
+	using ComPtr = Microsoft::WRL::ComPtr<T>;
+
 	bool DX11Renderer::Initialize(HWND h)
 	{
 		// Create DXGI factory
@@ -82,6 +90,7 @@ namespace KrisRenderer
 		{
 			return false;
 		}
+		
 		return true;
 	}
 	DX11Renderer::DX11Renderer(const Window& window)
@@ -131,7 +140,7 @@ namespace KrisRenderer
 		viewport.MinDepth = 0.0f;
 		viewport.MaxDepth = 1.0f;
 
-		constexpr float clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
+		constexpr float clearColor[] = { 0.5f, 0.1f, 1.0f, 1.0f };
 		DX11Globals::sDx11DeviceContext->ClearRenderTargetView(_RenderTargetView.Get(), clearColor);
 		DX11Globals::sDx11DeviceContext->RSSetViewports(1, &viewport);
 		DX11Globals::sDx11DeviceContext->OMSetRenderTargets(1, _RenderTargetView.GetAddressOf(), nullptr);
@@ -160,8 +169,12 @@ namespace KrisRenderer
 		if (!CreateSwapchainResources())
 		{
 			SDL_Log("D3D11: Failed to create render target view after resizing swap chain");
+			return;
 		}
+
+		SDL_Log("D3D11: Resized swap chain to %d x %d", width, height);
 	}
+
 
 	bool DX11Renderer::CreateSwapchainResources()
 	{
@@ -195,5 +208,82 @@ namespace KrisRenderer
 		_SwapChain->Present(0u, 0u); // swap buffers
 	}
 
+    bool DX11Renderer::CompileShader(
+        const std::wstring& filename,
+        const std::string& entryPoint,
+        const std::string& profile,
+        ComPtr<ID3DBlob>& shaderBlob) const
+    {
+    #ifndef NDEBUG
+        constexpr UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_ENABLE_STRICTNESS;
+    #else
+        constexpr UINT compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    #endif
+        ComPtr<ID3DBlob> tempShaderBlob = nullptr; // we load the compiled shader into this blob
+        ComPtr<ID3DBlob> errorBlob = nullptr;
+        if (FAILED(D3DCompileFromFile(
+            filename.data(),
+            nullptr,
+            D3D_COMPILE_STANDARD_FILE_INCLUDE,
+            entryPoint.data(),
+            profile.data(),
+            compileFlags,
+            0,
+            &tempShaderBlob,
+            &errorBlob
+        )))
+        {
+            SDL_Log("D3D11: Failed to compile shader: %s", filename.c_str());
+            if (errorBlob != nullptr)
+            {
+                SDL_Log("D3D11: Shader compilation error: %s", static_cast<const char*>(errorBlob->GetBufferPointer()));
+            }
+            return false;
+        }
+        shaderBlob = std::move(tempShaderBlob);
+        return true;
+    }
+
+	ComPtr<ID3D11VertexShader> DX11Renderer::CreateVertexShader(
+		const std::wstring& filename, 
+		ComPtr<ID3DBlob>& vertexShaderBlob) const
+	{
+		if (!CompileShader(filename, "Main", "vs_5_0", vertexShaderBlob))
+		{
+			return nullptr;
+		}
+		ComPtr<ID3D11VertexShader> vertexShader = nullptr;
+		if (FAILED(DX11Globals::sDx11Device->CreateVertexShader(
+			vertexShaderBlob->GetBufferPointer(),
+			vertexShaderBlob->GetBufferSize(),
+			nullptr,
+			&vertexShader)))
+		{
+			SDL_Log("D3D11: Failed to create vertex shader from compiled shader blob");
+			return nullptr;
+		}
+		return vertexShader;
+	}
+
+	ComPtr<ID3D11PixelShader> DX11Renderer::CreatePixelShader(
+		const std::wstring& filename) const
+	{
+		ComPtr<ID3DBlob> pixelShaderBlob = nullptr;
+		if (!CompileShader(filename, "Main", "ps_5_0", pixelShaderBlob))
+		{
+			return nullptr;
+		}
+		ComPtr<ID3D11PixelShader> pixelShader = nullptr;
+		if (FAILED(DX11Globals::sDx11Device->CreatePixelShader(
+			pixelShaderBlob->GetBufferPointer(),
+			pixelShaderBlob->GetBufferSize(),
+			nullptr,
+			&pixelShader)))
+		{
+			SDL_Log("D3D11: Failed to create pixel shader from compiled shader blob");
+			return nullptr;
+		}
+		return pixelShader;
+	}
 
 }

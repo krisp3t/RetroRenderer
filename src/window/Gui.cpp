@@ -1,6 +1,8 @@
 #include "Gui.h"
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_dx11.h>
+
+#include "SDL_log.h"
 #include "../render/DX11Globals.h"
 
 
@@ -17,6 +19,8 @@ namespace KrisRenderer {
 		// TODO: check renderer type
 		ImGui_ImplSDL2_InitForD3D(window);
 		ImGui_ImplDX11_Init(DX11Globals::sDx11Device.Get(), DX11Globals::sDx11DeviceContext.Get());
+
+		SDL_Log("Successfully initialized imgui");
 	}
 
 	Gui::~Gui() 
