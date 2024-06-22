@@ -1,4 +1,8 @@
 #include "Application.h"
+
+#include <iostream>
+#include <filesystem>
+
 #include "window/Window.h"
 
 namespace KrisRenderer
@@ -15,8 +19,8 @@ namespace KrisRenderer
 
 	Application::Application()
 	{
+		std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl; // TODO: add logger
 		sWindow = std::make_unique<Window>(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT);
-
 		/*
 		mDisplay = std::make_unique<Display>(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT);
 		mDisplay->initialize_window();

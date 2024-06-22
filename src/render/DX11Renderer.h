@@ -20,6 +20,7 @@ namespace KrisRenderer
 		DX11Renderer& operator=(const DX11Renderer&) = delete;
 		~DX11Renderer() override;
 		void InitializeBuffers() override;
+		bool InitializeShaders();
 		void BeginFrame() override;
 		void EndFrame() override;
 		bool CompileShader(
@@ -41,5 +42,9 @@ namespace KrisRenderer
 		void DestroySwapchainResources();
 		int mWinWidth;
 		int mWinHeight;
+		ComPtr<ID3D11VertexShader> _VertexShader = nullptr;
+		ComPtr<ID3D11PixelShader> _PixelShader = nullptr;
+		ComPtr<ID3D11InputLayout> _InputLayout = nullptr;
+		ComPtr<ID3D11Buffer> _VertexBuffer = nullptr;
 	};
 }

@@ -2,6 +2,9 @@
 #include <imgui_impl_dx11.h>
 
 #include "DX11Renderer.h"
+
+#include <codecvt>
+
 #include "DX11Globals.h"
 #include "SDL_syswm.h"
 #include <DirectXMath.h>
@@ -19,6 +22,36 @@ namespace KrisRenderer
 {
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
+
+	using Position = DirectX::XMFLOAT3;
+	using Color = DirectX::XMFLOAT3;
+	struct VertexPositionColor
+	{
+		Position position;
+		Color color;
+	};
+	constexpr D3D11_INPUT_ELEMENT_DESC vertexInputLayoutInfo[] =
+	{
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			offsetof(VertexPositionColor, position),
+			D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+		{
+			"COLOR",
+			0,
+			DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			offsetof(VertexPositionColor, color),
+			D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		},
+	};
+
 
 	bool DX11Renderer::Initialize(HWND h)
 	{
@@ -90,7 +123,10 @@ namespace KrisRenderer
 		{
 			return false;
 		}
-		
+		if (!InitializeShaders())
+		{
+			return false;
+		}
 		return true;
 	}
 	DX11Renderer::DX11Renderer(const Window& window)
@@ -129,7 +165,57 @@ namespace KrisRenderer
 	{
 		ID3D11Texture2D* pBackBuffer = nullptr;
 	}
-
+	bool DX11Renderer::InitializeShaders()
+	{
+		// Create vertex shader
+		ComPtr<ID3DBlob> vertexShaderBlob = nullptr;
+		_VertexShader = CreateVertexShader(L"assets/shaders/Main.vs.hlsl", vertexShaderBlob);
+		if (_VertexShader == nullptr)
+		{
+			SDL_Log("D3D11: Failed to create vertex shader");
+			return false;
+		}
+		// Create pixel shader
+		_PixelShader = CreatePixelShader(L"assets/shaders/Main.ps.hlsl");
+		if (_PixelShader == nullptr)
+		{
+			SDL_Log("D3D11: Failed to create pixel shader");
+			return false;
+		}
+		// Create input layout
+		if (FAILED(DX11Globals::sDx11Device->CreateInputLayout(
+			vertexInputLayoutInfo,
+			_countof(vertexInputLayoutInfo),
+			vertexShaderBlob->GetBufferPointer(),
+			vertexShaderBlob->GetBufferSize(),
+			&_InputLayout)))
+		{
+			SDL_Log("D3D11: Failed to create input layout");
+			return false;
+		}
+		// Create vertex buffer
+		constexpr VertexPositionColor vertices[] = {
+	{  Position{ 0.0f, 0.5f, 0.0f }, Color{ 0.25f, 0.39f, 0.19f }},
+	{ Position{ 0.5f, -0.5f, 0.0f }, Color{ 0.44f, 0.75f, 0.35f }},
+	{Position{ -0.5f, -0.5f, 0.0f }, Color{ 0.38f, 0.55f, 0.20f }},
+		};
+		D3D11_BUFFER_DESC bufferInfo = {};
+		bufferInfo.ByteWidth = sizeof(vertices);
+		bufferInfo.Usage = D3D11_USAGE::D3D11_USAGE_IMMUTABLE;
+		bufferInfo.BindFlags = D3D11_BIND_FLAG::D3D11_BIND_VERTEX_BUFFER;
+		D3D11_SUBRESOURCE_DATA resourceData = {};
+		resourceData.pSysMem = vertices;
+		if (FAILED(DX11Globals::sDx11Device->CreateBuffer(
+			&bufferInfo,
+			&resourceData,
+			&_VertexBuffer)))
+		{
+			SDL_Log("D3D11: Failed to create vertex buffer");
+			return false;
+		}
+		SDL_Log("D3D11: Successfully created shaders");
+		return true;
+	}
 	void DX11Renderer::BeginFrame()
 	{
 		D3D11_VIEWPORT viewport = {};
@@ -140,10 +226,25 @@ namespace KrisRenderer
 		viewport.MinDepth = 0.0f;
 		viewport.MaxDepth = 1.0f;
 
-		constexpr float clearColor[] = { 0.5f, 0.1f, 1.0f, 1.0f };
+		constexpr float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+		constexpr UINT vertexStride = sizeof(VertexPositionColor);
+		constexpr UINT vertexOffset = 0;
+
 		DX11Globals::sDx11DeviceContext->ClearRenderTargetView(_RenderTargetView.Get(), clearColor);
+		DX11Globals::sDx11DeviceContext->IASetInputLayout(_InputLayout.Get());
+		DX11Globals::sDx11DeviceContext->IASetVertexBuffers(
+			0,
+			1,
+			_VertexBuffer.GetAddressOf(),
+			&vertexStride,
+			&vertexOffset
+		);
+		DX11Globals::sDx11DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		DX11Globals::sDx11DeviceContext->VSSetShader(_VertexShader.Get(), nullptr, 0);
 		DX11Globals::sDx11DeviceContext->RSSetViewports(1, &viewport);
+		DX11Globals::sDx11DeviceContext->PSSetShader(_PixelShader.Get(), nullptr, 0);
 		DX11Globals::sDx11DeviceContext->OMSetRenderTargets(1, _RenderTargetView.GetAddressOf(), nullptr);
+		DX11Globals::sDx11DeviceContext->Draw(3, 0);
 	}
 
 	void DX11Renderer::RenderScene()
@@ -221,6 +322,7 @@ namespace KrisRenderer
     #endif
         ComPtr<ID3DBlob> tempShaderBlob = nullptr; // we load the compiled shader into this blob
         ComPtr<ID3DBlob> errorBlob = nullptr;
+		std::string filenameStr = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(filename); // TODO: remove and replace with logger
         if (FAILED(D3DCompileFromFile(
             filename.data(),
             nullptr,
@@ -233,7 +335,7 @@ namespace KrisRenderer
             &errorBlob
         )))
         {
-            SDL_Log("D3D11: Failed to compile shader: %s", filename.c_str());
+            SDL_Log("D3D11: Failed to compile shader \"%s\"", filenameStr.c_str());
             if (errorBlob != nullptr)
             {
                 SDL_Log("D3D11: Shader compilation error: %s", static_cast<const char*>(errorBlob->GetBufferPointer()));
@@ -241,6 +343,7 @@ namespace KrisRenderer
             return false;
         }
         shaderBlob = std::move(tempShaderBlob);
+		SDL_Log("D3D11: Successfully compiled shader \"%s\"", filenameStr.c_str());
         return true;
     }
 
@@ -248,7 +351,7 @@ namespace KrisRenderer
 		const std::wstring& filename, 
 		ComPtr<ID3DBlob>& vertexShaderBlob) const
 	{
-		if (!CompileShader(filename, "Main", "vs_5_0", vertexShaderBlob))
+		if (!CompileShader(filename, "main", "vs_5_0", vertexShaderBlob))
 		{
 			return nullptr;
 		}
@@ -269,7 +372,7 @@ namespace KrisRenderer
 		const std::wstring& filename) const
 	{
 		ComPtr<ID3DBlob> pixelShaderBlob = nullptr;
-		if (!CompileShader(filename, "Main", "ps_5_0", pixelShaderBlob))
+		if (!CompileShader(filename, "main", "ps_5_0", pixelShaderBlob))
 		{
 			return nullptr;
 		}
