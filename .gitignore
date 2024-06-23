@@ -365,3 +365,4 @@ FodyWeavers.xsd
 # Vcpkg
 vcpkg_installed/
 build/
+/imgui.ini
