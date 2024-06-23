@@ -89,10 +89,17 @@ namespace KrisRenderer
 				nullptr,
 				&DX11Globals::sDx11DeviceContext)))
 			{
-				SDL_Log("D3D11: Failed to create device and device Context");
+				SDL_Log("D3D11: Failed to create device and device context");
 				return false;
 			}
 		}
+		if (FAILED(DX11Globals::sDx11Device.As(&DX11Globals::sDx11Debug)))
+		{
+			// TODO: if debug?
+			SDL_Log("D3D11: Failed to get the debug layer from the device");
+			return false;
+		}
+		DX11Globals::sDx11DebugCleanup = std::make_unique<DX11Globals::DX11DebugCleanup>(DX11Globals::sDx11Debug);
 		DXGI_SWAP_CHAIN_DESC1 swapChainDescriptor = {};
 		swapChainDescriptor.Width = mWinWidth;
 		swapChainDescriptor.Height = mWinHeight;
