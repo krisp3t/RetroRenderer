@@ -18,6 +18,8 @@ file(GLOB SOURCES src/*.h src/*.cpp src/render/*.h src/render/*.cpp src/window/*
 find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(OpenGL REQUIRED)
+
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
@@ -38,6 +40,7 @@ target_link_libraries(${PROJECT_NAME}
     $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
- target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
- target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
+target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
+target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
 

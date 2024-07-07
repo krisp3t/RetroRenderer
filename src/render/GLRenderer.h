@@ -1,7 +1,7 @@
 #pragma once
 #define GL_MAJOR_VERSION 3
 #define GL_MINOR_VERSION 3
-#define GLSL_VERSION "#version 330"
+#define GLSL_VERSION "#version 150"
 #include <string>
 #include <SDL_video.h>
 
@@ -14,6 +14,7 @@ namespace KrisRenderer
 	class GLRenderer : public IRenderer
 	{
 	public:
+		bool Initialize();
 		GLRenderer(const Window& window);
 		~GLRenderer() override;
 		std::string GetName() const override;
