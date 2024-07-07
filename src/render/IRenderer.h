@@ -7,6 +7,10 @@ namespace KrisRenderer
 	{
 		public:
 			virtual ~IRenderer() = default;
+			virtual void InitImgui() = 0;
+			virtual void NewFrameImgui() = 0;
+			virtual void RenderImgui() = 0;
+			virtual void DestroyImgui() = 0;
 			virtual void BeginFrame() = 0;
 			virtual void EndFrame() = 0;
 			virtual void RenderScene() = 0;

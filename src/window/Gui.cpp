@@ -1,13 +1,11 @@
-#include "Gui.h"
 #include <imgui_impl_sdl2.h>
-#include <imgui_impl_dx11.h>
+#include <SDL_log.h>
 
-#include "SDL_log.h"
-#include "../render/DX11Globals.h"
-
+#include "Gui.h"
+#include "../render/IRenderer.h"
 
 namespace KrisRenderer {
-	Gui::Gui(SDL_Window* window, const IRenderer& renderer) 
+	Gui::Gui(IRenderer &renderer) : mRenderer(&renderer)
 	{
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
@@ -15,18 +13,14 @@ namespace KrisRenderer {
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 		ImGui::StyleColorsDark();
-
-		// TODO: check renderer type
-		ImGui_ImplSDL2_InitForD3D(window);
-		ImGui_ImplDX11_Init(DX11Globals::sDx11Device.Get(), DX11Globals::sDx11DeviceContext.Get());
+		mRenderer->InitImgui();
 
 		SDL_Log("Successfully initialized imgui");
 	}
 
 	Gui::~Gui() 
 	{
-		// TODO: check renderer type
-		ImGui_ImplDX11_Shutdown();
+		mRenderer->DestroyImgui();
 		ImGui_ImplSDL2_Shutdown();
 		ImGui::DestroyContext();
 	}
@@ -38,7 +32,7 @@ namespace KrisRenderer {
 
 	void Gui::BeginFrame()
 	{
-		ImGui_ImplDX11_NewFrame();
+		mRenderer->NewFrameImgui();
 		ImGui_ImplSDL2_NewFrame();
 		ImGui::NewFrame();
 	}
@@ -52,6 +46,6 @@ namespace KrisRenderer {
 	void Gui::EndFrame() 
 	{
 		ImGui::Render();
-		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+		mRenderer->RenderImgui();
 	}
 }

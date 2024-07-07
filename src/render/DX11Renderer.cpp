@@ -136,7 +136,8 @@ namespace KrisRenderer
 		}
 		return true;
 	}
-	DX11Renderer::DX11Renderer(const Window& window)
+	DX11Renderer::DX11Renderer(Window& window)
+		: mWindow(window)
 	{
 		auto size = window.GetSize();
 		mWinWidth = size.first;
@@ -171,6 +172,26 @@ namespace KrisRenderer
 	std::string DX11Renderer::GetName() const
 	{
 		return "DX11";
+	}
+
+	void DX11Renderer::InitImgui()
+	{
+		ImGui_ImplSDL2_InitForD3D(mWindow.GetWindow());
+		ImGui_ImplDX11_Init(DX11Globals::sDx11Device.Get(), DX11Globals::sDx11DeviceContext.Get());
+	}
+	void DX11Renderer::NewFrameImgui()
+	{
+		ImGui_ImplDX11_NewFrame();
+	}
+
+	void DX11Renderer::RenderImgui()
+	{
+		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+	}
+
+	void DX11Renderer::DestroyImgui()
+	{
+		ImGui_ImplDX11_Shutdown();
 	}
 
 	void DX11Renderer::InitializeBuffers()
@@ -400,5 +421,4 @@ namespace KrisRenderer
 		}
 		return pixelShader;
 	}
-
 }

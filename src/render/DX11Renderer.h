@@ -15,11 +15,15 @@ namespace KrisRenderer
 		using ComPtr = Microsoft::WRL::ComPtr<T>;
 	public:
 		bool Initialize(HWND h);
-		DX11Renderer(const Window& window);
+		explicit DX11Renderer(Window& window);
 		DX11Renderer(const DX11Renderer&) = delete;
 		DX11Renderer& operator=(const DX11Renderer&) = delete;
 		~DX11Renderer() override;
 		std::string GetName() const override;
+		void InitImgui() override;
+		void NewFrameImgui() override;
+		void RenderImgui() override;
+		void DestroyImgui() override;
 		void InitializeBuffers() override;
 		bool InitializeShaders();
 		void BeginFrame() override;
@@ -41,6 +45,7 @@ namespace KrisRenderer
 		ComPtr<ID3D11RenderTargetView> _RenderTargetView = nullptr;
 		bool CreateSwapchainResources();
 		void DestroySwapchainResources();
+		Window& mWindow;
 		int mWinWidth;
 		int mWinHeight;
 		ComPtr<ID3D11VertexShader> _VertexShader = nullptr;

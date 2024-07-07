@@ -52,11 +52,12 @@ namespace KrisRenderer
 		const std::string title = "KrisRenderer (Mode: " + mRenderer->GetName() + ")";
 		SDL_SetWindowTitle(mWindow, title.c_str());
 		mIsRunning = true;
-		//mGui = std::make_unique<Gui>(GetWindow(), *mRenderer);
+		auto imguiCallback = [this]() { mRenderer->InitImgui(); };
+		mGui = std::make_unique<Gui>(*mRenderer);
 
-		assert (mWindow != nullptr);
-		assert (mRenderer != nullptr);
-		assert (mGui != nullptr);
+		assert(mWindow != nullptr);
+		assert(mRenderer != nullptr);
+		assert(mGui != nullptr);
 		return true;
 	}
 
@@ -104,20 +105,20 @@ namespace KrisRenderer
 			}
 			break;
 		}
-		//mGui->ProcessInput(event);
+		mGui->ProcessInput(event);
 	}
 
 	void Window::Update()
 	{
 		mRenderer->BeginFrame();
-		//mGui->BeginFrame();
+		mGui->BeginFrame();
 	}
 
 	void Window::Render()
 	{
 		mRenderer->RenderScene();
-		//mGui->RenderScene();
-		//mGui->EndFrame();
+		mGui->RenderScene();
+		mGui->EndFrame();
 		mRenderer->EndFrame();
 
 	}
