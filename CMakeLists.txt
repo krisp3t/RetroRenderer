@@ -15,7 +15,7 @@ file(GLOB IMGUI_FILE_DIALOG lib/ImGuiFileDialog/ImGuiFileDialog.cpp)
 file(GLOB LIB ${IMGUI_FILE_DIALOG})
 file(GLOB SOURCES src/*.h src/*.cpp src/render/*.h src/render/*.cpp src/window/*.h src/window/*.cpp ${LIB})
 if (WIN32)
-	list(APPEND SOURCES src/render/windows/*.h src/render/windows/*.cpp)
+	list(APPEND SOURCES src/render/windows/)
 endif()
 
 find_package(SDL2 CONFIG REQUIRED)

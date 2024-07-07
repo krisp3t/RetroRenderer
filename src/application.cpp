@@ -7,8 +7,7 @@
 
 namespace KrisRenderer
 {
-	constexpr int DEFAULT_WIN_WIDTH = 1280;
-	constexpr int DEFAULT_WIN_HEIGHT = 720;
+
 	std::unique_ptr<Window> Application::sWindow = nullptr;
 
 	Application& Application::Get()
@@ -19,6 +18,7 @@ namespace KrisRenderer
 
 	Application::Application()
 	{
+
 		std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl; // TODO: add logger
 		sWindow = std::make_unique<Window>(DEFAULT_WIN_WIDTH, DEFAULT_WIN_HEIGHT);
 		/*

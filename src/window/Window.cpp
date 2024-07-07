@@ -31,18 +31,14 @@ namespace KrisRenderer
 
 	bool Window::InitializeWindow()
 	{
+
 		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
 			fprintf(stderr, "Error initializing SDL: %s\n", SDL_GetError());
 			return false;
 		}
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, GL_MAJOR_VERSION);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, GL_MINOR_VERSION);
-		SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-		SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-		SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+		SDL_Log("AVX support: %s", AVX_SUPPORTED ? "true" : "false");
+
 		bool isOpengl = true; // TODO: replace with enum
 		SDL_WindowFlags windowFlags = static_cast<SDL_WindowFlags>(
 			SDL_WINDOW_RESIZABLE |
@@ -61,15 +57,6 @@ namespace KrisRenderer
 			SDL_Log("Unable to create window: %s", SDL_GetError());
 			return false;
 		}
-		auto mGlContext = SDL_GL_CreateContext(GetWindow());
-		if (mGlContext == nullptr)
-		{
-			SDL_Log("Unable to create OpenGL context: %s", SDL_GetError());
-			return false;
-		}
-		SDL_GL_MakeCurrent(GetWindow(), mGlContext);
-
-		SDL_Log("AVX support: %s", AVX_SUPPORTED ? "true" : "false");
 
 		mRenderer = std::make_unique<GLRenderer>(*this);
 		const std::string title = "KrisRenderer (Mode: " + mRenderer->GetName() + ")";
@@ -77,8 +64,6 @@ namespace KrisRenderer
 		mIsRunning = true;
 
 		mGui = std::make_unique<Gui>(*mRenderer);
-		ImGui_ImplSDL2_InitForOpenGL(GetWindow(), mGlContext);
-		ImGui_ImplOpenGL3_Init(GLSL_VERSION);
 
 		assert(mWindow != nullptr);
 		assert(mRenderer != nullptr);

@@ -13,8 +13,8 @@ namespace KrisRenderer
 		~Gui();
 		void ProcessInput(SDL_Event& event);
 		void BeginFrame();
-		void EndFrame();
 		void RenderScene();
+		void EndFrame();
 	private:
 		IRenderer* mRenderer;
 	};

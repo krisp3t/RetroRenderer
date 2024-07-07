@@ -1,7 +1,4 @@
 #pragma once
-#define GL_MAJOR_VERSION 3
-#define GL_MINOR_VERSION 3
-#define GLSL_VERSION "#version 150"
 #include <string>
 #include <SDL_video.h>
 
@@ -15,7 +12,7 @@ namespace KrisRenderer
 	{
 	public:
 		bool Initialize();
-		GLRenderer(const Window& window);
+		GLRenderer(Window& window);
 		~GLRenderer() override;
 		std::string GetName() const override;
 		void InitImgui() override;
@@ -28,8 +25,10 @@ namespace KrisRenderer
 		void EndFrame() override;
 		void RenderScene() override;
 		void OnResize(int width, int height) override;
-	private:
-		const Window& mWindow;
 		SDL_GLContext mGlContext = nullptr;
+	private:
+		Window& mWindow;
+		int mWinWidth;
+		int mWinHeight;
 	};
 }
