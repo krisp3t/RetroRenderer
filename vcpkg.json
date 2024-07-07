@@ -1,11 +1,22 @@
 {
   "dependencies": [
     "sdl2",
+    "glm",
+    "opengl",
     {
       "name": "imgui",
-      "features": [ "sdl2-binding", "sdl2-renderer-binding", "dx11-binding", "opengl3-binding" ]
+      "features": [
+        "sdl2-binding",
+        "sdl2-renderer-binding",
+        "opengl3-binding"
+      ]
     },
-    "glm",
-    "opengl"
+    {
+      "name": "imgui",
+      "platform": "windows",
+      "features": [
+        "dx11-binding"
+      ]
+    }
   ]
 }

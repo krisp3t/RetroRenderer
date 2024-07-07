@@ -28,7 +28,7 @@ namespace KrisRenderer
 		return true;
 	}
 
-	GLRenderer::GLRenderer(const Window& window) : mWindow(window)
+	GLRenderer::GLRenderer(const Window &window) : mWindow(window)
 	{
 		Initialize();
 		// SDL_GL_SetSwapInterval(1); // Enable vsync
@@ -87,5 +87,5 @@ namespace KrisRenderer
 
 	void GLRenderer::OnResize(int width, int height)
 	{
-	}
+		}
 }

@@ -1,18 +1,18 @@
 #if WIN32
 #endif
-#include "application.h"
+#include "Application.h"
 
 namespace KrisRenderer
 {
 	int Main()
 	{
-		Application& app = Application::Get();
+		Application &app = Application::Get();
 		app.Loop();
 		return 0;
 	}
 }
 
-int main(int argc, char* argv[])
+int main()
 {
 	return KrisRenderer::Main();
 }

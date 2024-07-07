@@ -1,12 +1,11 @@
 #include "Window.h"
 #include "Gui.h"
-#include "../render/DX11Renderer.h"
+// #include "../render/DX11Renderer.h"
 #include "../render/GLRenderer.h"
 #include "../render/SWRenderer.h"
 #include <imgui_impl_opengl3.h>
 
 #include "imgui_impl_sdl2.h"
-
 
 namespace KrisRenderer
 {
@@ -46,10 +45,9 @@ namespace KrisRenderer
 		SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 		bool isOpengl = true; // TODO: replace with enum
 		SDL_WindowFlags windowFlags = static_cast<SDL_WindowFlags>(
-			SDL_WINDOW_RESIZABLE | 
+			SDL_WINDOW_RESIZABLE |
 			SDL_WINDOW_ALLOW_HIGHDPI |
-			(isOpengl ? SDL_WINDOW_OPENGL : 0)
-		);
+			(isOpengl ? SDL_WINDOW_OPENGL : 0));
 
 		mWindow = SDL_CreateWindow(
 			nullptr,
@@ -57,8 +55,7 @@ namespace KrisRenderer
 			SDL_WINDOWPOS_CENTERED,
 			mWinWidth,
 			mWinHeight,
-			windowFlags
-		);
+			windowFlags);
 		if (mWindow == nullptr)
 		{
 			SDL_Log("Unable to create window: %s", SDL_GetError());
@@ -79,12 +76,6 @@ namespace KrisRenderer
 		SDL_SetWindowTitle(mWindow, title.c_str());
 		mIsRunning = true;
 
-
-		
-
-
-
-
 		mGui = std::make_unique<Gui>(*mRenderer);
 		ImGui_ImplSDL2_InitForOpenGL(GetWindow(), mGlContext);
 		ImGui_ImplOpenGL3_Init(GLSL_VERSION);
@@ -100,7 +91,7 @@ namespace KrisRenderer
 		return std::pair<uint32_t, uint32_t>{mWinWidth, mWinHeight};
 	}
 
-	SDL_Window* Window::GetWindow() const
+	SDL_Window *Window::GetWindow() const
 	{
 		return mWindow;
 	}
@@ -154,6 +145,5 @@ namespace KrisRenderer
 		mGui->RenderScene();
 		mGui->EndFrame();
 		mRenderer->EndFrame();
-
 	}
 }

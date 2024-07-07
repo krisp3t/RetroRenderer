@@ -366,3 +366,9 @@ FodyWeavers.xsd
 vcpkg_installed/
 build/
 /imgui.ini
+
+# Cmake
+cmake-build-debug/
+
+# IDEs
+.idea/

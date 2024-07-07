@@ -13,7 +13,10 @@ endif()
 
 file(GLOB IMGUI_FILE_DIALOG lib/ImGuiFileDialog/ImGuiFileDialog.cpp)
 file(GLOB LIB ${IMGUI_FILE_DIALOG})
-file(GLOB SOURCES src/*.h src/*.cpp src/render/*.h src/render/*.cpp src/window/*.h src/window/*.cpp  ${LIB})
+file(GLOB SOURCES src/*.h src/*.cpp src/render/*.h src/render/*.cpp src/window/*.h src/window/*.cpp ${LIB})
+if (WIN32)
+	list(APPEND SOURCES src/render/windows/*.h src/render/windows/*.cpp)
+endif()
 
 find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
@@ -32,7 +35,12 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE NDEBUG)
 endif()
 
-target_compile_options(${PROJECT_NAME} PRIVATE /arch:AVX /Ot /fp:fast)
+if (MSVC)
+	target_compile_options(${PROJECT_NAME} PRIVATE /arch:AVX /Ot /fp:fast)
+else()
+	# target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Werror)
+endif()
+
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
 target_link_libraries(${PROJECT_NAME}
