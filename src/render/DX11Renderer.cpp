@@ -168,6 +168,11 @@ namespace KrisRenderer
 		*/
 	}
 
+	std::string DX11Renderer::GetName() const
+	{
+		return "DX11";
+	}
+
 	void DX11Renderer::InitializeBuffers()
 	{
 		ID3D11Texture2D* pBackBuffer = nullptr;

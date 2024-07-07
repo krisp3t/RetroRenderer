@@ -36,8 +36,8 @@ namespace KrisRenderer
 		// std::unique_ptr<IRenderer> GetRenderer() const;
 	private:
 		SDL_Window* mWindow = nullptr;
-		std::unique_ptr<IRenderer> mRenderer;
-		std::unique_ptr<Gui> mGui;
+		std::unique_ptr<IRenderer> mRenderer = nullptr;
+		std::unique_ptr<Gui> mGui = nullptr;
 		int mWinWidth;
 		int mWinHeight;
 		bool mIsRunning = true;

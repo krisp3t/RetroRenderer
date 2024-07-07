@@ -1,6 +1,8 @@
 #include "Window.h"
 #include "Gui.h"
 #include "../render/DX11Renderer.h"
+#include "../render/GLRenderer.h"
+#include "../render/SWRenderer.h"
 
 namespace KrisRenderer
 {
@@ -33,7 +35,7 @@ namespace KrisRenderer
 		}
 
 		mWindow = SDL_CreateWindow(
-			"KrisRenderer (Mode: Software)",
+			nullptr,
 			SDL_WINDOWPOS_CENTERED,
 			SDL_WINDOWPOS_CENTERED,
 			mWinWidth,
@@ -46,9 +48,15 @@ namespace KrisRenderer
 			return false;
 		}
 		SDL_Log("AVX support: %s", AVX_SUPPORTED ? "true" : "false");
-		mRenderer = std::make_unique<DX11Renderer>(*this);
+		mRenderer = std::make_unique<GLRenderer>(*this);
+		const std::string title = "KrisRenderer (Mode: " + mRenderer->GetName() + ")";
+		SDL_SetWindowTitle(mWindow, title.c_str());
 		mIsRunning = true;
-		mGui = std::make_unique<Gui>(GetWindow(), *mRenderer);
+		//mGui = std::make_unique<Gui>(GetWindow(), *mRenderer);
+
+		assert (mWindow != nullptr);
+		assert (mRenderer != nullptr);
+		assert (mGui != nullptr);
 		return true;
 	}
 
@@ -96,20 +104,20 @@ namespace KrisRenderer
 			}
 			break;
 		}
-		mGui->ProcessInput(event);
+		//mGui->ProcessInput(event);
 	}
 
 	void Window::Update()
 	{
 		mRenderer->BeginFrame();
-		mGui->BeginFrame();
+		//mGui->BeginFrame();
 	}
 
 	void Window::Render()
 	{
 		mRenderer->RenderScene();
-		mGui->RenderScene();
-		mGui->EndFrame();
+		//mGui->RenderScene();
+		//mGui->EndFrame();
 		mRenderer->EndFrame();
 
 	}

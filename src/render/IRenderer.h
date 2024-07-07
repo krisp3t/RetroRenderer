@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 
 namespace KrisRenderer
 {
@@ -11,6 +12,7 @@ namespace KrisRenderer
 			virtual void RenderScene() = 0;
 			virtual void InitializeBuffers() = 0;
 			virtual void OnResize(int width, int height) = 0;
+			virtual std::string GetName() const = 0;
 		// virtual void ClearColorBuffer(uint32_t color) = 0;
 		// virtual void RenderColorBuffer() = 0;
 	};

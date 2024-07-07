@@ -1,7 +1,7 @@
 #pragma once
 #include <d3d11.h>
 #include <dxgi1_3.h>
-#include <string_view>
+#include <string>
 #include <wrl/client.h>
 #include "IRenderer.h"
 
@@ -19,6 +19,7 @@ namespace KrisRenderer
 		DX11Renderer(const DX11Renderer&) = delete;
 		DX11Renderer& operator=(const DX11Renderer&) = delete;
 		~DX11Renderer() override;
+		std::string GetName() const override;
 		void InitializeBuffers() override;
 		bool InitializeShaders();
 		void BeginFrame() override;

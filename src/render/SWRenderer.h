@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <string>
 #include <SDL.h>
 #include "IRenderer.h"
 
@@ -12,6 +13,7 @@ namespace KrisRenderer
 		public:
 			SWRenderer(const Window& window);
 			~SWRenderer() override;
+			std::string GetName() const override;
 			void BeginFrame() override;
 			void InitializeBuffers() override;
 			void ClearBuffers();

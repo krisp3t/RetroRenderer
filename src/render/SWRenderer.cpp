@@ -23,6 +23,11 @@ namespace KrisRenderer
 		SDL_DestroyRenderer(mRenderer);
 	}
 
+	std::string SWRenderer::GetName() const
+	{
+		return "Software";
+	}
+
 	void SWRenderer::InitializeBuffers()
 	{
 		auto size = mWindow.GetSize();
