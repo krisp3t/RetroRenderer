@@ -4,7 +4,7 @@ namespace RetroRenderer
 {
     bool Engine::Init()
     {
-        if (!mWindow.Init())
+        if (!m_DisplayManager.Init())
         {
             return false;
         }
