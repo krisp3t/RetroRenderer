@@ -16,6 +16,7 @@ int main(int argc, char* args[])
         LOGE("Failed to initialize RetroRenderer");
         return 1;
     }
+    retro.Run();
     retro.Destroy();
     return 0;
 }

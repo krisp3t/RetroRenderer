@@ -27,10 +27,28 @@ namespace RetroRenderer
         return true;
     }
 
+    void DisplayManager::Clear()
+    {
+        SDL_SetRenderDrawColor(m_SDLRenderer, 0xFF, 0, 0xFF, 0xFF);
+        SDL_RenderClear(m_SDLRenderer);
+    }
+
+    void DisplayManager::DrawConfigPanel()
+    {
+        m_ConfigPanel.get()->OnDraw();
+    }
+
+    void DisplayManager::SwapBuffers()
+    {
+        SDL_RenderPresent(m_SDLRenderer);
+    }
+
     void DisplayManager::Destroy()
     {
         SDL_DestroyRenderer(m_SDLRenderer);
         SDL_DestroyWindow(m_Window);
         SDL_Quit();
     }
+
+
 }

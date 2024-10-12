@@ -26,12 +26,16 @@ public:
                     SDL_RENDERER_SOFTWARE);
     static constexpr char kWindowTitle[] = "RetroRenderer";
 
+    void Clear();
+    void DrawConfigPanel();
+    void SwapBuffers();
+
 private:
-    SDL_Window* m_Window;
-    SDL_Renderer* m_SDLRenderer;
+    SDL_Window* m_Window = nullptr;
+    SDL_Renderer* m_SDLRenderer = nullptr;
     int m_Width = 1280;
     int m_Height = 720;
-    std::unique_ptr<ConfigPanel> m_ConfigPanel;
+    std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
 
     void Resize(int width, int height);
 };
