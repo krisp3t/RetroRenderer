@@ -1,18 +1,22 @@
-#if WIN32
-#endif
-#include "Application.h"
+/***
+ * Program initialization and shutdown.
+ * @param argc
+ * @param args
+ * @return
+ */
 
-namespace KrisRenderer
-{
-	int Main()
-	{
-		Application &app = Application::Get();
-		app.Loop();
-		return 0;
-	}
-}
+#include "Engine.h"
+#include "Base/Logger.h"
 
-int main()
+int main(int argc, char* args[])
 {
-	return KrisRenderer::Main();
+    RetroRenderer::Engine retro;
+    if (!retro.Init())
+    {
+        LOGE("Failed to initialize RetroRenderer");
+        return 1;
+    }
+    LOGI("RetroRenderer initialized successfully");
+    retro.Destroy();
+    return 0;
 }

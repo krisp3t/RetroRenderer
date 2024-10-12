@@ -369,6 +369,7 @@ build/
 
 # Cmake
 cmake-build-debug/
+cmake-build-debug-visual-studio/
 
 # IDEs
 .idea/

@@ -68,7 +68,7 @@ namespace KrisRenderer
 	void GLRenderer::BeginFrame()
 	{
 		ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-		glViewport(0, 0, mWinWidth, mWinHeight);
+		glViewport(0, 0, mWinWidth, mWinHeight); // NDC to screen space
 		glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT);
 	}
@@ -90,6 +90,5 @@ namespace KrisRenderer
 	{
 		mWinWidth = width;
 		mWinHeight = height;
-		glViewport(0, 0, mWinWidth, mWinHeight);
 	}
 }
