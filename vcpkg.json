@@ -10,13 +10,8 @@
         "sdl2-renderer-binding",
         "opengl3-binding"
       ]
-    },
-    {
-      "name": "imgui",
-      "platform": "windows",
-      "features": [
-        "dx11-binding"
-      ]
     }
-  ]
+  ],
+  "version": "1.0",
+  "name": "retrorenderer"
 }

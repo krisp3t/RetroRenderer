@@ -35,7 +35,7 @@ namespace RetroRenderer
 
     void DisplayManager::DrawConfigPanel()
     {
-        m_ConfigPanel.get()->OnDraw();
+        m_ConfigPanel.get()->OnDraw(m_SDLRenderer);
     }
 
     void DisplayManager::SwapBuffers()
