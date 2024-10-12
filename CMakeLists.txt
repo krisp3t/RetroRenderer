@@ -18,6 +18,10 @@ file(GLOB SOURCES
 		src/*.cpp
 		src/Base/*.h
 		src/Base/*.cpp
+		src/Renderer/*.h
+		src/Renderer/*.cpp
+		src/Window/*.h
+		src/Window/*.cpp
 		${LIB})
 
 find_package(SDL2 CONFIG REQUIRED)

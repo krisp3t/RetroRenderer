@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <cstdarg>
 #include "Logger.h"
 
 namespace RetroRenderer
@@ -11,6 +12,8 @@ namespace RetroRenderer
 
 LogLevel Logger::_minLevel = LogLevel::LOG_INFO;
 std::mutex Logger::_mutex;
+
+constexpr int MAX_LOG_LENGTH = 1024;
 
 // ANSI color codes
 const char* color_reset = "\u001b[0m";
@@ -20,7 +23,7 @@ const char* color_warn = "\u001b[33m";     // Yellow
 const char* color_error = "\u001b[31m";    // Red
 
 #ifndef NDEBUG
-void Logger::Log(LogLevel level, const char *file, int line, const char *message)
+void Logger::Log(LogLevel level, const char *file, int line, const char *format, ...)
 {
     std::lock_guard<std::mutex> lock_guard(_mutex);
     const auto timestamp = std::chrono::system_clock::now();
@@ -28,6 +31,14 @@ void Logger::Log(LogLevel level, const char *file, int line, const char *message
     {
         return;
     }
+
+    va_list args;
+    va_start(args, format);
+    char formatted_message[MAX_LOG_LENGTH];
+    vsnprintf(formatted_message, MAX_LOG_LENGTH - 1, format, args);
+    va_end(args);
+    formatted_message[MAX_LOG_LENGTH - 1] = '\0';  // Ensure null termination
+
     std::cout << "[" << timestamp << "] ";
     switch (level)
     {
@@ -38,14 +49,14 @@ void Logger::Log(LogLevel level, const char *file, int line, const char *message
         std::cout << color_debug << "[DEBUG] ";
         break;
     case LogLevel::LOG_WARN:
-        std::cout << color_warn << "[WARNING] ";
+        std::cerr << color_warn << "[WARNING] ";
         break;
     case LogLevel::LOG_ERROR:
-        std::cout << color_error << "[ERROR] ";
+        std::cerr << color_error << "[ERROR] ";
         break;
     }
 
-    std::cout << message << color_reset << std::endl;
+    std::cout << formatted_message << color_reset << std::endl;
 
     if (level > LogLevel::LOG_INFO)
     {

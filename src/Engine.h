@@ -1,4 +1,5 @@
 #pragma once
+#include "Window/Window.h"
 
 namespace RetroRenderer
 {
@@ -12,7 +13,7 @@ public:
     bool Init();
     void Destroy();
 private:
-
+    Window mWindow;
 };
 
 }
