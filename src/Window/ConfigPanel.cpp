@@ -34,8 +34,7 @@ namespace RetroRenderer
         return true;
     }
 
-    void ConfigPanel::OnDraw(SDL_Renderer* renderer)
-    {
+    void ConfigPanel::BeforeFrame(SDL_Renderer* renderer) {
         ImGui_ImplSDLRenderer2_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
@@ -48,6 +47,10 @@ namespace RetroRenderer
         ImGui::Render();
         auto const io = ImGui::GetIO();
         SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+    }
+
+    void ConfigPanel::OnDraw()
+    {
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
     }
 
@@ -57,4 +60,6 @@ namespace RetroRenderer
         ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
     }
+
+
 }

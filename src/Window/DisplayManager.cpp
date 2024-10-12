@@ -27,15 +27,14 @@ namespace RetroRenderer
         return true;
     }
 
-    void DisplayManager::Clear()
-    {
+    void DisplayManager::BeforeFrame() {
+        m_ConfigPanel.get()->BeforeFrame(m_SDLRenderer);
         SDL_SetRenderDrawColor(m_SDLRenderer, 0xFF, 0, 0xFF, 0xFF);
         SDL_RenderClear(m_SDLRenderer);
     }
 
-    void DisplayManager::DrawConfigPanel()
-    {
-        m_ConfigPanel.get()->OnDraw(m_SDLRenderer);
+    void DisplayManager::DrawFrame() {
+        m_ConfigPanel.get()->OnDraw();
     }
 
     void DisplayManager::SwapBuffers()
@@ -49,6 +48,8 @@ namespace RetroRenderer
         SDL_DestroyWindow(m_Window);
         SDL_Quit();
     }
+
+
 
 
 }

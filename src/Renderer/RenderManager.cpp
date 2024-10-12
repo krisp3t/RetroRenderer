@@ -13,8 +13,8 @@ namespace RetroRenderer
     {
         assert(pDisplayManager != nullptr && "DisplayManager is null");
 
-        pDisplayManager->Clear();
-        pDisplayManager->DrawConfigPanel();
+        pDisplayManager->BeforeFrame();
+        pDisplayManager->DrawFrame();
         pDisplayManager->SwapBuffers();
     }
 

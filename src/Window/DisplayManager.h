@@ -30,6 +30,10 @@ public:
     void DrawConfigPanel();
     void SwapBuffers();
 
+    void BeforeFrame();
+
+    void DrawFrame();
+
 private:
     SDL_Window* m_Window = nullptr;
     SDL_Renderer* m_SDLRenderer = nullptr;
