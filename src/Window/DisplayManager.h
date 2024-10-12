@@ -22,8 +22,8 @@ public:
                     SDL_WINDOW_ALLOW_HIGHDPI);
     static constexpr SDL_RendererFlags kRendererFlags =
             static_cast<const SDL_RendererFlags>(
-                    SDL_RENDERER_PRESENTVSYNC |
-                    SDL_RENDERER_SOFTWARE);
+                    SDL_RENDERER_PRESENTVSYNC
+            );
     static constexpr char kWindowTitle[] = "RetroRenderer";
 
     void Clear();

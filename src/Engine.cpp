@@ -13,6 +13,10 @@ namespace RetroRenderer
         {
             return false;
         }
+        if (!m_InputManager.Init(m_DisplayManager))
+        {
+            return false;
+        }
         return true;
     }
 
@@ -27,6 +31,7 @@ namespace RetroRenderer
         {
             start = SDL_GetTicks();
 
+            m_InputManager.HandleInput(isRunning);
             m_RenderManager.Render();
 
             delta = SDL_GetTicks() - start;
