@@ -43,6 +43,7 @@ namespace RetroRenderer
         ImGui::ShowDemoWindow(&show);
 
         DisplayMainMenu();
+        DisplayControlsOverlay();
         DisplayMetricsOverlay();
         DisplayRendererSettings();
     }
@@ -53,10 +54,14 @@ namespace RetroRenderer
         {
             // Menu items
             // ----------------
-            if (ImGui::MenuItem("Open model"))
+            if (ImGui::MenuItem("Open scene"))
             {
                 IGFD::FileDialogConfig config;
-                ImGuiFileDialog::Instance()->OpenDialog("OpenModelFile", "Choose model (.obj)", ".obj", config);
+                ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose model (.obj)", ".obj", config);
+            }
+
+            if (ImGui::MenuItem("Scene Editor"))
+            {
             }
 
             if (ImGui::MenuItem("Reset"))
@@ -122,10 +127,38 @@ namespace RetroRenderer
 
         // Background color
         static ImVec4 clearColor = ImVec4(1.0f, 1.0f, 0.4f, 1.0f);
-        ImGui::ColorEdit4("Color", (float*)&clearColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        ImGui::ColorEdit4("Clear screen color", (float*)&clearColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
         ImGui::Text("Background color:");
 
+        ImGui::End();
+    }
+
+    void ConfigPanel::DisplayControlsOverlay()
+    {
+        static bool isOpen = true;
+        if (!isOpen) return;
+
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+        constexpr float kPadding = 10.0f;
+
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+        ImVec2 work_size = viewport->WorkSize;
+        ImVec2 window_pos, window_pos_pivot;
+        window_pos.x = work_pos.x + kPadding;
+        window_pos.y = work_pos.y + kPadding;
+        window_pos_pivot.x = 0.0f;
+        window_pos_pivot.y = 0.0f;
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+        windowFlags |= ImGuiWindowFlags_NoMove;
+
+        ImGui::SetNextWindowBgAlpha(0.35f);
+        if (ImGui::Begin("Controls", &isOpen, windowFlags))
+        {
+            ImGui::Text("h - toggle GUI");
+        }
         ImGui::End();
     }
 
