@@ -17,6 +17,10 @@ public:
     void DisplayGUI();
 
     void DisplayMetricsOverlay();
+
+    void DisplayRendererSettings();
+
+    void DisplayMainMenu();
 };
 
 }
