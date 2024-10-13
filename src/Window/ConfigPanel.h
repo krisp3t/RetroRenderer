@@ -13,6 +13,10 @@ public:
 
     void BeforeFrame(SDL_Renderer *renderer);
     void OnDraw();
+
+    void DisplayGUI();
+
+    void DisplayMetricsOverlay();
 };
 
 }

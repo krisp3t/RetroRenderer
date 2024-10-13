@@ -10,7 +10,8 @@
         "sdl2-renderer-binding",
         "opengl3-binding"
       ]
-    }
+    },
+    "assimp"
   ],
   "version": "1.0",
   "name": "retrorenderer"
