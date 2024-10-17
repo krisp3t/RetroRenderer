@@ -1,7 +1,8 @@
 #pragma once
 #include <glm/glm.hpp>
+#include <imgui.h>
 
-class Config
+struct Config
 {
     enum AAType
     {
@@ -26,6 +27,13 @@ class Config
         glm::vec3 position = {0.0f, 0.0f, 5.0f};
     };
 
+    struct RendererSettings
+    {
+        AAType aaType = AAType_NONE;
+        bool wireframe = false;
+        ImVec4 clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    };
+
     struct EnvironmentSettings
     {
         bool showSkybox = false;
@@ -40,4 +48,8 @@ class Config
         bool depthTest = true;
     };
 
+    CameraSettings camera;
+    EnvironmentSettings environment;
+    CullSettings cull;
+    RendererSettings renderer;
 };

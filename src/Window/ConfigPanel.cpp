@@ -6,15 +6,18 @@
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_sdlrenderer2.h>
 #include <SDL.h>
+#include <utility>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "ConfigPanel.h"
 #include "../Base/Logger.h"
 
 namespace RetroRenderer
 {
-    ConfigPanel::ConfigPanel(SDL_Window* window, SDL_Renderer* renderer)
+    ConfigPanel::ConfigPanel(SDL_Window *window, SDL_Renderer *renderer, std::shared_ptr<Config> config)
     {
-        Init(window, renderer);
+        Init(window, renderer, config);
     }
 
     ConfigPanel::~ConfigPanel()
@@ -22,7 +25,7 @@ namespace RetroRenderer
         Destroy();
     }
 
-    bool ConfigPanel::Init(SDL_Window* window, SDL_Renderer* renderer)
+    bool ConfigPanel::Init(SDL_Window* window, SDL_Renderer* renderer, std::shared_ptr<Config> config)
     {
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
@@ -33,19 +36,22 @@ namespace RetroRenderer
         ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
         ImGui_ImplSDLRenderer2_Init(renderer);
 
+        p_Config = std::move(config);
+
         return true;
     }
 
     void ConfigPanel::DisplayGUI()
     {
+        assert(p_Config != nullptr || "Config not initialized!");
 
         bool show = true;
         ImGui::ShowDemoWindow(&show);
 
         DisplayMainMenu();
+        DisplayConfig(*p_Config);
         DisplayControlsOverlay();
         DisplayMetricsOverlay();
-        DisplayRendererSettings();
     }
 
     void ConfigPanel::DisplayMainMenu()
@@ -115,23 +121,60 @@ namespace RetroRenderer
         }
     }
 
+    void ConfigPanel::DisplayConfig(Config& config) {
+        if (ImGui::Begin("Configuration")) {
+            if (ImGui::BeginTabBar("Camera"))
+            {
+                if (ImGui::BeginTabItem("Camera"))
+                {
+                    ImGui::Text("Camera settings");
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Renderer"))
+                {
+                    DisplayRendererSettings();
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Environment"))
+                {
+                    DisplayEnvironmentSettings();
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Culling"))
+                {
+                    ImGui::Text("Culling settings");
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
+            }
+        }
+        ImGui::End();
+    }
+
     void ConfigPanel::DisplayRendererSettings()
     {
-        ImGui::Begin("Renderer settings");
-        if (ImGui::Button("Screenshot"))
+        auto &r = p_Config->renderer;
+        ImGui::SeparatorText("Renderer settings");
+        if (ImGui::Button("Take screenshot"))
         {
             // TODO: implement screenshot
             LOGD("Taking screenshot");
         }
         ImGui::SeparatorText("Scene");
 
-        // Background color
-        static ImVec4 clearColor = ImVec4(1.0f, 1.0f, 0.4f, 1.0f);
-        ImGui::ColorEdit4("Clear screen color", (float*)&clearColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float*>(&r.clearColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
         ImGui::Text("Background color:");
+    }
 
-        ImGui::End();
+    void ConfigPanel::DisplayEnvironmentSettings()
+    {
+        auto &e = p_Config->environment;
+        ImGui::SeparatorText("Environment settings");
+        ImGui::Checkbox("Show skybox", &e.showSkybox);
+        ImGui::Checkbox("Show grid", &e.showGrid);
+        ImGui::Checkbox("Show floor", &e.showFloor);
+        ImGui::Checkbox("Shadow mapping", &e.shadowMap);
     }
 
     void ConfigPanel::DisplayControlsOverlay()
@@ -231,6 +274,4 @@ namespace RetroRenderer
         ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
     }
-
-
 }

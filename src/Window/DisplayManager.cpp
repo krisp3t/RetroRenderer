@@ -1,3 +1,4 @@
+#include <imgui.h>
 #include "DisplayManager.h"
 #include "../Base/Logger.h"
 
@@ -23,13 +24,15 @@ namespace RetroRenderer
             return false;
         }
 
-        m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_SDLRenderer);
+        p_Config = std::make_shared<Config>();
+        m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_SDLRenderer, p_Config);
         return true;
     }
 
     void DisplayManager::BeforeFrame() {
         m_ConfigPanel.get()->BeforeFrame(m_SDLRenderer);
-        SDL_SetRenderDrawColor(m_SDLRenderer, 0xFF, 0, 0xFF, 0xFF);
+        ImU32 c = ImGui::ColorConvertFloat4ToU32(p_Config->renderer.clearColor);
+        SDL_SetRenderDrawColor(m_SDLRenderer, c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF, (c >> 24) & 0xFF);
         SDL_RenderClear(m_SDLRenderer);
     }
 
