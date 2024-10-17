@@ -77,7 +77,7 @@ namespace RetroRenderer
             // Dialog windows
             // ----------------
             // Open Model File dialog
-            if (ImGuiFileDialog::Instance()->Display("OpenModelFile")) {
+            if (ImGuiFileDialog::Instance()->Display("OpenSceneFile")) {
                 if (ImGuiFileDialog::Instance()->IsOk()) {
                     LOGD("Selected model file: %s", ImGuiFileDialog::Instance()->GetFilePathName().c_str());
                     /*
