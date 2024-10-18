@@ -52,7 +52,4 @@ namespace RetroRenderer
         SDL_Quit();
     }
 
-
-
-
 }

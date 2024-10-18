@@ -11,8 +11,8 @@ namespace RetroRenderer
 
 enum class LogLevel
 {
-    LOG_INFO,
     LOG_DEBUG,
+    LOG_INFO,
     LOG_WARN,
     LOG_ERROR
 };

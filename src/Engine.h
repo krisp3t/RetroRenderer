@@ -1,7 +1,7 @@
 #pragma once
 #include "Window/DisplayManager.h"
 #include "Renderer/RenderManager.h"
-#include "Renderer/InputManager.h"
+#include "Window/InputManager.h"
 
 namespace RetroRenderer
 {

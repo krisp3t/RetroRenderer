@@ -12,6 +12,7 @@
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "ConfigPanel.h"
 #include "../Base/Logger.h"
+#include "../Base/InputActions.h"
 
 namespace RetroRenderer
 {
@@ -44,6 +45,11 @@ namespace RetroRenderer
     void ConfigPanel::DisplayGUI()
     {
         assert(p_Config != nullptr || "Config not initialized!");
+
+        if (!p_Config->showConfigPanel)
+        {
+            return;
+        }
 
         bool show = true;
         ImGui::ShowDemoWindow(&show);
@@ -151,6 +157,11 @@ namespace RetroRenderer
         ImGui::End();
     }
 
+    void ConfigPanel::DisplayCameraSettings()
+    {
+
+    }
+
     void ConfigPanel::DisplayRendererSettings()
     {
         auto &r = p_Config->renderer;
@@ -161,7 +172,9 @@ namespace RetroRenderer
             LOGD("Taking screenshot");
         }
         ImGui::SeparatorText("Scene");
-
+        ImGui::Checkbox("Show wireframe", &r.showWireframe);
+        const char* aaItems[] = { "None", "MSAA", "FXAA" };
+        ImGui::Combo("Anti-aliasing", reinterpret_cast<int *>(&r.aaType), aaItems, IM_ARRAYSIZE(aaItems));
         ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float*>(&r.clearColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
         ImGui::Text("Background color:");
@@ -200,7 +213,7 @@ namespace RetroRenderer
         ImGui::SetNextWindowBgAlpha(0.35f);
         if (ImGui::Begin("Controls", &isOpen, windowFlags))
         {
-            ImGui::Text("h - toggle GUI");
+            ImGui::Text("%c - toggle GUI", GetKey(InputAction::TOGGLE_CONFIG_PANEL));
         }
         ImGui::End();
     }

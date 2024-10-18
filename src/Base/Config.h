@@ -2,24 +2,27 @@
 #include <glm/glm.hpp>
 #include <imgui.h>
 
+namespace RetroRenderer
+{
+
 struct Config
 {
-    enum AAType
+    enum class AAType
     {
-        AAType_NONE,
-        AAType_MSAA,
-        AAType_FXAA,
+        NONE,
+        MSAA,
+        FXAA,
     };
 
-    enum CameraType
+    enum class CameraType
     {
-        CameraType_PERSPECTIVE,
-        CameraType_ORTHOGRAPHIC,
+        PERSPECTIVE,
+        ORTHOGRAPHIC,
     };
 
     struct CameraSettings
     {
-        CameraType type = CameraType_PERSPECTIVE;
+        CameraType type = CameraType::PERSPECTIVE;
         float fov = 45.0f;
         float near = 0.1f;
         float far = 100.0f;
@@ -29,8 +32,8 @@ struct Config
 
     struct RendererSettings
     {
-        AAType aaType = AAType_NONE;
-        bool wireframe = false;
+        AAType aaType = AAType::NONE;
+        bool showWireframe = false;
         ImVec4 clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
     };
 
@@ -52,4 +55,8 @@ struct Config
     EnvironmentSettings environment;
     CullSettings cull;
     RendererSettings renderer;
+    bool showConfigPanel = true;
 };
+
+}
+

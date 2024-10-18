@@ -19,6 +19,7 @@ private:
     void DisplayConfig(Config &config);
     void DisplayGUI();
     void DisplayMetricsOverlay();
+    void DisplayCameraSettings();
     void DisplayRendererSettings();
     void DisplayEnvironmentSettings();
     void DisplayMainMenu();

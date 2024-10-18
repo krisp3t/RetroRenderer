@@ -10,7 +10,7 @@
 namespace RetroRenderer
 {
 
-LogLevel Logger::_minLevel = LogLevel::LOG_INFO;
+LogLevel Logger::_minLevel = LogLevel::LOG_DEBUG;
 std::mutex Logger::_mutex;
 
 constexpr int MAX_LOG_LENGTH = 1024;
@@ -26,7 +26,10 @@ const char* color_error = "\u001b[31m";    // Red
 void Logger::Log(LogLevel level, const char *file, int line, const char *format, ...)
 {
     std::lock_guard<std::mutex> lock_guard(_mutex);
-    const auto timestamp = std::chrono::system_clock::now();
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    std::tm local_time;
+    localtime_s(&local_time, &now_time);
     if (level < _minLevel)
     {
         return;
@@ -39,7 +42,7 @@ void Logger::Log(LogLevel level, const char *file, int line, const char *format,
     va_end(args);
     formatted_message[MAX_LOG_LENGTH - 1] = '\0';  // Ensure null termination
 
-    std::cout << "[" << timestamp << "] ";
+    std::cout << "[" << std::put_time(&local_time, "%Y-%m-%d %H:%M:%S") << "] ";
     switch (level)
     {
     case LogLevel::LOG_INFO:

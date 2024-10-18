@@ -13,10 +13,11 @@ namespace RetroRenderer
         {
             return false;
         }
-        if (!m_InputManager.Init(m_DisplayManager))
+        if (!m_InputManager.Init(m_DisplayManager.p_Config))
         {
             return false;
         }
+        LOGD("p_Config ref count: %d", m_DisplayManager.p_Config.use_count());
         return true;
     }
 

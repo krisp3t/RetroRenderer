@@ -25,13 +25,12 @@ public:
                     SDL_RENDERER_PRESENTVSYNC
             );
     static constexpr char kWindowTitle[] = "RetroRenderer";
+    std::shared_ptr<Config> p_Config = nullptr;
 
     void Clear();
     void DrawConfigPanel();
     void SwapBuffers();
-
     void BeforeFrame();
-
     void DrawFrame();
 
 private:
@@ -40,7 +39,7 @@ private:
     int m_Width = 1280;
     int m_Height = 720;
     std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
-    std::shared_ptr<Config> p_Config = nullptr;
+
 
     void Resize(int width, int height);
 };
