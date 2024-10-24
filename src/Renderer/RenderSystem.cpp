@@ -18,6 +18,11 @@ namespace RetroRenderer
         pDisplaySystem->BeforeFrame();
         pDisplaySystem->DrawFrame();
         pDisplaySystem->SwapBuffers();
+
+		if (pScene == nullptr)
+		{
+            return;
+		}
     }
 
     void RenderSystem::Destroy()
@@ -27,6 +32,7 @@ namespace RetroRenderer
     void RenderSystem::OnLoadScene(const SceneLoadEvent& e)
     {
 		LOGD("Attempting to load scene from path: %s", e.scenePath.c_str());
+		pScene = std::make_unique<Scene>(e.scenePath);
     }
 
 }
