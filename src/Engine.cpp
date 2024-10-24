@@ -42,4 +42,31 @@ namespace RetroRenderer
     void Engine::Destroy()
     {
     }
+
+    /**
+     * Handle synchronous event (immediately, without queue).
+	 * Used for events that need to be handled immediately, like window resizing and scene reloading.
+     */
+	void Engine::DispatchImmediate(const Event& event)
+	{
+        // map EventType enum to string
+		// https://stackoverflow.com/questions/147267/easy-way-to-use-variables-of-enum-types-as-string-in-c
+		LOGD("Dispatching immediate event (type: %s)", EventTypeToString(event.type));
+        Dispatch(event);
+	}
+
+    void Engine::Dispatch(const Event& event)
+    {
+		switch (event.type)
+		{
+        case EventType::Scene_Load:
+        {
+            const SceneLoadEvent& e = static_cast<const SceneLoadEvent&>(event);
+            m_RenderSystem.OnLoadScene(e);
+            break;
+        }
+        default:
+			LOGW("Unknown event type");
+		}
+    }
 }

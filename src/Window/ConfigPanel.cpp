@@ -14,6 +14,8 @@
 #include "ConfigPanel.h"
 #include "../Base/Logger.h"
 #include "../Base/InputActions.h"
+#include "../Base/Event.h"
+#include "../Engine.h"
 
 namespace RetroRenderer
 {
@@ -71,7 +73,7 @@ namespace RetroRenderer
             if (ImGui::MenuItem("Open scene"))
             {
                 IGFD::FileDialogConfig config;
-                ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose model (.obj)", ".obj", config);
+                ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose scene", ".obj", config);
             }
 
             if (ImGui::MenuItem("Scene Editor"))
@@ -93,7 +95,9 @@ namespace RetroRenderer
             // Open Model File dialog
             if (ImGuiFileDialog::Instance()->Display("OpenSceneFile")) {
                 if (ImGuiFileDialog::Instance()->IsOk()) {
-                    LOGD("Selected model file: %s", ImGuiFileDialog::Instance()->GetFilePathName().c_str());
+					std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                    LOGD("Selected model file: %s", filePathName.c_str());
+					Engine::Get().DispatchImmediate(SceneLoadEvent{ std::move(filePathName) });
                     /*
                     s.filename = ImGuiFileDialog::Instance()->GetFilePathName();
                     s.filepath = ImGuiFileDialog::Instance()->GetCurrentPath();

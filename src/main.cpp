@@ -10,7 +10,7 @@
 
 int main(int argc, char* args[])
 {
-    RetroRenderer::Engine retro;
+	auto& retro = RetroRenderer::Engine::Get();
     if (!retro.Init())
     {
         LOGE("Failed to initialize RetroRenderer");

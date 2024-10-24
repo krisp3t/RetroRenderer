@@ -1,5 +1,7 @@
 #include <cassert>
 #include "RenderSystem.h"
+#include "../Base/Event.h"
+#include "../Base/Logger.h"
 
 namespace RetroRenderer
 {
@@ -20,6 +22,11 @@ namespace RetroRenderer
 
     void RenderSystem::Destroy()
     {
+    }
+
+    void RenderSystem::OnLoadScene(const SceneLoadEvent& e)
+    {
+		LOGD("Attempting to load scene from path: %s", e.scenePath.c_str());
     }
 
 }
