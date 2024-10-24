@@ -1,10 +1,10 @@
 #include <imgui.h>
-#include "DisplayManager.h"
+#include "DisplaySystem.h"
 #include "../Base/Logger.h"
 
 namespace RetroRenderer
 {
-    bool DisplayManager::Init()
+    bool DisplaySystem::Init()
     {
         if (SDL_Init(SDL_INIT_VIDEO) < 0)
         {
@@ -29,23 +29,23 @@ namespace RetroRenderer
         return true;
     }
 
-    void DisplayManager::BeforeFrame() {
+    void DisplaySystem::BeforeFrame() {
         m_ConfigPanel.get()->BeforeFrame(m_SDLRenderer);
         ImU32 c = ImGui::ColorConvertFloat4ToU32(p_Config->renderer.clearColor);
         SDL_SetRenderDrawColor(m_SDLRenderer, c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF, (c >> 24) & 0xFF);
         SDL_RenderClear(m_SDLRenderer);
     }
 
-    void DisplayManager::DrawFrame() {
+    void DisplaySystem::DrawFrame() {
         m_ConfigPanel.get()->OnDraw();
     }
 
-    void DisplayManager::SwapBuffers()
+    void DisplaySystem::SwapBuffers()
     {
         SDL_RenderPresent(m_SDLRenderer);
     }
 
-    void DisplayManager::Destroy()
+    void DisplaySystem::Destroy()
     {
         SDL_DestroyRenderer(m_SDLRenderer);
         SDL_DestroyWindow(m_Window);

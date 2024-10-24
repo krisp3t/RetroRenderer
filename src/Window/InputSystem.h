@@ -1,14 +1,14 @@
 #pragma once
-#include "../Window/DisplayManager.h"
+#include "../Window/DisplaySystem.h"
 
 namespace RetroRenderer
 {
 
-class InputManager
+class InputSystem
 {
 public:
-    InputManager() = default;
-    ~InputManager() = default;
+    InputSystem() = default;
+    ~InputSystem() = default;
 
     bool Init(std::shared_ptr<Config> config);
     void HandleInput(bool &isRunning);

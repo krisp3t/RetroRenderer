@@ -1,17 +1,17 @@
 #include <imgui_impl_sdl2.h>
-#include "InputManager.h"
+#include "InputSystem.h"
 #include "../Base/InputActions.h"
 #include "../Base/Logger.h"
 
 namespace RetroRenderer
 {
-    bool InputManager::Init(std::shared_ptr<Config> config)
+    bool InputSystem::Init(std::shared_ptr<Config> config)
     {
         p_Config = std::move(config);
         return true;
     }
 
-    void InputManager::HandleInput(bool &isRunning)
+    void InputSystem::HandleInput(bool &isRunning)
     {
         SDL_Event event;
         while (SDL_PollEvent(&event))
@@ -33,7 +33,7 @@ namespace RetroRenderer
         }
     }
 
-    void InputManager::HandleKeyDown(SDL_Keycode key)
+    void InputSystem::HandleKeyDown(SDL_Keycode key)
     {
         // TODO: add deltatime
         glm::vec3& cameraPosition = p_Config->camera.position;
@@ -69,11 +69,11 @@ namespace RetroRenderer
         }
     }
 
-    void InputManager::Update()
+    void InputSystem::Update()
     {
     }
 
-    void InputManager::Destroy()
+    void InputSystem::Destroy()
     {
     }
 }

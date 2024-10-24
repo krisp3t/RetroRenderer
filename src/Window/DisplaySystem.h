@@ -7,11 +7,11 @@
 namespace RetroRenderer
 {
 
-class DisplayManager
+class DisplaySystem
 {
 public:
-    DisplayManager() = default;
-    ~DisplayManager() = default;
+    DisplaySystem() = default;
+    ~DisplaySystem() = default;
 
     bool Init();
     void Destroy();

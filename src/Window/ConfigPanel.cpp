@@ -237,6 +237,7 @@ namespace RetroRenderer
         }
         ImGui::SeparatorText("Scene");
         ImGui::Checkbox("Show wireframe", &r.showWireframe);
+        ImGui::Checkbox("Enable perspective-correct interpolation", &r.enablePerspectiveCorrect);
         const char* aaItems[] = { "None", "MSAA", "FXAA" };
         ImGui::Combo("Anti-aliasing", reinterpret_cast<int *>(&r.aaType), aaItems, IM_ARRAYSIZE(aaItems));
         ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float*>(&r.clearColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);

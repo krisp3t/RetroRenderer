@@ -5,19 +5,19 @@ namespace RetroRenderer
 {
     bool Engine::Init()
     {
-        if (!m_DisplayManager.Init())
+        if (!m_DisplaySystem.Init())
         {
             return false;
         }
-        if (!m_RenderManager.Init(m_DisplayManager))
+        if (!m_RenderSystem.Init(m_DisplaySystem))
         {
             return false;
         }
-        if (!m_InputManager.Init(m_DisplayManager.p_Config))
+        if (!m_InputSystem.Init(m_DisplaySystem.p_Config))
         {
             return false;
         }
-        LOGD("p_Config ref count: %d", m_DisplayManager.p_Config.use_count());
+        LOGD("p_Config ref count: %d", m_DisplaySystem.p_Config.use_count());
         return true;
     }
 
@@ -32,8 +32,8 @@ namespace RetroRenderer
         {
             start = SDL_GetTicks();
 
-            m_InputManager.HandleInput(isRunning);
-            m_RenderManager.Render();
+            m_InputSystem.HandleInput(isRunning);
+            m_RenderSystem.Render();
 
             delta = SDL_GetTicks() - start;
         }
