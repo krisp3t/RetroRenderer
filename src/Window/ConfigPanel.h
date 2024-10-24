@@ -16,13 +16,14 @@ public:
     void OnDraw();
 private:
     std::shared_ptr<Config> p_Config = nullptr;
-    void DisplayConfig(Config &config);
     void DisplayGUI();
     void DisplayMetricsOverlay();
     void DisplayCameraSettings();
     void DisplayRendererSettings();
     void DisplayEnvironmentSettings();
     void DisplayMainMenu();
+    void DisplayPipelineWindow();
+    void DisplayConfigWindow(Config& config);
     void DisplayControlsOverlay();
 };
 

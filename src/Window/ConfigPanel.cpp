@@ -1,6 +1,7 @@
 /***
  * Wrapper around ImGui to create a configuration panel for the renderer.
  */
+#define IMGUI_DEFINE_MATH_OPERATORS
 
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
@@ -55,7 +56,8 @@ namespace RetroRenderer
         ImGui::ShowDemoWindow(&show);
 
         DisplayMainMenu();
-        DisplayConfig(*p_Config);
+        DisplayPipelineWindow();
+        DisplayConfigWindow(*p_Config);
         DisplayControlsOverlay();
         DisplayMetricsOverlay();
     }
@@ -127,7 +129,69 @@ namespace RetroRenderer
         }
     }
 
-    void ConfigPanel::DisplayConfig(Config& config) {
+    void ConfigPanel::DisplayPipelineWindow()
+    {
+        // TODO: disable resizing below min size?
+        // TODO: open separate windows by clicking
+		if (ImGui::Begin("Graphics pipeline"))
+		{
+			ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+			static const char* stages[] = {
+				"Input Assembler", "Vertex Shader", "Tessellation",
+				"Geometry Shader", "Rasterization",
+				"Fragment Shader", "Color Blending"
+			};
+			int numStages = sizeof(stages) / sizeof(stages[0]);
+
+			ImVec2 windowPos = ImGui::GetWindowPos();  // Window top-left corner
+            ImVec2 windowSize = ImGui::GetWindowSize();
+            windowSize.y -= ImGui::GetFrameHeight();
+			windowPos.y += ImGui::GetFrameHeight();
+			constexpr ImVec2 padding(40, 0);
+            ImVec2 boxSize(
+                ((windowSize.x - (numStages + 1) * padding.x) / numStages),
+                50
+            );
+			constexpr ImU32 arrowColor = IM_COL32(255, 255, 255, 255);
+
+			ImVec2 startPos = ImVec2(
+                windowPos.x + padding.x, 
+                windowPos.y + windowSize.y / 2 - boxSize.y / 2
+            );
+
+			for (int i = 0; i < numStages; ++i) 
+            {
+				ImVec2 boxMin = ImVec2(startPos.x + i * (boxSize.x + padding.x), startPos.y);
+				ImVec2 boxMax = ImVec2(boxMin.x + boxSize.x, boxMin.y + boxSize.y);
+				ImU32 boxColor = ImGui::ColorConvertFloat4ToU32(ImVec4(ImColor::HSV(i / (float)numStages, 0.6f, 0.6f)));
+
+				drawList->AddRectFilled(boxMin, boxMax, boxColor, 5.0f);  // Rounded box
+				drawList->AddRect(boxMin, boxMax, IM_COL32_BLACK);  // Border
+
+				ImVec2 text_pos = ImVec2(boxMin.x + 10, boxMin.y + 15);
+				drawList->AddText(text_pos, IM_COL32_BLACK, stages[i]);
+
+				if (i < numStages - 1) 
+                {
+					ImVec2 arrowStart = ImVec2(boxMax.x, boxMin.y + boxSize.y / 2);
+					ImVec2 arrowEnd = ImVec2(arrowStart.x + padding.x, arrowStart.y);
+
+					// Arrow line
+					drawList->AddLine(arrowStart, arrowEnd, arrowColor, 2.0f);
+
+					// Arrow head
+					ImVec2 arrow_head1 = ImVec2(arrowEnd.x - 5, arrowEnd.y - 5);
+					ImVec2 arrow_head2 = ImVec2(arrowEnd.x - 5, arrowEnd.y + 5);
+					drawList->AddTriangleFilled(arrowEnd, arrow_head1, arrow_head2, arrowColor);
+				}
+			}
+		}
+		ImGui::End();
+    }
+
+    void ConfigPanel::DisplayConfigWindow(Config& config) 
+    {
         if (ImGui::Begin("Configuration")) {
             if (ImGui::BeginTabBar("Camera"))
             {
@@ -214,6 +278,7 @@ namespace RetroRenderer
         if (ImGui::Begin("Controls", &isOpen, windowFlags))
         {
             ImGui::Text("%c - toggle GUI", GetKey(InputAction::TOGGLE_CONFIG_PANEL));
+            ImGui::Text("%c - show wireframe", GetKey(InputAction::TOGGLE_WIREFRAME));
         }
         ImGui::End();
     }

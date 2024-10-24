@@ -36,7 +36,7 @@ namespace RetroRenderer
     void InputManager::HandleKeyDown(SDL_Keycode key)
     {
         // TODO: add deltatime
-        glm::vec3 &cameraPosition = p_Config->camera.position;
+        glm::vec3& cameraPosition = p_Config->camera.position;
 
         switch (key)
         {
@@ -62,8 +62,11 @@ namespace RetroRenderer
             p_Config->showConfigPanel = !p_Config->showConfigPanel;
             LOGI("Config panel enabled: %d", p_Config->showConfigPanel);
             break;
+        case GetKey(InputAction::TOGGLE_WIREFRAME):
+            p_Config->renderer.showWireframe = !p_Config->renderer.showWireframe;
+            LOGI("Wireframe enabled: %d", p_Config->renderer.showWireframe);
+            break;
         }
-
     }
 
     void InputManager::Update()
