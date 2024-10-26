@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include <memory>
 #include "ConfigPanel.h"
+#include "../Renderer/Buffer.h"
 
 namespace RetroRenderer
 {
@@ -30,18 +31,21 @@ public:
     void Clear();
     void DrawConfigPanel();
     void SwapBuffers();
+    void SwapBuffers(const Buffer<Uint32> &buffer);
     void BeforeFrame();
     void DrawFrame();
+    int GetWidth() const;
+    int GetHeight() const;
 
 private:
     SDL_Window* m_Window = nullptr;
     SDL_Renderer* m_SDLRenderer = nullptr;
+    SDL_Texture* m_ScreenTexture = nullptr;
     int m_Width = 1280;
     int m_Height = 720;
     std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
+    void OnResize(int width, int height);
 
-
-    void Resize(int width, int height);
 };
 
 }

@@ -8,7 +8,12 @@ namespace RetroRenderer
     {
         pDisplaySystem = &displaySystem;
         pSWRenderer = std::make_unique<SWRenderer>();
-        // TODO: check if renderer init succeeded
+        if (!pSWRenderer->Init(pDisplaySystem->GetWidth(), pDisplaySystem->GetHeight()))
+        {
+            LOGE("Failed to initialize SWRenderer");
+            return false;
+        }
+        LOGD("SWRenderer initialized");
         return true;
     }
 
@@ -17,17 +22,21 @@ namespace RetroRenderer
         assert(pDisplaySystem != nullptr && "DisplaySystem is null");
 
         pDisplaySystem->BeforeFrame();
-        pDisplaySystem->DrawFrame();
-        pDisplaySystem->SwapBuffers();
 
 		if (pScene == nullptr)
 		{
+            pDisplaySystem->DrawFrame();
+            pDisplaySystem->SwapBuffers();
             return;
 		}
 
         auto &selectedRenderer = pSWRenderer; // TODO: get from config
         assert(selectedRenderer != nullptr && "Selected renderer is null");
         selectedRenderer->DrawFrame(*pScene);
+        const auto &fb = selectedRenderer->GetRenderTarget();
+
+        pDisplaySystem->DrawFrame();
+        pDisplaySystem->SwapBuffers(fb);
     }
 
     void RenderSystem::Destroy()

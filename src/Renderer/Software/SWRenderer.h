@@ -1,5 +1,7 @@
 #pragma once
+#include <SDL.h>
 #include "../Scene.h"
+#include "../Buffer.h"
 
 namespace RetroRenderer
 {
@@ -8,9 +10,13 @@ namespace RetroRenderer
     public:
         SWRenderer() = default;
         ~SWRenderer() = default;
-        bool Init();
+        bool Init(int w, int h);
         void Destroy();
 
         void DrawFrame(Scene &scene);
+        Buffer<Uint32> &GetRenderTarget();
+    private:
+        Buffer<Uint32> *p_FrameBuffer = nullptr;
     };
+
 }
