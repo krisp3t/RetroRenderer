@@ -4,12 +4,13 @@
 
 namespace RetroRenderer
 {
+
     class Mesh
     {
     public:
         Mesh() = default;
         ~Mesh() = default;
-        Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices);
+        Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices);
 
         void Init();
 
@@ -18,5 +19,8 @@ namespace RetroRenderer
         // std::vector<Texture>
     private:
         unsigned int VAO, VBO, EBO;
-    }
+    };
+
+
+
 }

@@ -1,8 +1,11 @@
 #pragma once
 #include <string>
+#include <vector>
+#include "Mesh.h"
 
 struct aiNode;
 struct aiScene;
+struct aiMesh;
 
 namespace RetroRenderer
 {
@@ -18,5 +21,9 @@ namespace RetroRenderer
 		void Render();
     private:
         bool ProcessNode(aiNode* node, const aiScene* scene);
+        Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene);
+        std::vector<unsigned int> m_Textures;
+        std::vector<unsigned int> m_Materials;
+        std::vector<Mesh> m_Meshes;
 	};
 };

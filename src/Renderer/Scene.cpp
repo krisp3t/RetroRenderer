@@ -4,6 +4,8 @@
 
 #include "Scene.h"
 #include "../Base/Logger.h"
+#include "Vertex.h"
+
 
 namespace RetroRenderer
 {
@@ -18,11 +20,10 @@ namespace RetroRenderer
 			LOGE("assimp: Failed to load scene: %s", importer.GetErrorString());
 			return;
 		}
-        LOGD("assimp: Successfully loaded scene into assimp: %s", path.c_str());
 
         if (ProcessNode(scene->mRootNode, scene))
         {
-            LOGI("Successfully processed scene: %s (%d nodes)", scene->mRootNode->mName.C_Str());
+            LOGI("Successfully processed scene: %s (%d meshes)", scene->mRootNode->mName.C_Str(), m_Meshes.size());
         }
 	}
 
@@ -36,17 +37,16 @@ namespace RetroRenderer
     {
         if (!node)
         {
-            LOGW("assimp: Node is null");
+            LOGE("assimp: Node is null");
             return false;
         }
-
-        /*
-        for (unsigned int i = 0; i < node->mNumMeshes; i++)
+        LOGD("Processing node: %s (%d meshes)", node->mName.C_Str(), node->mNumMeshes);
+        for (size_t i = 0; i < node->mNumMeshes; i++)
         {
+            // TODO: add parent-child transform relationship
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-            meshes.push_back(ProcessMesh(mesh, scene));
+            m_Meshes.push_back(ProcessMesh(mesh, scene));
         }
-        */
 
         for (size_t i = 0; i < node->mNumChildren; i++)
         {
@@ -54,58 +54,68 @@ namespace RetroRenderer
             ProcessNode(node->mChildren[i], scene);
         }
 
-
         return true;
     }
 
-    /*
     Mesh Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene)
     {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
 
-        for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+        for (size_t i = 0; i < mesh->mNumVertices; i++)
         {
             Vertex vertex;
-            glm::vec3 vector;
 
-            vector.x = mesh->mVertices[i].x;
-            vector.y = mesh->mVertices[i].y;
-            vector.z = mesh->mVertices[i].z;
-            vertex.Position = vector;
-
-            vector.x = mesh->mNormals[i].x;
-            vector.y = mesh->mNormals[i].y;
-            vector.z = mesh->mNormals[i].z;
-            vertex.Normal = vector;
-
+            if (mesh->HasPositions())
+            {
+                vertex.position.x = mesh->mVertices[i].x;
+                vertex.position.y = mesh->mVertices[i].y;
+                vertex.position.z = mesh->mVertices[i].z;
+            }
+            if (mesh->HasNormals())
+            {
+                vertex.normal.x = mesh->mNormals[i].x;
+                vertex.normal.y = mesh->mNormals[i].y;
+                vertex.normal.z = mesh->mNormals[i].z;
+            }
             if (mesh->mTextureCoords[0])
             {
                 glm::vec2 vec;
                 vec.x = mesh->mTextureCoords[0][i].x;
                 vec.y = mesh->mTextureCoords[0][i].y;
-                vertex.TexCoords = vec;
+                vertex.texCoords = vec;
             }
             else
             {
-                vertex.TexCoords = glm::vec2(0.0f, 0.0f);
+                vertex.texCoords = glm::vec2(0.0f, 0.0f);
             }
-
             vertices.push_back(vertex);
         }
 
-        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+        for (size_t i = 0; i < mesh->mNumFaces; i++)
         {
             aiFace face = mesh->mFaces[i];
-            for (unsigned int j = 0; j < face.mNumIndices; j++)
+            assert (face.mNumIndices == 3 && "Face must have 3 indices");
+            for (size_t j = 0; j < 3; j++)
             {
                 indices.push_back(face.mIndices[j]);
             }
         }
 
-        return Mesh(vertices, indices);
+        if (mesh->mMaterialIndex >= 0)
+        {
+            aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+            // TODO: process material
+        }
+
+        // return Mesh(vertices, indices, textures)
+        return {
+            std::move(vertices),
+            std::move(indices)
+        };
     }
 
+    /*
     void Scene::Draw(Shader shader)
     {
         for (unsigned int i = 0; i < meshes.size(); i++)
