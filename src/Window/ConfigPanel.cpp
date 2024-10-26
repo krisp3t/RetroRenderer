@@ -73,7 +73,7 @@ namespace RetroRenderer
             if (ImGui::MenuItem("Open scene"))
             {
                 IGFD::FileDialogConfig config;
-                ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose scene", ".obj", config);
+                ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose scene", ".obj,.gltf,.glb,.fbx,.usd", config);
             }
 
             if (ImGui::MenuItem("Scene Editor"))

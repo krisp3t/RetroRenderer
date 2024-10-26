@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 
+struct aiNode;
+struct aiScene;
 
 namespace RetroRenderer
 {
@@ -14,5 +16,7 @@ namespace RetroRenderer
 		void Load(const char* path);
 		void Unload();
 		void Render();
+    private:
+        bool ProcessNode(aiNode* node, const aiScene* scene);
 	};
 };

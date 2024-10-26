@@ -1,5 +1,4 @@
 #pragma once
-#include <mutex>
 
 namespace RetroRenderer
 {
@@ -24,7 +23,6 @@ public:
     static void SetLogLevel(LogLevel level);
 private:
     static LogLevel _minLevel;
-    static std::mutex _mutex;
 };
 
 }
