@@ -31,9 +31,9 @@ public:
     void Clear();
     void DrawConfigPanel();
     void SwapBuffers();
-    void SwapBuffers(const Buffer<Uint32> &buffer);
     void BeforeFrame();
     void DrawFrame();
+    void DrawFrame(const Buffer<Uint32> &buffer);
     int GetWidth() const;
     int GetHeight() const;
 

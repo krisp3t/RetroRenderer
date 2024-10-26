@@ -35,8 +35,8 @@ namespace RetroRenderer
         selectedRenderer->DrawFrame(*pScene);
         const auto &fb = selectedRenderer->GetRenderTarget();
 
-        pDisplaySystem->DrawFrame();
-        pDisplaySystem->SwapBuffers(fb);
+        pDisplaySystem->DrawFrame(fb);
+        pDisplaySystem->SwapBuffers();
     }
 
     void RenderSystem::Destroy()

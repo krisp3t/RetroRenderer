@@ -44,29 +44,25 @@ namespace RetroRenderer
         SDL_RenderClear(m_SDLRenderer);
     }
 
-    void DisplaySystem::DrawFrame() {
+    void DisplaySystem::DrawFrame()
+    {
+        m_ConfigPanel.get()->OnDraw();
+    }
+    void DisplaySystem::DrawFrame(const Buffer<Uint32> &buffer)
+    {
+        assert(buffer.width == m_Width && buffer.height == m_Height && "Buffer size does not match window size");
+        assert(buffer.data.get() != nullptr && "Buffer data is null");
+        assert(m_ScreenTexture != nullptr && "Screen texture is null");
+
+        const Uint32 *src = buffer.data.get();
+        SDL_UpdateTexture(m_ScreenTexture, nullptr, src, static_cast<int>(buffer.pitch));
+        SDL_RenderCopy(m_SDLRenderer, m_ScreenTexture, nullptr, nullptr);
         m_ConfigPanel.get()->OnDraw();
     }
 
     void DisplaySystem::SwapBuffers()
     {
         SDL_RenderPresent(m_SDLRenderer);
-    }
-
-    void DisplaySystem::SwapBuffers(const Buffer<Uint32> &buffer)
-    {
-        assert(buffer.width == m_Width && buffer.height == m_Height && "Buffer size does not match window size");
-        assert(buffer.data != nullptr && "Buffer data is null");
-        assert(m_ScreenTexture != nullptr && "Screen texture is null");
-
-        void *pixels;
-        int pitch;
-        SDL_LockTexture(m_ScreenTexture, nullptr, &pixels, &pitch);
-        memcpy(pixels, buffer.data.get(), buffer.GetSize());
-        SDL_UnlockTexture(m_ScreenTexture);
-        SDL_RenderCopy(m_SDLRenderer, m_ScreenTexture, nullptr, nullptr);
-
-        SwapBuffers();
     }
 
     int DisplaySystem::GetWidth() const
