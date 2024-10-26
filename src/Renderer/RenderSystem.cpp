@@ -1,13 +1,14 @@
 #include <cassert>
 #include "RenderSystem.h"
-#include "../Base/Event.h"
 #include "../Base/Logger.h"
 
 namespace RetroRenderer
 {
     bool RenderSystem::Init(DisplaySystem& displaySystem)
     {
-        this->pDisplaySystem = &displaySystem;
+        pDisplaySystem = &displaySystem;
+        pSWRenderer = std::make_unique<SWRenderer>();
+        // TODO: check if renderer init succeeded
         return true;
     }
 
@@ -23,6 +24,10 @@ namespace RetroRenderer
 		{
             return;
 		}
+
+        auto &selectedRenderer = pSWRenderer; // TODO: get from config
+        assert(selectedRenderer != nullptr && "Selected renderer is null");
+        selectedRenderer->DrawFrame(*pScene);
     }
 
     void RenderSystem::Destroy()

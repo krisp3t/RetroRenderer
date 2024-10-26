@@ -13,16 +13,11 @@ endif()
 
 file(GLOB IMGUI_FILE_DIALOG lib/ImGuiFileDialog/ImGuiFileDialog.cpp)
 file(GLOB LIB ${IMGUI_FILE_DIALOG})
-file(GLOB SOURCES
+file(GLOB_RECURSE SOURCES
 		src/*.h
 		src/*.cpp
-		src/Base/*.h
-		src/Base/*.cpp
-		src/Renderer/*.h
-		src/Renderer/*.cpp
-		src/Window/*.h
-		src/Window/*.cpp
-		${LIB})
+)
+list(APPEND SOURCES ${LIB})
 
 find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)

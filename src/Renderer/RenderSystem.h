@@ -4,6 +4,7 @@
 #include "../Window/DisplaySystem.h"
 #include "../Base/Event.h"
 #include "Scene.h"
+#include "Software/SWRenderer.h"
 
 namespace RetroRenderer
 {
@@ -21,6 +22,7 @@ public:
 private:
     DisplaySystem* pDisplaySystem = nullptr;
 	std::unique_ptr<Scene> pScene = nullptr;
+    std::unique_ptr<SWRenderer> pSWRenderer = nullptr;
 };
 
 }
