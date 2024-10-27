@@ -23,7 +23,17 @@ namespace RetroRenderer
 
     void SWRenderer::DrawFrame(Scene &scene)
     {
-        p_FrameBuffer->Clear(0xFFFF00FF);
+        //p_FrameBuffer->Clear(0xFFFF00FF);
+        for (int i = 0; i < p_FrameBuffer->height; i++)
+        {
+            for (int j = 0; j < p_FrameBuffer->width; j++)
+            {
+                if (j % 2 == 0)
+                    p_FrameBuffer->Set(j, i, 0xFFFFFFFF);
+                else
+                    p_FrameBuffer->Set(j, i, 0xFF000000);
+            }
+        }
 
         // TODO: build render queue
         /*

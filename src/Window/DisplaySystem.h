@@ -41,8 +41,8 @@ private:
     SDL_Window* m_Window = nullptr;
     SDL_Renderer* m_SDLRenderer = nullptr;
     SDL_Texture* m_ScreenTexture = nullptr;
-    int m_Width = 1280;
-    int m_Height = 720;
+    int m_ScreenWidth = 1280;
+    int m_ScreenHeight = 720;
     std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
     void OnResize(int width, int height);
 

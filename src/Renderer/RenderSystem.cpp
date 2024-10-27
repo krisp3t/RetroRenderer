@@ -13,6 +13,7 @@ namespace RetroRenderer
             LOGE("Failed to initialize SWRenderer");
             return false;
         }
+
         LOGD("SWRenderer initialized");
         return true;
     }

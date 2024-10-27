@@ -40,6 +40,12 @@ namespace RetroRenderer
             std::fill(data.get(), data.get() + width * height, value);
         }
 
+        void Set(size_t x, size_t y, const T value)
+        {
+            assert(x < width && y < height && "Out of bounds");
+            data[y * width + x] = value;
+        }
+
         size_t GetCount() const
         {
             return width * height;

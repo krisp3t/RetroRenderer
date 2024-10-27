@@ -36,6 +36,7 @@ struct Config
         bool showWireframe = false;
         bool enablePerspectiveCorrect = true;
         ImVec4 clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+        int viewportResolution[2] = {1280, 720};
     };
 
     struct EnvironmentSettings

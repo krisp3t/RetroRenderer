@@ -12,7 +12,7 @@ namespace RetroRenderer
             LOGE("Unable to initialize SDL: %s\n", SDL_GetError());
             return false;
         }
-        m_Window = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_Width, m_Height, kWindowFlags);
+        m_Window = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_ScreenWidth, m_ScreenHeight, kWindowFlags);
         if (m_Window == nullptr)
         {
             LOGE("Unable to create window: %s", SDL_GetError());
@@ -24,8 +24,7 @@ namespace RetroRenderer
             LOGE("Unable to create renderer: %s", SDL_GetError());
             return false;
         }
-
-       m_ScreenTexture = SDL_CreateTexture(m_SDLRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, m_Width, m_Height);
+       m_ScreenTexture = SDL_CreateTexture(m_SDLRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, m_ScreenWidth, m_ScreenHeight);
         if (m_ScreenTexture == nullptr)
         {
             LOGE("Unable to create texture: %s", SDL_GetError());
@@ -50,7 +49,7 @@ namespace RetroRenderer
     }
     void DisplaySystem::DrawFrame(const Buffer<Uint32> &buffer)
     {
-        assert(buffer.width == m_Width && buffer.height == m_Height && "Buffer size does not match window size");
+        assert(buffer.width == m_ScreenWidth && buffer.height == m_ScreenHeight && "Buffer size does not match window size");
         assert(buffer.data.get() != nullptr && "Buffer data is null");
         assert(m_ScreenTexture != nullptr && "Screen texture is null");
 
@@ -67,11 +66,11 @@ namespace RetroRenderer
 
     int DisplaySystem::GetWidth() const
     {
-        return m_Width;
+        return m_ScreenWidth;
     }
     int DisplaySystem::GetHeight() const
     {
-        return m_Height;
+        return m_ScreenHeight;
     }
 
     void DisplaySystem::Destroy()
@@ -81,5 +80,4 @@ namespace RetroRenderer
         SDL_DestroyWindow(m_Window);
         SDL_Quit();
     }
-
 }

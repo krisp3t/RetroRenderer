@@ -201,7 +201,7 @@ namespace RetroRenderer
             {
                 if (ImGui::BeginTabItem("Camera"))
                 {
-                    ImGui::Text("Camera settings");
+                    DisplayCameraSettings();
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Renderer"))
@@ -227,7 +227,7 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayCameraSettings()
     {
-
+        ImGui::Combo("Camera type", reinterpret_cast<int *>(&p_Config->camera.type), "Perspective\0Orthographic\0");
     }
 
     void ConfigPanel::DisplayRendererSettings()
@@ -247,6 +247,7 @@ namespace RetroRenderer
         ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float*>(&r.clearColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
         ImGui::Text("Background color:");
+        ImGui::InputInt2("Viewport resolution", reinterpret_cast<int*>(&r.viewportResolution)); // TODO: add min, max
     }
 
     void ConfigPanel::DisplayEnvironmentSettings()
