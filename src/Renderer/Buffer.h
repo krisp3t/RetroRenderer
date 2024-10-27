@@ -1,5 +1,7 @@
 #pragma once
 #include <memory>
+#include <algorithm>
+
 namespace RetroRenderer
 {
     template<typename T>
