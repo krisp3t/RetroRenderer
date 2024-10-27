@@ -37,6 +37,7 @@ namespace RetroRenderer
         const auto &fb = selectedRenderer->GetRenderTarget();
 
         pDisplaySystem->DrawFrame(fb);
+
         pDisplaySystem->SwapBuffers();
     }
 

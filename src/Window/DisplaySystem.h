@@ -46,6 +46,7 @@ private:
     std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
     void OnResize(int width, int height);
 
+    float GetScale() const;
 };
 
 }

@@ -35,7 +35,9 @@ namespace RetroRenderer
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard |
+                          ImGuiConfigFlags_DockingEnable |
+                          ImGuiConfigFlags_ViewportsEnable;
         ImGui::StyleColorsDark();
         ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
         ImGui_ImplSDLRenderer2_Init(renderer);
@@ -48,10 +50,16 @@ namespace RetroRenderer
     void ConfigPanel::DisplayGUI()
     {
         assert(p_Config != nullptr || "Config not initialized!");
-
         if (!p_Config->showConfigPanel)
         {
             return;
+        }
+
+        ImGuiIO& io = ImGui::GetIO();
+        if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
+        {
+            ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(),
+                                         ImGuiDockNodeFlags_PassthruCentralNode);
         }
 
         bool show = true;
@@ -339,16 +347,12 @@ namespace RetroRenderer
         ImGui_ImplSDLRenderer2_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
-
         DisplayGUI();
-
-        ImGui::Render();
-        auto const io = ImGui::GetIO();
-        SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
     }
 
     void ConfigPanel::OnDraw()
     {
+        ImGui::Render();
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
     }
 

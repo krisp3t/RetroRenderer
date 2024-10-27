@@ -8,7 +8,8 @@
       "features": [
         "sdl2-binding",
         "sdl2-renderer-binding",
-        "opengl3-binding"
+        "opengl3-binding",
+        "docking-experimental"
       ]
     },
     "assimp"

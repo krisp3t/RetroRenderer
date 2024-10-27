@@ -30,17 +30,42 @@ namespace RetroRenderer
             LOGE("Unable to create texture: %s", SDL_GetError());
             return false;
         }
+        const float scale{GetScale()};
+        SDL_RenderSetScale(m_SDLRenderer, scale, scale);
 
         p_Config = std::make_shared<Config>();
         m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_SDLRenderer, p_Config);
         return true;
     }
 
+    float DisplaySystem::GetScale() const {
+        int window_width{0};
+        int window_height{0};
+        SDL_GetWindowSize(
+                m_Window,
+                &window_width, &window_height
+        );
+
+        int render_output_width{0};
+        int render_output_height{0};
+        SDL_GetRendererOutputSize(
+                m_SDLRenderer,
+                &render_output_width, &render_output_height
+        );
+
+        const auto scale_x{
+                static_cast<float>(render_output_width) /
+                static_cast<float>(window_width)
+        };
+
+        return scale_x;
+    }
+
     void DisplaySystem::BeforeFrame() {
-        m_ConfigPanel.get()->BeforeFrame(m_SDLRenderer);
         ImU32 c = ImGui::ColorConvertFloat4ToU32(p_Config->renderer.clearColor);
         SDL_SetRenderDrawColor(m_SDLRenderer, c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF, (c >> 24) & 0xFF);
         SDL_RenderClear(m_SDLRenderer);
+        m_ConfigPanel.get()->BeforeFrame(m_SDLRenderer);
     }
 
     void DisplaySystem::DrawFrame()
