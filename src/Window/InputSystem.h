@@ -1,5 +1,6 @@
 #pragma once
 #include "../Window/DisplaySystem.h"
+#include "../Base/InputActions.h"
 
 namespace RetroRenderer
 {
@@ -11,12 +12,12 @@ public:
     ~InputSystem() = default;
 
     bool Init(std::shared_ptr<Config> config);
-    void HandleInput(bool &isRunning);
-    void Update();
+    [[nodiscard]] InputActionMask HandleInput();
     void Destroy();
 private:
-    std::shared_ptr<Config> p_Config = nullptr;
+    std::shared_ptr<Config> p_Config = nullptr; // TODO: factor out
     void HandleKeyDown(SDL_Keycode key);
+    InputActionMask m_InputState = 0;
 };
 
 }

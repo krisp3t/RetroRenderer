@@ -3,7 +3,7 @@
 #include <memory>
 #include "../Window/DisplaySystem.h"
 #include "../Base/Event.h"
-#include "Scene.h"
+#include "../Scene/Scene.h"
 #include "Software/SWRenderer.h"
 
 namespace RetroRenderer

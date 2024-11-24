@@ -3,6 +3,7 @@
 #include "Window/DisplaySystem.h"
 #include "Renderer/RenderSystem.h"
 #include "Window/InputSystem.h"
+#include "Scene/SceneManager.h"
 #include "Base/Event.h"
 
 namespace RetroRenderer
@@ -28,6 +29,7 @@ private:
     DisplaySystem m_DisplaySystem;
     RenderSystem m_RenderSystem;
     InputSystem m_InputSystem;
+    SceneManager m_SceneManager;
 };
 
 }

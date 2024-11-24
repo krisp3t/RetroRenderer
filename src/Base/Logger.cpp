@@ -27,7 +27,7 @@ void Logger::Log(LogLevel level, const char *file, int line, const char *format,
     auto now = std::chrono::system_clock::now();
     std::time_t now_time = std::chrono::system_clock::to_time_t(now);
     std::tm local_time;
-    localtime_r(&now_time, &local_time);
+    localtime_s(&local_time, &now_time);
     if (level < _minLevel)
     {
         return;

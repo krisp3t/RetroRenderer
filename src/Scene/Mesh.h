@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "Vertex.h"
+#include "../Renderer/Vertex.h"
 
 namespace RetroRenderer
 {

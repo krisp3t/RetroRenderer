@@ -1,10 +1,10 @@
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
+#include "assimp/Importer.hpp"
+#include "assimp/scene.h"
+#include "assimp/postprocess.h"
 
 #include "Scene.h"
 #include "../Base/Logger.h"
-#include "Vertex.h"
+#include "../Renderer/Vertex.h"
 
 
 namespace RetroRenderer

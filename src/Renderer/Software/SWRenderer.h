@@ -1,6 +1,6 @@
 #pragma once
 #include <SDL.h>
-#include "../Scene.h"
+#include "../../Scene/Scene.h"
 #include "../Buffer.h"
 
 namespace RetroRenderer

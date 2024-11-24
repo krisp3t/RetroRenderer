@@ -1,7 +1,5 @@
 #include <imgui_impl_sdl2.h>
 #include "InputSystem.h"
-#include "../Base/InputActions.h"
-#include "../Base/Logger.h"
 
 namespace RetroRenderer
 {
@@ -11,69 +9,76 @@ namespace RetroRenderer
         return true;
     }
 
-    void InputSystem::HandleInput(bool &isRunning)
+    InputActionMask InputSystem::HandleInput()
     {
+        m_InputState = static_cast<InputActionMask>(0);
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
             ImGui_ImplSDL2_ProcessEvent(&event);
             switch (event.type)
             {
-            case SDL_QUIT:
-                isRunning = false;
-                break;
-            case SDL_KEYDOWN:
-                HandleKeyDown(event.key.keysym.sym);
-                if (event.key.keysym.sym == SDLK_ESCAPE)
-                {
-                    isRunning = false;
-                }
-                break;
+                case SDL_QUIT:
+                    m_InputState |= static_cast<InputActionMask>(InputAction::QUIT);
+                    return m_InputState;
+                case SDL_KEYDOWN:
+                    if (event.key.keysym.sym == SDLK_ESCAPE)
+                    {
+                        m_InputState |= static_cast<InputActionMask>(InputAction::QUIT);
+                        return m_InputState;
+                    }
+                    HandleKeyDown(event.key.keysym.sym);
+                    break;
             }
         }
+        return m_InputState;
     }
 
     void InputSystem::HandleKeyDown(SDL_Keycode key)
     {
-        // TODO: add deltatime
-        glm::vec3& cameraPosition = p_Config->camera.position;
-
         switch (key)
         {
-        case GetKey(InputAction::MOVE_FORWARD):
-            cameraPosition.z -= 0.1f;
+        case SDLK_w:
+            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_FORWARD);
             break;
-        case GetKey(InputAction::MOVE_BACKWARD):
-            cameraPosition.z += 0.1f;
+        case SDLK_s:
+            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_BACKWARD);
             break;
-        case GetKey(InputAction::MOVE_LEFT):
-            cameraPosition.x -= 0.1f;
+        case SDLK_a:
+            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_LEFT);
             break;
-        case GetKey(InputAction::MOVE_RIGHT):
-            cameraPosition.x += 0.1f;
+        case SDLK_d:
+            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_RIGHT);
             break;
-        case GetKey(InputAction::MOVE_UP):
-            cameraPosition.y -= 0.1f;
+        case SDLK_LSHIFT:
+            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_UP);
             break;
-        case GetKey(InputAction::MOVE_DOWN):
-            cameraPosition.y += 0.1f;
+        case SDLK_LCTRL:
+            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_DOWN);
             break;
-        case GetKey(InputAction::TOGGLE_CONFIG_PANEL):
-            p_Config->showConfigPanel = !p_Config->showConfigPanel;
-            LOGI("Config panel enabled: %d", p_Config->showConfigPanel);
+        case SDLK_LEFT:
+            m_InputState |= static_cast<InputActionMask>(InputAction::ROTATE_LEFT);
             break;
-        case GetKey(InputAction::TOGGLE_WIREFRAME):
-            p_Config->renderer.showWireframe = !p_Config->renderer.showWireframe;
-            LOGI("Wireframe enabled: %d", p_Config->renderer.showWireframe);
+        case SDLK_RIGHT:
+            m_InputState |= static_cast<InputActionMask>(InputAction::ROTATE_RIGHT);
+            break;
+        case SDLK_UP:
+            m_InputState |= static_cast<InputActionMask>(InputAction::ROTATE_UP);
+            break;
+        case SDLK_DOWN:
+            m_InputState |= static_cast<InputActionMask>(InputAction::ROTATE_DOWN);
+            break;
+        case SDLK_h:
+            m_InputState |= static_cast<InputActionMask>(InputAction::TOGGLE_CONFIG_PANEL);
+            break;
+        case SDLK_1:
+            m_InputState |= static_cast<InputActionMask>(InputAction::TOGGLE_WIREFRAME);
             break;
         }
-    }
-
-    void InputSystem::Update()
-    {
     }
 
     void InputSystem::Destroy()
     {
     }
+
 }

@@ -281,9 +281,9 @@ namespace RetroRenderer
         ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
         ImVec2 work_size = viewport->WorkSize;
         ImVec2 window_pos, window_pos_pivot;
-        window_pos.x = work_pos.x + kPadding;
+        window_pos.x = work_pos.x + work_size.x - kPadding;
         window_pos.y = work_pos.y + kPadding;
-        window_pos_pivot.x = 0.0f;
+        window_pos_pivot.x = 1.0f;
         window_pos_pivot.y = 0.0f;
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
         windowFlags |= ImGuiWindowFlags_NoMove;
@@ -291,8 +291,8 @@ namespace RetroRenderer
         ImGui::SetNextWindowBgAlpha(0.35f);
         if (ImGui::Begin("Controls", &isOpen, windowFlags))
         {
-            ImGui::Text("%c - toggle GUI", GetKey(InputAction::TOGGLE_CONFIG_PANEL));
-            ImGui::Text("%c - show wireframe", GetKey(InputAction::TOGGLE_WIREFRAME));
+            ImGui::Text("h - toggle GUI");
+            ImGui::Text("1 - show wireframe");
         }
         ImGui::End();
     }
@@ -302,7 +302,7 @@ namespace RetroRenderer
         static bool isOpen = true;
         if (!isOpen) return;
 
-        static int location = 1;
+        static int location = 0;
         ImGuiIO& io = ImGui::GetIO();
         ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
         constexpr float kPadding = 10.0f;
@@ -328,6 +328,7 @@ namespace RetroRenderer
         if (ImGui::Begin("Metrics", &isOpen, windowFlags))
         {
             ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+            ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", 0.0f, 0.0f, 0.0f);
             ImGui::Text("%d verts, %d tris", 0, 0);
             ImGui::PlotLines("", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
             if (ImGui::BeginPopupContextWindow())

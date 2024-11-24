@@ -23,16 +23,21 @@ namespace RetroRenderer
 
     void Engine::Run()
     {
-        bool isRunning = true;
         auto start = SDL_GetTicks();
         auto delta = 0;
 
         LOGI("Entered main loop");
-        while (isRunning)
+        for (;;)
         {
             start = SDL_GetTicks();
 
-            m_InputSystem.HandleInput(isRunning);
+            auto inputActions = m_InputSystem.HandleInput();
+            if (inputActions & static_cast<InputActionMask>(InputAction::QUIT))
+            {
+                break;
+            }
+            m_SceneManager.ProcessInput(inputActions);
+            m_SceneManager.Update(delta);
             m_RenderSystem.Render();
 
             delta = SDL_GetTicks() - start;
