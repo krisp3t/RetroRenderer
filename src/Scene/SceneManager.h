@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include "Scene.h"
+#include "Camera.h"
 
 namespace RetroRenderer
 {
@@ -11,11 +12,11 @@ public:
     SceneManager() = default;
     ~SceneManager();
     bool LoadScene(const std::string& path);
-    void ProcessInput(int actions);
+    void ProcessInput(int actions, unsigned int deltaTime);
     void Update(unsigned int deltaTime);
 private:
     std::unique_ptr<Scene> m_Scene = nullptr;
-    //std::unique_ptr<Camera> m_Camera = nullptr;
+    Camera m_Camera;
 };
 
 }

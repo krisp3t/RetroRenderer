@@ -36,7 +36,7 @@ namespace RetroRenderer
             {
                 break;
             }
-            m_SceneManager.ProcessInput(inputActions);
+            m_SceneManager.ProcessInput(inputActions, delta);
             m_SceneManager.Update(delta);
             m_RenderSystem.Render();
 
