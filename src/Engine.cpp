@@ -68,7 +68,9 @@ namespace RetroRenderer
         case EventType::Scene_Load:
         {
             const SceneLoadEvent& e = static_cast<const SceneLoadEvent&>(event);
-            m_RenderSystem.OnLoadScene(e);
+            LOGD("Attempting to load scene from path: %s", e.scenePath.c_str());
+            m_SceneManager.LoadScene(e.scenePath);
+            m_RenderSystem.OnLoadScene(e); // TODO: send to all subscribers
             break;
         }
         default:
