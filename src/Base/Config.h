@@ -14,22 +14,6 @@ struct Config
         FXAA,
     };
 
-    enum class CameraType
-    {
-        PERSPECTIVE,
-        ORTHOGRAPHIC,
-    };
-
-    struct CameraSettings
-    {
-        CameraType type = CameraType::PERSPECTIVE;
-        float fov = 45.0f;
-        float near = 0.1f;
-        float far = 100.0f;
-        float orthoSize = 10.0f;
-        glm::vec3 position = {0.0f, 0.0f, 5.0f};
-    };
-
     struct RendererSettings
     {
         AAType aaType = AAType::NONE;
@@ -53,7 +37,6 @@ struct Config
         bool depthTest = true;
     };
 
-    CameraSettings camera;
     EnvironmentSettings environment;
     CullSettings cull;
     RendererSettings renderer;

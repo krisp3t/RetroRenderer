@@ -235,6 +235,11 @@ namespace RetroRenderer
                     ImGui::Text("Culling settings");
                     ImGui::EndTabItem();
                 }
+                if (ImGui::BeginTabItem("Post-FX"))
+                {
+                    ImGui::Text("Post-FX");
+                    ImGui::EndTabItem();
+                }
                 ImGui::EndTabBar();
             }
         }
@@ -243,7 +248,21 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayCameraSettings()
     {
-        ImGui::Combo("Camera type", reinterpret_cast<int *>(&p_Config->camera.type), "Perspective\0Orthographic\0");
+        if (auto cam = p_Camera.lock())
+        {
+            ImGui::SeparatorText("Camera settings");
+            ImGui::DragFloat3("Position", glm::value_ptr(cam->position), 0.1f, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+            ImGui::Combo("Camera type", reinterpret_cast<int *>(&cam->type), "Perspective\0Orthographic\0");
+            ImGui::SliderFloat("Field of view", &cam->fov, 1.0f, 179.0f);
+            ImGui::SliderFloat("Near plane", &cam->near, 0.1f, 10.0f);
+            ImGui::SliderFloat("Far plane", &cam->far, 1.0f, 100.0f);
+            ImGui::SliderFloat("Orthographic size", &cam->orthoSize, 1.0f, 100.0f);
+        }
+        else
+        {
+            ImGui::Text("No camera available");
+        }
+
     }
 
     void ConfigPanel::DisplayRendererSettings()

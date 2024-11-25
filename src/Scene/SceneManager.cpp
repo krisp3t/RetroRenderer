@@ -25,12 +25,12 @@ namespace RetroRenderer
         {
             LOGD("Move forward");
             // TODO: move depending on direction vector
-            p_Camera->position.z -= m_MoveFactor;
+            p_Camera->position.z -= m_MoveFactor * deltaTime;
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_BACKWARD))
         {
             LOGD("Move backward");
-            p_Camera->position.z += m_MoveFactor;
+            p_Camera->position.z += m_MoveFactor * deltaTime;
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_LEFT))
         {

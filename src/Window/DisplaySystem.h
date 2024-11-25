@@ -15,7 +15,7 @@ public:
     DisplaySystem() = default;
     ~DisplaySystem() = default;
 
-    bool Init(std::shared_ptr<Config> config, const std::weak_ptr<Camera> camera);
+    bool Init(std::shared_ptr<Config> config, std::weak_ptr<Camera> camera);
     void Destroy();
 
     static constexpr SDL_WindowFlags kWindowFlags =
