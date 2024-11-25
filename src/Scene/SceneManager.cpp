@@ -11,7 +11,7 @@ namespace RetroRenderer
 
     bool SceneManager::LoadScene(const std::string& path)
     {
-        m_Scene = std::make_unique<Scene>(path);
+        p_Scene = std::make_shared<Scene>(path);
         return true;
     }
 
@@ -24,10 +24,13 @@ namespace RetroRenderer
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_FORWARD))
         {
             LOGD("Move forward");
+            // TODO: move depending on direction vector
+            p_Camera->position.z -= m_MoveFactor;
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_BACKWARD))
         {
             LOGD("Move backward");
+            p_Camera->position.z += m_MoveFactor;
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_LEFT))
         {
@@ -66,5 +69,10 @@ namespace RetroRenderer
     void SceneManager::Update(unsigned int deltaTime)
     {
 
+    }
+
+    std::shared_ptr<Camera> SceneManager::GetCamera() const
+    {
+        return p_Camera;
     }
 }

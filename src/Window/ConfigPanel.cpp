@@ -19,9 +19,12 @@
 
 namespace RetroRenderer
 {
-    ConfigPanel::ConfigPanel(SDL_Window *window, SDL_Renderer *renderer, std::shared_ptr<Config> config)
+    ConfigPanel::ConfigPanel(SDL_Window *window,
+                             SDL_Renderer *renderer,
+                             std::shared_ptr<Config> config,
+                             std::weak_ptr<Camera> camera)
     {
-        Init(window, renderer, config);
+        Init(window, renderer, config, camera);
     }
 
     ConfigPanel::~ConfigPanel()
@@ -29,7 +32,11 @@ namespace RetroRenderer
         Destroy();
     }
 
-    bool ConfigPanel::Init(SDL_Window* window, SDL_Renderer* renderer, std::shared_ptr<Config> config)
+    bool ConfigPanel::Init(SDL_Window* window,
+                           SDL_Renderer* renderer,
+                           std::shared_ptr<Config> config,
+                           std::weak_ptr<Camera> camera
+                           )
     {
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
@@ -43,6 +50,7 @@ namespace RetroRenderer
         ImGui_ImplSDLRenderer2_Init(renderer);
 
         p_Config = std::move(config);
+        p_Camera = std::move(camera);
 
         return true;
     }
@@ -328,7 +336,11 @@ namespace RetroRenderer
         if (ImGui::Begin("Metrics", &isOpen, windowFlags))
         {
             ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-            ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", 0.0f, 0.0f, 0.0f);
+            auto cam = p_Camera.lock();
+            if (cam)
+            {
+                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", cam->position.x, cam->position.y, cam->position.z);
+            }
             ImGui::Text("%d verts, %d tris", 0, 0);
             ImGui::PlotLines("", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
             if (ImGui::BeginPopupContextWindow())

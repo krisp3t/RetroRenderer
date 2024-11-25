@@ -15,7 +15,7 @@ public:
     [[nodiscard]] InputActionMask HandleInput();
     void Destroy();
 private:
-    std::shared_ptr<Config> p_Config = nullptr; // TODO: factor out
+    std::shared_ptr<Config> p_Config = nullptr;
     void HandleKeyDown(SDL_Keycode key);
     InputActionMask m_InputState = 0;
 };

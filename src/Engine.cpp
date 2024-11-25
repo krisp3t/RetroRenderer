@@ -5,7 +5,12 @@ namespace RetroRenderer
 {
     bool Engine::Init()
     {
-        if (!m_DisplaySystem.Init())
+        auto camera = m_SceneManager.GetCamera();
+        if (!m_DisplaySystem.Init(p_Config, camera))
+        {
+            return false;
+        }
+        if (!m_InputSystem.Init(p_Config))
         {
             return false;
         }
@@ -13,11 +18,7 @@ namespace RetroRenderer
         {
             return false;
         }
-        if (!m_InputSystem.Init(m_DisplaySystem.p_Config))
-        {
-            return false;
-        }
-        LOGD("p_Config ref count: %d", m_DisplaySystem.p_Config.use_count());
+        LOGD("p_Config ref count: %d", p_Config.use_count());
         return true;
     }
 

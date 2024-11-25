@@ -4,6 +4,7 @@
 #include <memory>
 #include "ConfigPanel.h"
 #include "../Renderer/Buffer.h"
+#include "../Scene/Camera.h"
 
 namespace RetroRenderer
 {
@@ -14,7 +15,7 @@ public:
     DisplaySystem() = default;
     ~DisplaySystem() = default;
 
-    bool Init();
+    bool Init(std::shared_ptr<Config> config, const std::weak_ptr<Camera> camera);
     void Destroy();
 
     static constexpr SDL_WindowFlags kWindowFlags =
@@ -26,7 +27,6 @@ public:
                     SDL_RENDERER_PRESENTVSYNC
             );
     static constexpr char kWindowTitle[] = "RetroRenderer";
-    std::shared_ptr<Config> p_Config = nullptr;
 
     void Clear();
     void DrawConfigPanel();
@@ -41,11 +41,14 @@ private:
     SDL_Window* m_Window = nullptr;
     SDL_Renderer* m_SDLRenderer = nullptr;
     SDL_Texture* m_ScreenTexture = nullptr;
+    std::shared_ptr<Config> p_Config = nullptr;
+    std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
+    std::weak_ptr<Camera> p_Camera;
+
     int m_ScreenWidth = 1280;
     int m_ScreenHeight = 720;
-    std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
-    void OnResize(int width, int height);
 
+    void OnResize(int width, int height);
     float GetScale() const;
 };
 

@@ -1,5 +1,5 @@
 #pragma once
-
+#include <memory>
 #include "Window/DisplaySystem.h"
 #include "Renderer/RenderSystem.h"
 #include "Window/InputSystem.h"
@@ -26,6 +26,7 @@ public:
 private:
 	Engine() = default;
 	~Engine() = default;
+    std::shared_ptr<Config> p_Config = std::make_shared<Config>();
     DisplaySystem m_DisplaySystem;
     RenderSystem m_RenderSystem;
     InputSystem m_InputSystem;
