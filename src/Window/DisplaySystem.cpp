@@ -7,8 +7,8 @@ namespace RetroRenderer
 {
     bool DisplaySystem::Init(std::shared_ptr<Config> config, std::weak_ptr<Camera> camera)
     {
-        p_Config = std::move(config);
-        p_Camera = std::move(camera);
+        p_Config = config;
+        p_Camera = camera;
         if (SDL_Init(SDL_INIT_VIDEO) < 0)
         {
             LOGE("Unable to initialize SDL: %s\n", SDL_GetError());
@@ -35,7 +35,6 @@ namespace RetroRenderer
         const float scale{GetScale()};
         SDL_RenderSetScale(m_SDLRenderer, scale, scale);
 
-        p_Config = std::make_shared<Config>();
         m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_SDLRenderer, p_Config, p_Camera);
         return true;
     }

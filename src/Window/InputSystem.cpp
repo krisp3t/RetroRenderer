@@ -5,7 +5,7 @@ namespace RetroRenderer
 {
     bool InputSystem::Init(std::shared_ptr<Config> config)
     {
-        p_Config = std::move(config);
+        p_Config = config;
         return true;
     }
 

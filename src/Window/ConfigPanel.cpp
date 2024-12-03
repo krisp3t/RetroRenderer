@@ -49,8 +49,8 @@ namespace RetroRenderer
         ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
         ImGui_ImplSDLRenderer2_Init(renderer);
 
-        p_Config = std::move(config);
-        p_Camera = std::move(camera);
+        p_Config = config;
+        p_Camera = camera;
 
         return true;
     }
