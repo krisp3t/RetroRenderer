@@ -17,8 +17,7 @@ public:
 
     bool Init(DisplaySystem& displaySystem);
     std::queue<Model*> BuildRenderQueue(Scene &scene, const Camera &camera);
-    //void Render(const Queue& queue);
-    void Render();
+    void Render(std::queue<Model *>& renderQueue);
     void Destroy();
     void OnLoadScene(const SceneLoadEvent& e);
 private:

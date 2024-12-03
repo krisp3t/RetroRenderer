@@ -45,9 +45,8 @@ namespace RetroRenderer
             auto camera = m_SceneManager.GetCamera();
             if (scene && camera)
             {
-                m_RenderSystem.BuildRenderQueue(*scene, *camera);
-
-                //scene->Render();
+                auto queue = m_RenderSystem.BuildRenderQueue(*scene, *camera);
+                m_RenderSystem.Render(queue);
                 // m_DisplaySystem.DrawFrame(fb);
             }
             m_DisplaySystem.DrawFrame();

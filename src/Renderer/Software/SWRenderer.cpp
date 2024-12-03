@@ -61,4 +61,13 @@ namespace RetroRenderer
     {
         p_Camera = const_cast<Camera*>(&camera);
     }
+
+    /**
+     * @brief Draw a mesh on the frame buffer. Must be triangulated!
+     * @param mesh
+     */
+    void SWRenderer::DrawTriangularMesh(const Mesh &mesh)
+    {
+        LOGD("Drawing mesh");
+    }
 }

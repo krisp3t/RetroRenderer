@@ -25,7 +25,7 @@ namespace RetroRenderer
         return scene.GetVisibleModels();
     }
 
-    void RenderSystem::Render()
+    void RenderSystem::Render(std::queue<Model *>& renderQueue)
     {
         auto &activeRenderer = pSWRenderer; // TODO: get from config
         assert(activeRenderer != nullptr && "Active renderer is null");
@@ -34,6 +34,13 @@ namespace RetroRenderer
         const auto &fb = activeRenderer->GetRenderTarget();
 
         //pDisplaySystem->DrawFrame(fb);
+
+        while (!renderQueue.empty())
+        {
+            auto model = renderQueue.front();
+            activeRenderer->DrawTriangularMesh(*model->GetMesh());
+            renderQueue.pop();
+        }
     }
 
     void RenderSystem::Destroy()
