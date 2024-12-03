@@ -68,11 +68,16 @@ namespace RetroRenderer
 
     void SceneManager::Update(unsigned int deltaTime)
     {
-
+        p_Scene->FrustumCull(*p_Camera);
     }
 
     std::shared_ptr<Camera> SceneManager::GetCamera() const
     {
         return p_Camera;
+    }
+
+    std::shared_ptr<Scene> SceneManager::GetScene() const
+    {
+        return p_Scene;
     }
 }

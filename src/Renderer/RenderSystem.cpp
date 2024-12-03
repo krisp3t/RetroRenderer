@@ -18,27 +18,22 @@ namespace RetroRenderer
         return true;
     }
 
+    void RenderSystem::BuildRenderQueue(const Scene& scene, const Camera& camera)
+    {
+        auto &activeRenderer = pSWRenderer; // TODO: get from config
+        activeRenderer->SetActiveCamera(camera);
+        scene.GetVisibleModels();
+    }
+
     void RenderSystem::Render()
     {
-        assert(pDisplaySystem != nullptr && "DisplaySystem is null");
+        auto &activeRenderer = pSWRenderer; // TODO: get from config
+        assert(activeRenderer != nullptr && "Active renderer is null");
 
-        pDisplaySystem->BeforeFrame();
+        //activeRenderer->DrawFrame(*pScene);
+        const auto &fb = activeRenderer->GetRenderTarget();
 
-		if (pScene == nullptr)
-		{
-            pDisplaySystem->DrawFrame();
-            pDisplaySystem->SwapBuffers();
-            return;
-		}
-
-        auto &selectedRenderer = pSWRenderer; // TODO: get from config
-        assert(selectedRenderer != nullptr && "Selected renderer is null");
-        selectedRenderer->DrawFrame(*pScene);
-        const auto &fb = selectedRenderer->GetRenderTarget();
-
-        pDisplaySystem->DrawFrame(fb);
-
-        pDisplaySystem->SwapBuffers();
+        //pDisplaySystem->DrawFrame(fb);
     }
 
     void RenderSystem::Destroy()

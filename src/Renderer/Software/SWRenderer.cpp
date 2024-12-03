@@ -56,4 +56,9 @@ namespace RetroRenderer
         assert(p_FrameBuffer != nullptr && "Tried to get null render target. Did you call SWRenderer::Init()?");
         return *p_FrameBuffer;
     }
+
+    void SWRenderer::SetActiveCamera(const Camera &camera)
+    {
+        p_Camera = const_cast<Camera*>(&camera);
+    }
 }

@@ -37,9 +37,20 @@ namespace RetroRenderer
             {
                 break;
             }
+            // TODO: handle camera switching
             m_SceneManager.ProcessInput(inputActions, delta);
             m_SceneManager.Update(delta);
-            m_RenderSystem.Render();
+            m_DisplaySystem.BeforeFrame(); // SDL, imgui clear screen
+            auto scene = m_SceneManager.GetScene();
+            auto camera = m_SceneManager.GetCamera();
+            if (scene && camera)
+            {
+                m_RenderSystem.BuildRenderQueue(*scene, *camera);
+                //scene->Render();
+                // m_DisplaySystem.DrawFrame(fb);
+            }
+            m_DisplaySystem.DrawFrame();
+            m_DisplaySystem.SwapBuffers();
 
             delta = SDL_GetTicks() - start;
         }

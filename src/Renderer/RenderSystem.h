@@ -16,6 +16,8 @@ public:
     ~RenderSystem() = default;
 
     bool Init(DisplaySystem& displaySystem);
+    void BuildRenderQueue(const Scene &scene, const Camera &camera);
+    //void Render(const Queue& queue);
     void Render();
     void Destroy();
     void OnLoadScene(const SceneLoadEvent& e);
@@ -23,6 +25,7 @@ private:
     DisplaySystem* pDisplaySystem = nullptr;
 	std::unique_ptr<Scene> pScene = nullptr;
     std::unique_ptr<SWRenderer> pSWRenderer = nullptr;
+
 };
 
 }

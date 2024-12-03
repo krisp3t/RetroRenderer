@@ -1,7 +1,10 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <queue>
 #include "Mesh.h"
+#include "Camera.h"
+#include "Model.h"
 
 struct aiNode;
 struct aiScene;
@@ -19,11 +22,20 @@ namespace RetroRenderer
 		void Load(const char* path);
 		void Unload();
 		void Render();
+        void GetVisibleModels() const;
+
+        void FrustumCull(const Camera& camera);
     private:
-        bool ProcessNode(aiNode* node, const aiScene* scene);
-        Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene);
+        // TODO: unneeded?
         std::vector<unsigned int> m_Textures;
         std::vector<unsigned int> m_Materials;
         std::vector<Mesh> m_Meshes;
-	};
+
+        std::vector<Model*> m_Models;
+        std::queue<Model*> m_VisibleModels;
+
+        bool ProcessNode(aiNode* node, const aiScene* scene);
+        Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene);
+
+    };
 };
