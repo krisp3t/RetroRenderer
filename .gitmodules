@@ -4,3 +4,6 @@
 [submodule "lib/ImGuiFileDialog"]
 	path = lib/ImGuiFileDialog
 	url = https://github.com/aiekick/ImGuiFileDialog
+[submodule "tests-visual"]
+	path = tests-visual
+	url = git@github.com:krisp3t/shader-examples.git
