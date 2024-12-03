@@ -117,14 +117,21 @@ namespace RetroRenderer
         };
     }
 
-    void Scene::GetVisibleModels() const
+    std::queue<Model*>& Scene::GetVisibleModels()
     {
-
+        return m_VisibleModels;
     }
 
     void Scene::FrustumCull(const Camera &camera)
     {
-
+        for (auto &model : m_Models)
+        {
+            bool visible = true; // TODO: add visibility check
+            if (visible)
+            {
+                m_VisibleModels.push(model);
+            }
+        }
     }
 
     /*

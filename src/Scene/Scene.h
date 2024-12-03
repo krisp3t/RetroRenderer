@@ -22,8 +22,7 @@ namespace RetroRenderer
 		void Load(const char* path);
 		void Unload();
 		void Render();
-        void GetVisibleModels() const;
-
+        [[nodiscard]] std::queue<Model*>& GetVisibleModels();
         void FrustumCull(const Camera& camera);
     private:
         // TODO: unneeded?

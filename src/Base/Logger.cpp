@@ -24,10 +24,6 @@ const char* color_error = "\u001b[31m";    // Red
 #ifndef NDEBUG
 void Logger::Log(LogLevel level, const char *file, int line, const char *format, ...)
 {
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-    std::tm local_time;
-    localtime_s(&local_time, &now_time);
     if (level < _minLevel)
     {
         return;
@@ -40,9 +36,18 @@ void Logger::Log(LogLevel level, const char *file, int line, const char *format,
     va_end(args);
     formatted_message[MAX_LOG_LENGTH - 1] = '\0';  // Ensure null termination
 
-    char time_buffer[20];
-    strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S", &local_time);
-    std::cout << "[" << time_buffer << "] ";
+    auto now = std::chrono::system_clock::now();
+    std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
+    std::tm localTime;
+    localtime_s(&localTime, &nowTime);
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+
+    char timeBuffer1[60];
+    strftime(timeBuffer1, sizeof(timeBuffer1), "%Y-%m-%d %H:%M:%S", &localTime);
+    char timeBuffer2[80];
+    sprintf_s(timeBuffer2, sizeof(timeBuffer2), "%s.%03d", timeBuffer1, (int)millis);
+    std::cout << "[" << timeBuffer2 << "] ";
+
     switch (level)
     {
     case LogLevel::LOG_INFO:

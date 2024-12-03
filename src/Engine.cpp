@@ -46,6 +46,7 @@ namespace RetroRenderer
             if (scene && camera)
             {
                 m_RenderSystem.BuildRenderQueue(*scene, *camera);
+
                 //scene->Render();
                 // m_DisplaySystem.DrawFrame(fb);
             }

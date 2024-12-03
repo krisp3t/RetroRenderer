@@ -18,11 +18,11 @@ namespace RetroRenderer
         return true;
     }
 
-    void RenderSystem::BuildRenderQueue(const Scene& scene, const Camera& camera)
+    std::queue<Model*> RenderSystem::BuildRenderQueue(Scene& scene, const Camera& camera)
     {
         auto &activeRenderer = pSWRenderer; // TODO: get from config
         activeRenderer->SetActiveCamera(camera);
-        scene.GetVisibleModels();
+        return scene.GetVisibleModels();
     }
 
     void RenderSystem::Render()

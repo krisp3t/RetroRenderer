@@ -17,7 +17,7 @@ public:
     [[nodiscard]] std::shared_ptr<Scene> GetScene() const;
     [[nodiscard]] std::shared_ptr<Camera> GetCamera() const;
 private:
-    std::shared_ptr<Scene> p_Scene = std::make_shared<Scene>();
+    std::shared_ptr<Scene> p_Scene = nullptr;
     std::shared_ptr<Camera> p_Camera = std::make_shared<Camera>(); // TODO: init only when loading scene
     float m_MoveFactor = 0.1f;
 };

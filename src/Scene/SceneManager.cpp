@@ -68,6 +68,10 @@ namespace RetroRenderer
 
     void SceneManager::Update(unsigned int deltaTime)
     {
+        if (!p_Scene)
+        {
+            return;
+        }
         p_Scene->FrustumCull(*p_Camera);
     }
 

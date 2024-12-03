@@ -16,7 +16,7 @@ public:
     ~RenderSystem() = default;
 
     bool Init(DisplaySystem& displaySystem);
-    void BuildRenderQueue(const Scene &scene, const Camera &camera);
+    std::queue<Model*> BuildRenderQueue(Scene &scene, const Camera &camera);
     //void Render(const Queue& queue);
     void Render();
     void Destroy();
