@@ -14,8 +14,13 @@ namespace RetroRenderer
 
         void Init();
 
+        // Per-vertex
+        unsigned int m_numVertices = 0;
         std::vector<Vertex> m_Vertices;
         std::vector<unsigned int> m_Indices;
+
+        // Per-face
+        unsigned int m_numFaces = 0;
         // std::vector<Texture>
     private:
         unsigned int VAO, VBO, EBO;

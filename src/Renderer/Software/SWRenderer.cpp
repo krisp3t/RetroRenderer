@@ -14,6 +14,7 @@ namespace RetroRenderer
             LOGE("Failed to create frame buffer");
             return false;
         }
+        m_Rasterizer = std::make_unique<Rasterizer>();
         return true;
     }
 
@@ -68,6 +69,17 @@ namespace RetroRenderer
      */
     void SWRenderer::DrawTriangularMesh(const Mesh &mesh)
     {
-        LOGD("Drawing mesh");
+        for (int i = 0; i < mesh.m_Indices.size(); i += 3)
+        {
+            // Input Assembler
+            auto v0 = mesh.m_Vertices[mesh.m_Indices[i]];
+            auto v1 = mesh.m_Vertices[mesh.m_Indices[i + 1]];
+            auto v2 = mesh.m_Vertices[mesh.m_Indices[i + 2]];
+
+            // Vertex Shader
+
+            // Rasterizer
+            m_Rasterizer->DrawTriangle(*p_FrameBuffer, v0, v1, v2);
+        }
     }
 }

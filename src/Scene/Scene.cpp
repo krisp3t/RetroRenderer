@@ -59,7 +59,7 @@ namespace RetroRenderer
         return true;
     }
 
-    Mesh Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene)
+    Mesh& Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene)
     {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
@@ -110,11 +110,10 @@ namespace RetroRenderer
             // TODO: process material
         }
 
-        // return Mesh(vertices, indices, textures)
-        return {
-            std::move(vertices),
-            std::move(indices)
-        };
+        auto *meshObj = new Mesh(std::move(vertices), std::move(indices));
+        meshObj->m_numVertices = mesh->mNumVertices;
+        meshObj->m_numFaces = mesh->mNumFaces;
+        return *meshObj;
     }
 
     std::queue<Model*>& Scene::GetVisibleModels()

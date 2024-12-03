@@ -30,17 +30,15 @@ namespace RetroRenderer
         auto &activeRenderer = pSWRenderer; // TODO: get from config
         assert(activeRenderer != nullptr && "Active renderer is null");
 
-        //activeRenderer->DrawFrame(*pScene);
-        const auto &fb = activeRenderer->GetRenderTarget();
-
-        //pDisplaySystem->DrawFrame(fb);
-
         while (!renderQueue.empty())
         {
             auto model = renderQueue.front();
             activeRenderer->DrawTriangularMesh(*model->GetMesh());
             renderQueue.pop();
         }
+
+        const auto &fb = activeRenderer->GetRenderTarget();
+        pDisplaySystem->DrawFrame(fb);
     }
 
     void RenderSystem::Destroy()

@@ -34,7 +34,7 @@ namespace RetroRenderer
         std::queue<Model*> m_VisibleModels;
 
         bool ProcessNode(aiNode* node, const aiScene* scene);
-        Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene);
+        Mesh& ProcessMesh(aiMesh* mesh, const aiScene* scene);
 
     };
 };

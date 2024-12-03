@@ -1,8 +1,10 @@
 #pragma once
 #include <SDL.h>
+#include <memory>
 #include "../../Scene/Scene.h"
-#include "../Buffer.h"
 #include "../../Scene/Camera.h"
+#include "../Buffer.h"
+#include "Rasterizer.h"
 
 namespace RetroRenderer
 {
@@ -20,6 +22,7 @@ namespace RetroRenderer
     private:
         Buffer<Uint32> *p_FrameBuffer = nullptr;
         Camera *p_Camera = nullptr;
+        std::unique_ptr<Rasterizer> m_Rasterizer = nullptr;
     };
 
 }

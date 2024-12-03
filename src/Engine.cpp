@@ -47,7 +47,6 @@ namespace RetroRenderer
             {
                 auto queue = m_RenderSystem.BuildRenderQueue(*scene, *camera);
                 m_RenderSystem.Render(queue);
-                // m_DisplaySystem.DrawFrame(fb);
             }
             m_DisplaySystem.DrawFrame();
             m_DisplaySystem.SwapBuffers();
