@@ -20,7 +20,13 @@ namespace RetroRenderer
 
 	void RenderSystem::BeforeFrame(Uint32 clearColor)
 	{
-		pSWRenderer->GetRenderTarget().Clear(clearColor);
+        // TODO: utility function?
+		Uint32 a = (clearColor & 0xFF000000) >> 24;
+		Uint32 b = (clearColor & 0x00FF0000) >> 16;
+		Uint32 g = (clearColor & 0x0000FF00) >> 8;
+		Uint32 r = (clearColor & 0x000000FF);
+        Uint32 argbColor = (a << 24) | (r << 16) | (g << 8) | b;
+		pSWRenderer->GetRenderTarget().Clear(argbColor);
 	}
 
     std::queue<Model*>& RenderSystem::BuildRenderQueue(Scene& scene, const Camera& camera)
