@@ -18,7 +18,12 @@ namespace RetroRenderer
         return true;
     }
 
-    std::queue<Model*> RenderSystem::BuildRenderQueue(Scene& scene, const Camera& camera)
+	void RenderSystem::BeforeFrame(Uint32 clearColor)
+	{
+		pSWRenderer->GetRenderTarget().Clear(clearColor);
+	}
+
+    std::queue<Model*>& RenderSystem::BuildRenderQueue(Scene& scene, const Camera& camera)
     {
         auto &activeRenderer = pSWRenderer; // TODO: get from config
         activeRenderer->SetActiveCamera(camera);
@@ -32,6 +37,7 @@ namespace RetroRenderer
 
         while (!renderQueue.empty())
         {
+			//LOGD("Render queue size: %d", renderQueue.size());
             auto model = renderQueue.front();
             activeRenderer->DrawTriangularMesh(*model->GetMesh());
             renderQueue.pop();
@@ -40,6 +46,17 @@ namespace RetroRenderer
         const auto &fb = activeRenderer->GetRenderTarget();
         pDisplaySystem->DrawFrame(fb);
     }
+
+    void RenderSystem::TestFill()
+    {
+		auto& activeRenderer = pSWRenderer; // TODO: get from config
+		assert(activeRenderer != nullptr && "Active renderer is null");
+
+		Buffer<Uint32>& fb = activeRenderer->GetRenderTarget();
+		fb.Clear(static_cast<Uint32>(rand()));
+
+		pDisplaySystem->DrawFrame(fb);
+	}
 
     void RenderSystem::Destroy()
     {

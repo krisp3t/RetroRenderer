@@ -31,7 +31,7 @@ public:
     void Clear();
     void DrawConfigPanel();
     void SwapBuffers();
-    void BeforeFrame();
+    void BeforeFrame(Uint32 c);
     void DrawFrame();
     void DrawFrame(const Buffer<Uint32> &buffer);
     int GetWidth() const;

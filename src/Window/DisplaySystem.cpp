@@ -63,10 +63,10 @@ namespace RetroRenderer
         return scale_x;
     }
 
-    void DisplaySystem::BeforeFrame() {
-        ImU32 c = ImGui::ColorConvertFloat4ToU32(p_Config->renderer.clearColor);
+    void DisplaySystem::BeforeFrame(Uint32 c) {
         SDL_SetRenderDrawColor(m_SDLRenderer, c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF, (c >> 24) & 0xFF);
         SDL_RenderClear(m_SDLRenderer);
+        
         m_ConfigPanel.get()->BeforeFrame(m_SDLRenderer);
     }
 
@@ -77,11 +77,12 @@ namespace RetroRenderer
     void DisplaySystem::DrawFrame(const Buffer<Uint32> &buffer)
     {
         assert(buffer.width == m_ScreenWidth && buffer.height == m_ScreenHeight && "Buffer size does not match window size");
-        assert(buffer.data.get() != nullptr && "Buffer data is null");
+        //assert(buffer.data.get() != nullptr && "Buffer data is null");
         assert(m_ScreenTexture != nullptr && "Screen texture is null");
 
-        const Uint32 *src = buffer.data.get();
-        SDL_UpdateTexture(m_ScreenTexture, nullptr, src, static_cast<int>(buffer.pitch));
+        const Uint32* src = buffer.data;
+        //const Uint32 *src = buffer.data.get();
+        SDL_UpdateTexture(m_ScreenTexture, nullptr, src, static_cast<int>(buffer.width * sizeof(Uint32)));
         SDL_RenderCopy(m_SDLRenderer, m_ScreenTexture, nullptr, nullptr);
         m_ConfigPanel.get()->OnDraw();
     }

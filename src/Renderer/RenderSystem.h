@@ -16,8 +16,10 @@ public:
     ~RenderSystem() = default;
 
     bool Init(DisplaySystem& displaySystem);
-    std::queue<Model*> BuildRenderQueue(Scene &scene, const Camera &camera);
+    void BeforeFrame(Uint32 clearColor);
+    std::queue<Model*>& BuildRenderQueue(Scene &scene, const Camera &camera);
     void Render(std::queue<Model *>& renderQueue);
+    void TestFill();
     void Destroy();
     void OnLoadScene(const SceneLoadEvent& e);
 private:

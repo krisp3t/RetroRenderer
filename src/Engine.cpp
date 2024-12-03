@@ -40,12 +40,15 @@ namespace RetroRenderer
             // TODO: handle camera switching
             m_SceneManager.ProcessInput(inputActions, delta);
             m_SceneManager.Update(delta);
-            m_DisplaySystem.BeforeFrame(); // SDL, imgui clear screen
+
+            ImU32 clearColor = ImGui::ColorConvertFloat4ToU32(p_Config->renderer.clearColor);
+            m_DisplaySystem.BeforeFrame(clearColor); // SDL, imgui clear screen
             auto scene = m_SceneManager.GetScene();
             auto camera = m_SceneManager.GetCamera();
             if (scene && camera)
             {
-                auto queue = m_RenderSystem.BuildRenderQueue(*scene, *camera);
+                m_RenderSystem.BeforeFrame(clearColor);
+                auto &queue = m_RenderSystem.BuildRenderQueue(*scene, *camera);
                 m_RenderSystem.Render(queue);
             }
             m_DisplaySystem.DrawFrame();

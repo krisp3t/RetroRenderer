@@ -28,9 +28,9 @@ namespace RetroRenderer
     void Rasterizer::DrawWireframeTriangle(Buffer<Uint32> &framebuffer, glm::vec2 v0, glm::vec2 v1, glm::vec2 v2)
     {
         // TODO: Add color selector
-        DrawLine(framebuffer, v0, v1, 0xFFFFFFFF);
-        DrawLine(framebuffer, v1, v2, 0xFFFFFFFF);
-        DrawLine(framebuffer, v2, v0, 0xFFFFFFFF);
+        DrawLine(framebuffer, v0, v1, 0xFF0000FF);
+        DrawLine(framebuffer, v1, v2, 0x00FF00FF);
+        DrawLine(framebuffer, v2, v0, 0x0000FFFF);
     }
 
     void Rasterizer::DrawLine(Buffer<Uint32> &framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color)
@@ -89,6 +89,6 @@ namespace RetroRenderer
     void Rasterizer::DrawPixel(Buffer<Uint32> &framebuffer, int x, int y, Uint32 color)
     {
         assert(!(x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height) && "Pixel out of bounds");
-        framebuffer.data[y * framebuffer.width + x] = color;
+		framebuffer.Set(x, y, color);
     }
 }

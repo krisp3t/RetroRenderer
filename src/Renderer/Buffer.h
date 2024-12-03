@@ -9,18 +9,18 @@ namespace RetroRenderer
     struct Buffer
     {
         const size_t width, height, pitch;
-        std::unique_ptr<T[]> data;
+        T* data;
 
         Buffer() : width(0), height(0), pitch(0) {}
 
         Buffer(size_t w, size_t h) : width(w), height(h), pitch(w * sizeof(T))
         {
-            data = std::make_unique<T[]>(w * h);
+            data = new T[w * h];
         }
 
         Buffer(size_t w, size_t h, size_t p) : width(w), height(h), pitch(p)
         {
-            data = std::make_unique<T[]>(p * h);
+            data = new T[w * h];
         }
 
         T& operator()(size_t x, size_t y)
@@ -35,12 +35,12 @@ namespace RetroRenderer
 
         void Clear()
         {
-            std::fill(data.get(), data.get() + width * height, T());
+            memset(data, 0, width * height * sizeof(T));
         }
 
         void Clear(T value)
         {
-            std::fill(data.get(), data.get() + width * height, value);
+            std::fill_n(data, width * height, value);
         }
 
         void Set(size_t x, size_t y, const T value)
