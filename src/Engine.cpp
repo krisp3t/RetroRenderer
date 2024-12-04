@@ -19,6 +19,9 @@ namespace RetroRenderer
             return false;
         }
         LOGD("p_Config ref count: %d", p_Config.use_count());
+
+        // Default scene (optional)
+        m_SceneManager.LoadScene("../tests-visual/basic-tests/01-flat-triangle/model.obj");
         return true;
     }
 
