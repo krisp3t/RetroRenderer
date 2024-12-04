@@ -5,7 +5,8 @@
 
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
-#include <imgui_impl_sdlrenderer2.h>
+#include <imgui_impl_opengl3.h>
+#include <glad/glad.h>
 #include <SDL.h>
 #include <utility>
 #include <glm/gtc/type_ptr.hpp>
@@ -20,11 +21,11 @@
 namespace RetroRenderer
 {
     ConfigPanel::ConfigPanel(SDL_Window *window,
-                             SDL_Renderer *renderer,
+                             SDL_GLContext glContext,
                              std::shared_ptr<Config> config,
                              std::weak_ptr<Camera> camera)
     {
-        Init(window, renderer, config, camera);
+        Init(window, glContext, config, camera);
     }
 
     ConfigPanel::~ConfigPanel()
@@ -33,7 +34,7 @@ namespace RetroRenderer
     }
 
     bool ConfigPanel::Init(SDL_Window* window,
-                           SDL_Renderer* renderer,
+                           SDL_GLContext glContext,
                            std::shared_ptr<Config> config,
                            std::weak_ptr<Camera> camera
                            )
@@ -47,8 +48,8 @@ namespace RetroRenderer
                           ImGuiConfigFlags_ViewportsEnable;
         StyleColorsEnemymouse();
 		io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
-        ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
-        ImGui_ImplSDLRenderer2_Init(renderer);
+        ImGui_ImplSDL2_InitForOpenGL(window, glContext);
+        ImGui_ImplOpenGL3_Init("#version 330");
 
         p_Config = config;
         p_Camera = camera;
@@ -437,7 +438,7 @@ namespace RetroRenderer
     }
 
     void ConfigPanel::BeforeFrame(SDL_Renderer* renderer) {
-        ImGui_ImplSDLRenderer2_NewFrame();
+        ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
         DisplayGUI();
@@ -446,12 +447,15 @@ namespace RetroRenderer
     void ConfigPanel::OnDraw()
     {
         ImGui::Render();
-        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
+		auto io = ImGui::GetIO();
+        glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        // SDL_GL_SwapWindow(window);
     }
 
     void ConfigPanel::Destroy()
     {
-        ImGui_ImplSDLRenderer2_Shutdown();
+        ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
     }

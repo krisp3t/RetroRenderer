@@ -1,13 +1,18 @@
 {
   "dependencies": [
     "sdl2",
+    {
+      "name": "glad",
+      "features": [
+        "extensions"
+      ]
+    },
     "glm",
     "opengl",
     {
       "name": "imgui",
       "features": [
         "sdl2-binding",
-        "sdl2-renderer-binding",
         "opengl3-binding",
         "docking-experimental"
       ]

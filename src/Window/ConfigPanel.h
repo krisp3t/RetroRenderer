@@ -10,13 +10,13 @@ class ConfigPanel
 {
 public:
     ConfigPanel(SDL_Window *window,
-                SDL_Renderer *renderer,
+        SDL_GLContext glContext,
                 std::shared_ptr<Config> config,
                 std::weak_ptr<Camera> camera
                 );
     ~ConfigPanel();
     bool Init(SDL_Window *window,
-              SDL_Renderer *renderer,
+        SDL_GLContext glContext,
               std::shared_ptr<Config> config,
               std::weak_ptr<Camera> camera
               );

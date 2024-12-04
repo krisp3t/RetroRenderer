@@ -1,4 +1,5 @@
 #include <imgui.h>
+#include <glad/glad.h>
 #include "DisplaySystem.h"
 #include "../Base/Logger.h"
 #include "../Renderer/Buffer.h"
@@ -15,77 +16,70 @@ namespace RetroRenderer
             LOGE("Unable to initialize SDL: %s\n", SDL_GetError());
             return false;
         }
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    #if defined(IMGUI_IMPL_OPENGL_ES2)
+		// GL ES 2.0 + GLSL 100
+		const char* glsl_version = "#version 100";
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    #elif defined(__APPLE__)
+		// GL 3.2 Core + GLSL 150
+		const char* glsl_version = "#version 150";
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    #else
+		// GL 3.0 + GLSL 130
+		const char* glsl_version = "#version 130";
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    #endif
 
+	// From 2.0.18: Enable native IME.
+    #ifdef SDL_HINT_IME_SHOW_UI
+		SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
+    #endif
+        
+		SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+		SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+		SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         m_Window = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_ScreenWidth, m_ScreenHeight, kWindowFlags);
         if (m_Window == nullptr)
         {
             LOGE("Unable to create window: %s", SDL_GetError());
             return false;
         }
-		SDL_GLContext glContext = SDL_GL_CreateContext(m_Window);
-		if (!glContext) 
+		m_glContext = SDL_GL_CreateContext(m_Window);
+		if (!m_glContext) 
         {
 			LOGE("Error creating OpenGL context: %s\n", SDL_GetError());
 			return false;
 		}
-        // TODO: remove sdl_renderer
-        m_SDLRenderer = SDL_CreateRenderer(m_Window, -1, kRendererFlags);
-        if (m_SDLRenderer == nullptr)
-        {
-            LOGE("Unable to create renderer: %s", SDL_GetError());
-            return false;
+        SDL_GL_MakeCurrent(m_Window, m_glContext);
+        // TODO: init glad?
+        /*
+		if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+			LOGE("Failed to initialize GLAD\n");
+			return false;
 		}
-		m_ScreenTexture = SDL_CreateTexture(
-			m_SDLRenderer,
-			SDL_PIXELFORMAT_ARGB8888,
-			SDL_TEXTUREACCESS_TARGET,
-			m_ScreenWidth,
-			m_ScreenHeight
-		);
-        if (m_ScreenTexture == nullptr)
-        {
-            LOGE("Unable to create texture: %s", SDL_GetError());
-            return false;
-        }
-        const float scale{GetScale()};
-        SDL_RenderSetScale(m_SDLRenderer, scale, scale);
+        */
 
 		// SDL_GL_SetSwapInterval(1); // Enable vsync
         m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_SDLRenderer, p_Config, p_Camera);
         return true;
     }
 
-    float DisplaySystem::GetScale() const {
-        int window_width{0};
-        int window_height{0};
-        SDL_GetWindowSize(
-                m_Window,
-                &window_width, &window_height
-        );
-
-        int render_output_width{0};
-        int render_output_height{0};
-        SDL_GetRendererOutputSize(
-                m_SDLRenderer,
-                &render_output_width, &render_output_height
-        );
-
-        const auto scale_x{
-                static_cast<float>(render_output_width) /
-                static_cast<float>(window_width)
-        };
-
-        return scale_x;
-    }
-
     void DisplaySystem::BeforeFrame(Uint32 c) {
-        SDL_SetRenderDrawColor(m_SDLRenderer, c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF, (c >> 24) & 0xFF);
-        SDL_RenderClear(m_SDLRenderer);
+        //SDL_SetRenderDrawColor(m_SDLRenderer, c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF, (c >> 24) & 0xFF);
+        //SDL_RenderClear(m_SDLRenderer);
+        //glViewport(0, 0, 
+        glClearColor(0, 0, 0, 0);
         
-        m_ConfigPanel.get()->BeforeFrame(m_SDLRenderer);
+        //m_ConfigPanel.get()->BeforeFrame(m_SDLRenderer);
     }
 
     void DisplaySystem::DrawFrame()
@@ -95,15 +89,18 @@ namespace RetroRenderer
     void DisplaySystem::DrawFrame(const Buffer<Uint32> &buffer)
     {
         assert(buffer.width == m_ScreenWidth && buffer.height == m_ScreenHeight && "Buffer size does not match window size");
-        //assert(buffer.data.get() != nullptr && "Buffer data is null");
+        assert(buffer.data != nullptr && "Buffer data is null");
         assert(m_ScreenTexture != nullptr && "Screen texture is null");
 
-		
+		// TODO: Replace with OpenGL texture
+
+        /*
 		SDL_SetRenderTarget(m_SDLRenderer, m_ScreenTexture); // Write framebuffer to texture
         const Uint32* src = buffer.data;
         SDL_UpdateTexture(m_ScreenTexture, nullptr, src, static_cast<int>(buffer.width * sizeof(Uint32)));
         SDL_RenderCopy(m_SDLRenderer, m_ScreenTexture, nullptr, nullptr);
 		SDL_SetRenderTarget(m_SDLRenderer, nullptr); // SDL renderer back to default target (screen)
+        */
 
         m_ConfigPanel.get()->OnDraw();
     }
@@ -124,8 +121,7 @@ namespace RetroRenderer
 
     void DisplaySystem::Destroy()
     {
-        SDL_DestroyTexture(m_ScreenTexture);
-        SDL_DestroyRenderer(m_SDLRenderer);
+        SDL_GL_DeleteContext(m_glContext);
         SDL_DestroyWindow(m_Window);
         SDL_Quit();
     }
