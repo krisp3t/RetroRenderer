@@ -11,3 +11,6 @@ A great starting point to understand the graphics pipeline, since all stages hav
 - SDL2
 - OpenGL (if building with OpenGL support)
 - glm
+
+## Instructions
+Launch the project with launch profile "Launch RetroRenderer in workspaceRoot" to assure assets will be found correctly.

@@ -5,6 +5,7 @@ namespace RetroRenderer
 {
     bool Engine::Init()
     {
+		LOGD("Starting RetroRenderer in directory: %s", SDL_GetBasePath());
         auto camera = m_SceneManager.GetCamera();
         if (!m_DisplaySystem.Init(p_Config, camera))
         {
@@ -21,7 +22,7 @@ namespace RetroRenderer
         LOGD("p_Config ref count: %d", p_Config.use_count());
 
         // Default scene (optional)
-        m_SceneManager.LoadScene("../tests-visual/basic-tests/01-flat-triangle/model.obj");
+        m_SceneManager.LoadScene("tests-visual/basic-tests/01-flat-triangle/model.obj");
         return true;
     }
 

@@ -26,6 +26,8 @@ public:
 private:
     std::shared_ptr<Config> p_Config = nullptr;
     std::weak_ptr<Camera> p_Camera;
+
+    void StyleColorsEnemymouse();
     void DisplayGUI();
     void DisplayMetricsOverlay();
     void DisplayCameraSettings();
