@@ -9,24 +9,42 @@ namespace RetroRenderer
     {
         p_Config = config;
         p_Camera = camera;
+
         if (SDL_Init(SDL_INIT_VIDEO) < 0)
         {
             LOGE("Unable to initialize SDL: %s\n", SDL_GetError());
             return false;
         }
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
         m_Window = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_ScreenWidth, m_ScreenHeight, kWindowFlags);
         if (m_Window == nullptr)
         {
             LOGE("Unable to create window: %s", SDL_GetError());
             return false;
         }
+		SDL_GLContext glContext = SDL_GL_CreateContext(m_Window);
+		if (!glContext) 
+        {
+			LOGE("Error creating OpenGL context: %s\n", SDL_GetError());
+			return false;
+		}
+        // TODO: remove sdl_renderer
         m_SDLRenderer = SDL_CreateRenderer(m_Window, -1, kRendererFlags);
         if (m_SDLRenderer == nullptr)
         {
             LOGE("Unable to create renderer: %s", SDL_GetError());
             return false;
-        }
-       m_ScreenTexture = SDL_CreateTexture(m_SDLRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, m_ScreenWidth, m_ScreenHeight);
+		}
+		m_ScreenTexture = SDL_CreateTexture(
+			m_SDLRenderer,
+			SDL_PIXELFORMAT_ARGB8888,
+			SDL_TEXTUREACCESS_TARGET,
+			m_ScreenWidth,
+			m_ScreenHeight
+		);
         if (m_ScreenTexture == nullptr)
         {
             LOGE("Unable to create texture: %s", SDL_GetError());
@@ -35,6 +53,7 @@ namespace RetroRenderer
         const float scale{GetScale()};
         SDL_RenderSetScale(m_SDLRenderer, scale, scale);
 
+		// SDL_GL_SetSwapInterval(1); // Enable vsync
         m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_SDLRenderer, p_Config, p_Camera);
         return true;
     }
@@ -79,10 +98,13 @@ namespace RetroRenderer
         //assert(buffer.data.get() != nullptr && "Buffer data is null");
         assert(m_ScreenTexture != nullptr && "Screen texture is null");
 
+		
+		SDL_SetRenderTarget(m_SDLRenderer, m_ScreenTexture); // Write framebuffer to texture
         const Uint32* src = buffer.data;
-        //const Uint32 *src = buffer.data.get();
         SDL_UpdateTexture(m_ScreenTexture, nullptr, src, static_cast<int>(buffer.width * sizeof(Uint32)));
         SDL_RenderCopy(m_SDLRenderer, m_ScreenTexture, nullptr, nullptr);
+		SDL_SetRenderTarget(m_SDLRenderer, nullptr); // SDL renderer back to default target (screen)
+
         m_ConfigPanel.get()->OnDraw();
     }
 
