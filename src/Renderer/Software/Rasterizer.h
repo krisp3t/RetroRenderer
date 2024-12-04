@@ -19,7 +19,7 @@ public:
     static void FillFlatBottomTri(Buffer<Uint32> &framebuffer, Vertex &v0, Vertex &v1, Vertex &mid);
     static void FillFlatTopTri(Buffer<Uint32> &framebuffer, Vertex &v1, Vertex &mid, Vertex &v2);
     static void DrawPixel(Buffer<Uint32> &framebuffer, int x, int y, Uint32 color);
-    static glm::vec2 NDCToViewport(const glm::vec2 &v, int width, int height);
+    static glm::ivec2 NDCToViewport(const glm::vec2 &v, int width, int height);
 
 private:
 

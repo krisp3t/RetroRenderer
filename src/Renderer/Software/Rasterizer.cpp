@@ -2,11 +2,11 @@
 
 namespace RetroRenderer
 {
-    glm::vec2 Rasterizer::NDCToViewport(const glm::vec2 &v, int width, int height)
+    glm::ivec2 Rasterizer::NDCToViewport(const glm::vec2 &v, int width, int height)
     {
         return {
-            (v.x + 1.0f) * 0.5f * width,
-            (1.0f - v.y) * 0.5f * height
+                static_cast<int>((v.x + 1.0f) * 0.5f * width + 0.5f),
+                static_cast<int>((1.0f - v.y) * 0.5f * height + 0.5f)
         };
     }
 
@@ -41,7 +41,19 @@ namespace RetroRenderer
 
     void Rasterizer::DrawLineDDA(Buffer<Uint32> &framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color)
     {
-
+        float dx = p1.x - p0.x;
+        float dy = p1.y - p0.y;
+        float steps = std::max(std::abs(dx), std::abs(dy));
+        float xInc = dx / steps;
+        float yInc = dy / steps;
+        float x = p0.x;
+        float y = p0.y;
+        for (int i = 0; i <= steps; i++)
+        {
+            DrawPixel(framebuffer, x, y, color);
+            x += xInc;
+            y += yInc;
+        }
     }
 
     void Rasterizer::DrawLineBresenham(Buffer<Uint32> &fb, glm::vec2 p0, glm::vec2 p1, Uint32 color)
