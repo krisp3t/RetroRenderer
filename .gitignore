@@ -373,3 +373,4 @@ cmake-build-debug-visual-studio/
 
 # IDEs
 .idea/
+.DS_Store

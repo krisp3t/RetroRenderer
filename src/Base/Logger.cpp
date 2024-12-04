@@ -39,13 +39,21 @@ void Logger::Log(LogLevel level, const char *file, int line, const char *format,
     auto now = std::chrono::system_clock::now();
     std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
     std::tm localTime;
+#if defined(_WIN32) || defined(_WIN64)
     localtime_s(&localTime, &nowTime);
+#else
+    localtime_r(&nowTime, &localTime);
+#endif
     auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
 
     char timeBuffer1[60];
     strftime(timeBuffer1, sizeof(timeBuffer1), "%Y-%m-%d %H:%M:%S", &localTime);
     char timeBuffer2[80];
+#if defined(_WIN32) || defined(_WIN64)
     sprintf_s(timeBuffer2, sizeof(timeBuffer2), "%s.%03d", timeBuffer1, (int)millis);
+#else
+    snprintf(timeBuffer2, sizeof(timeBuffer2), "%s.%03d", timeBuffer1, (int)millis);
+#endif
     std::cout << "[" << timeBuffer2 << "] ";
 
     switch (level)
