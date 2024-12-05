@@ -17,11 +17,8 @@ namespace RetroRenderer
 	public:
 		Scene() = default;
 		~Scene() = default;
-		Scene(const std::string& path);
 
-		void Load(const char* path);
-		void Unload();
-		void Render();
+		bool Load(const std::string& path);
         [[nodiscard]] std::queue<Model*>& GetVisibleModels();
         void FrustumCull(const Camera& camera);
     private:

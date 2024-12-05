@@ -17,7 +17,12 @@ namespace RetroRenderer
 
     bool SceneManager::LoadScene(const std::string& path)
     {
-        p_Scene = std::make_shared<Scene>(path);
+        p_Scene = std::make_shared<Scene>();
+        if (!p_Scene->Load(path))
+        {
+            p_Scene = nullptr;
+            return false;
+        }
         return true;
     }
 

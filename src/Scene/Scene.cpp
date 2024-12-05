@@ -9,7 +9,7 @@
 
 namespace RetroRenderer
 {
-	Scene::Scene(const std::string& path)
+	bool Scene::Load(const std::string& path)
 	{
 		Assimp::Importer importer;
 		const aiScene *scene = importer.ReadFile(path.c_str(),
@@ -18,13 +18,14 @@ namespace RetroRenderer
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 		{
 			LOGE("assimp: Failed to load scene: %s", importer.GetErrorString());
-			return;
+            return false;
 		}
 
         if (ProcessNode(scene->mRootNode, scene))
         {
             LOGI("Successfully processed scene: %s (%d meshes)", scene->mRootNode->mName.C_Str(), m_Meshes.size());
         }
+        return true;
 	}
 
     /**
@@ -132,14 +133,4 @@ namespace RetroRenderer
             }
         }
     }
-
-    /*
-    void Scene::Draw(Shader shader)
-    {
-        for (unsigned int i = 0; i < meshes.size(); i++)
-        {
-            meshes[i].Draw(shader);
-        }
-    }
-     */
 }
