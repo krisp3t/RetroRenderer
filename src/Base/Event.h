@@ -6,7 +6,8 @@ namespace RetroRenderer
 	enum class EventType
 	{
 		Window_Resize,
-		Scene_Load
+		Scene_Load,
+		Scene_Reset
 	};
 
 	static constexpr const char* EventTypeToString(EventType type)
@@ -17,6 +18,8 @@ namespace RetroRenderer
 			return "Window_Resize";
 		case EventType::Scene_Load:
 			return "Scene_Load";
+		case EventType::Scene_Reset:
+			return "Scene_Reset";
 		default:
 			return "Unknown";
 		}
@@ -28,7 +31,7 @@ namespace RetroRenderer
 		bool handled = false;
 	};
 
-	struct WindowResizeEvent
+	struct WindowResizeEvent : public Event
 	{
 		Event base{ EventType::Window_Resize };
 		uint32_t width;
@@ -43,6 +46,14 @@ namespace RetroRenderer
 		{
 			type = EventType::Scene_Load;
 			scenePath = path;
+		}
+	};
+
+	struct SceneResetEvent : public Event
+	{
+		SceneResetEvent()
+		{
+			type = EventType::Scene_Reset;
 		}
 	};
 }

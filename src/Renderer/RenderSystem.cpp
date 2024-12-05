@@ -31,8 +31,9 @@ namespace RetroRenderer
             GL_UNSIGNED_BYTE, 
             nullptr
         );
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        // TODO: make filtering configurable
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glBindTexture(GL_TEXTURE_2D, 0);
 
         return true;
@@ -56,7 +57,7 @@ namespace RetroRenderer
         return scene.GetVisibleModels();
     }
 
-    void RenderSystem::Render(std::queue<Model *>& renderQueue)
+    GLuint RenderSystem::Render(std::queue<Model *>& renderQueue)
     {
         auto &activeRenderer = p_SWRenderer; // TODO: get from config
         assert(activeRenderer != nullptr && "Active renderer is null");
@@ -82,7 +83,7 @@ namespace RetroRenderer
 			p_SWRenderer->GetRenderTarget().data
 		);
         glBindTexture(GL_TEXTURE_2D, 0);
-
+        return m_framebufferTexture;
     }
 
     /**

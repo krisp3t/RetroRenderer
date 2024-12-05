@@ -181,7 +181,7 @@ namespace RetroRenderer
 
             if (ImGui::MenuItem("Reset"))
             {
-                LOGD("Clearing scene");
+				Engine::Get().DispatchImmediate(SceneResetEvent{});
             }
 
             if (ImGui::MenuItem("About"))
@@ -197,11 +197,6 @@ namespace RetroRenderer
 					std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                     LOGD("Selected model file: %s", filePathName.c_str());
 					Engine::Get().DispatchImmediate(SceneLoadEvent{ std::move(filePathName) });
-                    /*
-                    s.filename = ImGuiFileDialog::Instance()->GetFilePathName();
-                    s.filepath = ImGuiFileDialog::Instance()->GetCurrentPath();
-                    state = GUIState::LoadModel;
-                    */
                 }
                 ImGuiFileDialog::Instance()->Close();
             }
@@ -480,15 +475,9 @@ namespace RetroRenderer
             SDL_Window* backupCurrentWindow = SDL_GL_GetCurrentWindow();
             SDL_GLContext backupCurrentContext = SDL_GL_GetCurrentContext();
             ImGui::UpdatePlatformWindows();
-            //ImGui::RenderPlatformWindowsDefault();
+            ImGui::RenderPlatformWindowsDefault();
             SDL_GL_MakeCurrent(backupCurrentWindow, backupCurrentContext);
         }
-    }
-
-    void ConfigPanel::OnDraw(GLuint p_framebufferTexture)
-    {
-		DisplayRenderedImage(p_framebufferTexture);
-        OnDraw();
     }
 
     void ConfigPanel::Destroy()

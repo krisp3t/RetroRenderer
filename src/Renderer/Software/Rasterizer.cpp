@@ -18,21 +18,22 @@ namespace RetroRenderer
         if (v0.position.y > v2.position.y) std::swap(v0, v2);
         if (v1.position.y > v2.position.y) std::swap(v1, v2);
 
-        /*
+    
         DrawWireframeTriangle(
             framebuffer,
             NDCToViewport(v0.position, framebuffer.width, framebuffer.height),
             NDCToViewport(v1.position, framebuffer.width, framebuffer.height),
             NDCToViewport(v2.position, framebuffer.width, framebuffer.height)
         );
-         */
-
+       
+        /*
         DrawFlatTriangle(
             framebuffer,
             NDCToViewport(v0.position, framebuffer.width, framebuffer.height),
             NDCToViewport(v1.position, framebuffer.width, framebuffer.height),
             NDCToViewport(v2.position, framebuffer.width, framebuffer.height)
         );
+          */
     }
 
     void Rasterizer::DrawFlatTriangle(Buffer<Uint32> &framebuffer, glm::ivec2 v0, glm::ivec2 v1, glm::ivec2 v2)

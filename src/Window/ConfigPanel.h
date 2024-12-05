@@ -11,7 +11,7 @@ class ConfigPanel
 {
 public:
     ConfigPanel(SDL_Window *window,
-        SDL_GLContext glContext,
+                SDL_GLContext glContext,
                 std::shared_ptr<Config> config,
                 std::weak_ptr<Camera> camera,
                 const char* glslVersion
@@ -25,6 +25,8 @@ public:
               );
     void Destroy();
     void BeforeFrame();
+	void DisplayRenderedImage();
+	void DisplayRenderedImage(GLuint p_framebufferTexture);
     void OnDraw();
     void OnDraw(GLuint framebufferTexture);
 private:
@@ -33,8 +35,6 @@ private:
 
     void StyleColorsEnemymouse();
     void DisplayGUI();
-    void DisplayRenderedImage();
-    void DisplayRenderedImage(GLuint p_framebufferTexture);
     void DisplayMetricsOverlay();
     void DisplayCameraSettings();
     void DisplayRendererSettings();

@@ -19,7 +19,7 @@ namespace RetroRenderer
 		bool Init(DisplaySystem& displaySystem);
 		void BeforeFrame(Uint32 clearColor);
 		std::queue<Model*>& BuildRenderQueue(Scene& scene, const Camera& camera);
-		void Render(std::queue<Model*>& renderQueue);
+		GLuint Render(std::queue<Model*>& renderQueue);
 		GLuint TestFill();
 		void Destroy();
 		void OnLoadScene(const SceneLoadEvent& e);

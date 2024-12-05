@@ -11,6 +11,7 @@ class SceneManager
 public:
     SceneManager() = default;
     ~SceneManager();
+    void ResetScene();
     bool LoadScene(const std::string& path);
     void ProcessInput(int actions, unsigned int deltaTime);
     void Update(unsigned int deltaTime);

@@ -90,12 +90,14 @@ namespace RetroRenderer
 
     void DisplaySystem::DrawFrame()
     {
-        m_ConfigPanel.get()->OnDraw();
+        m_ConfigPanel->DisplayRenderedImage();
+        m_ConfigPanel->OnDraw();
     }
 
-	void DisplaySystem::DrawFrame(GLuint framebufferTexture)
+	void DisplaySystem::DrawFrame(GLuint p_framebufferTexture)
 	{
-        m_ConfigPanel.get()->OnDraw(framebufferTexture);
+        m_ConfigPanel->DisplayRenderedImage(p_framebufferTexture);
+        m_ConfigPanel->OnDraw();
 	}
 
     void DisplaySystem::SwapBuffers()

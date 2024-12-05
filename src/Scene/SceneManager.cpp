@@ -9,6 +9,12 @@ namespace RetroRenderer
     {
     }
 
+    void SceneManager::ResetScene()
+    {
+		LOGI("Unloading scene");
+        p_Scene = nullptr;
+    }
+
     bool SceneManager::LoadScene(const std::string& path)
     {
         p_Scene = std::make_shared<Scene>(path);

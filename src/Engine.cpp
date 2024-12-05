@@ -31,7 +31,7 @@ namespace RetroRenderer
         auto start = SDL_GetTicks();
         auto delta = 0;
 
-        LOGI("Entered main loop");
+        LOGD("Entered main loop");
         for (;;)
         {
             start = SDL_GetTicks();
@@ -49,15 +49,18 @@ namespace RetroRenderer
             m_DisplaySystem.BeforeFrame(clearColor); // SDL, imgui clear screen
             auto scene = m_SceneManager.GetScene();
             auto camera = m_SceneManager.GetCamera();
-            GLuint fbTex;
             if (scene && camera)
             {
                 m_RenderSystem.BeforeFrame(clearColor);
                 auto &queue = m_RenderSystem.BuildRenderQueue(*scene, *camera);
-                //m_RenderSystem.Render(queue);
-                fbTex = m_RenderSystem.TestFill();
+                GLuint fbTex = m_RenderSystem.Render(queue);
+                m_DisplaySystem.DrawFrame(fbTex);
             }
-            m_DisplaySystem.DrawFrame(fbTex);
+            else 
+            {
+                m_DisplaySystem.DrawFrame();
+            }
+            
             m_DisplaySystem.SwapBuffers();
 
             delta = SDL_GetTicks() - start;
@@ -91,6 +94,11 @@ namespace RetroRenderer
             m_SceneManager.LoadScene(e.scenePath);
             m_RenderSystem.OnLoadScene(e); // TODO: send to all subscribers
             break;
+        }
+        case EventType::Scene_Reset:
+        {
+			m_SceneManager.ResetScene();
+			break;
         }
         default:
 			LOGW("Unknown event type");
