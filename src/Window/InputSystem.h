@@ -16,6 +16,7 @@ public:
     void Destroy();
 private:
     std::shared_ptr<Config> p_Config = nullptr;
+    std::shared_ptr<Stats> p_Stats = nullptr;
     void HandleKeyDown(SDL_Keycode key);
     InputActionMask m_InputState = 0;
 };

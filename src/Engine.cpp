@@ -7,7 +7,7 @@ namespace RetroRenderer
     {
 		LOGD("Starting RetroRenderer in directory: %s", SDL_GetBasePath());
         auto camera = m_SceneManager.GetCamera();
-        if (!m_DisplaySystem.Init(p_Config, camera))
+        if (!m_DisplaySystem.Init(p_Config, camera, p_Stats))
         {
             return false;
         }
@@ -15,7 +15,7 @@ namespace RetroRenderer
         {
             return false;
         }
-        if (!m_RenderSystem.Init(m_DisplaySystem))
+        if (!m_RenderSystem.Init(m_DisplaySystem, p_Stats))
         {
             return false;
         }
@@ -42,6 +42,7 @@ namespace RetroRenderer
                 break;
             }
             // TODO: handle camera switching
+
             m_SceneManager.ProcessInput(inputActions, delta);
             m_SceneManager.Update(delta);
 
@@ -58,6 +59,7 @@ namespace RetroRenderer
             }
             else 
             {
+				p_Stats->Reset();
                 m_DisplaySystem.DrawFrame();
             }
             

@@ -5,6 +5,7 @@
 #include "ConfigPanel.h"
 #include "../Renderer/Buffer.h"
 #include "../Scene/Camera.h"
+#include "../Base/Stats.h"
 
 namespace RetroRenderer
 {
@@ -15,7 +16,7 @@ public:
     DisplaySystem() = default;
     ~DisplaySystem() = default;
 
-    bool Init(std::shared_ptr<Config> config, std::weak_ptr<Camera> camera);
+    bool Init(std::shared_ptr<Config> config, std::weak_ptr<Camera> camera, std::shared_ptr<Stats> stats);
     void Destroy();
 
     static constexpr SDL_WindowFlags kWindowFlags =

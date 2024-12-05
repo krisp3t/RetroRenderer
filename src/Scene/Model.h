@@ -7,9 +7,9 @@ namespace RetroRenderer
 class Model
 {
 public:
-    Model(Mesh* mesh) : m_Mesh(mesh) {}
+    Model(Mesh& mesh);
     ~Model() = default;
-    Mesh* GetMesh() const { return m_Mesh; }
+    Mesh& GetMesh() const;
 private:
     Mesh* m_Mesh = nullptr;
 };

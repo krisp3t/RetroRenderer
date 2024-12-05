@@ -6,7 +6,7 @@
 
 namespace RetroRenderer
 {
-    bool RenderSystem::Init(DisplaySystem& displaySystem)
+    bool RenderSystem::Init(DisplaySystem& displaySystem, std::shared_ptr<Stats> stats)
     {
         p_DisplaySystem = &displaySystem;
         p_SWRenderer = std::make_unique<SWRenderer>();
@@ -16,7 +16,7 @@ namespace RetroRenderer
             return false;
         }
 
-        LOGD("SWRenderer initialized");
+        p_Stats = stats;
 
         glGenTextures(1, &m_framebufferTexture);
 		glBindTexture(GL_TEXTURE_2D, m_framebufferTexture);
@@ -61,12 +61,17 @@ namespace RetroRenderer
     {
         auto &activeRenderer = p_SWRenderer; // TODO: get from config
         assert(activeRenderer != nullptr && "Active renderer is null");
+		assert(p_Stats != nullptr && "Stats not initialized!");
+		p_Stats->Reset();
 
         while (!renderQueue.empty())
         {
 			//LOGD("Render queue size: %d", renderQueue.size());
-            auto model = renderQueue.front();
-            activeRenderer->DrawTriangularMesh(*model->GetMesh());
+            const Model* model = renderQueue.front();
+			const Mesh& mesh = model->GetMesh();
+            p_Stats->renderedVerts += mesh.m_numVertices;
+            p_Stats->renderedTris += mesh.m_numFaces;
+            activeRenderer->DrawTriangularMesh(mesh);
             renderQueue.pop();
         }
 

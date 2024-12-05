@@ -25,10 +25,11 @@ namespace RetroRenderer
                              SDL_GLContext glContext,
                              std::shared_ptr<Config> config,
                              std::weak_ptr<Camera> camera,
-                             const char* glslVersion
+                             const char* glslVersion,
+                             std::shared_ptr<Stats> stats
     )
     {
-        Init(window, glContext, config, camera, glslVersion);
+        Init(window, glContext, config, camera, glslVersion, stats);
     }
 
     ConfigPanel::~ConfigPanel()
@@ -40,7 +41,8 @@ namespace RetroRenderer
                            SDL_GLContext glContext,
                            std::shared_ptr<Config> config,
                            std::weak_ptr<Camera> camera,
-                           const char* glslVersion
+                           const char* glslVersion,
+                           std::shared_ptr<Stats> stats
                            )
     {
         // Setup Dear ImGui context
@@ -56,6 +58,7 @@ namespace RetroRenderer
 
         p_Config = config;
         p_Camera = camera;
+        p_Stats = stats;
 
         return true;
     }
@@ -464,7 +467,8 @@ namespace RetroRenderer
             {
                 ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", cam->position.x, cam->position.y, cam->position.z);
             }
-            ImGui::Text("%d verts, %d tris", 0, 0);
+			assert(p_Stats != nullptr && "Stats not initialized!");
+            ImGui::Text("%d verts, %d tris", p_Stats->renderedVerts, p_Stats->renderedTris);
             ImGui::PlotLines("", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
             if (ImGui::BeginPopupContextWindow())
             {

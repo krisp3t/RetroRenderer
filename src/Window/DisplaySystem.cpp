@@ -6,7 +6,7 @@
 
 namespace RetroRenderer
 {
-    bool DisplaySystem::Init(std::shared_ptr<Config> config, std::weak_ptr<Camera> camera)
+    bool DisplaySystem::Init(std::shared_ptr<Config> config, std::weak_ptr<Camera> camera, std::shared_ptr<Stats> stats)
     {
         p_Config = config;
         p_Camera = camera;
@@ -79,7 +79,7 @@ namespace RetroRenderer
 
 
 		// SDL_GL_SetSwapInterval(1); // Enable vsync
-        m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_glContext, p_Config, p_Camera, glslVersion);
+        m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_glContext, p_Config, p_Camera, glslVersion, stats);
         return true;
     }
 

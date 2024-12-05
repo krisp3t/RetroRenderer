@@ -5,6 +5,7 @@
 #include "Window/InputSystem.h"
 #include "Scene/SceneManager.h"
 #include "Base/Event.h"
+#include "Base/Stats.h"
 
 namespace RetroRenderer
 {
@@ -28,6 +29,7 @@ private:
 	Engine() = default;
 	~Engine() = default;
     std::shared_ptr<Config> p_Config = std::make_shared<Config>();
+	std::shared_ptr<Stats> p_Stats = std::make_shared<Stats>();
     DisplaySystem m_DisplaySystem;
     RenderSystem m_RenderSystem;
     InputSystem m_InputSystem;
