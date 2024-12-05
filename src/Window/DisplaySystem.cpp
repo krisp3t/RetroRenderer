@@ -84,10 +84,7 @@ namespace RetroRenderer
     }
 
     void DisplaySystem::BeforeFrame(Uint32 c) {
-        //SDL_SetRenderDrawColor(m_SDLRenderer, c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF, (c >> 24) & 0xFF);
-        //SDL_RenderClear(m_SDLRenderer);
-        //glClearColor(0, 0, 0, 0);
-		//glClear(GL_COLOR_BUFFER_BIT);
+        // color is cleared in imgui loop
         m_ConfigPanel.get()->BeforeFrame();
     }
 
@@ -96,23 +93,10 @@ namespace RetroRenderer
         m_ConfigPanel.get()->OnDraw();
     }
 
-    void DisplaySystem::DrawFrame(const Buffer<Uint32> &buffer)
-    {
-        assert(buffer.width == m_ScreenWidth && buffer.height == m_ScreenHeight && "Buffer size does not match window size");
-        assert(buffer.data != nullptr && "Buffer data is null");
-
-		// TODO: Replace with OpenGL texture
-
-        /*
-		SDL_SetRenderTarget(m_SDLRenderer, m_ScreenTexture); // Write framebuffer to texture
-        const Uint32* src = buffer.data;
-        SDL_UpdateTexture(m_ScreenTexture, nullptr, src, static_cast<int>(buffer.width * sizeof(Uint32)));
-        SDL_RenderCopy(m_SDLRenderer, m_ScreenTexture, nullptr, nullptr);
-		SDL_SetRenderTarget(m_SDLRenderer, nullptr); // SDL renderer back to default target (screen)
-        */
-
-        m_ConfigPanel.get()->OnDraw();
-    }
+	void DisplaySystem::DrawFrame(GLuint framebufferTexture)
+	{
+        m_ConfigPanel.get()->OnDraw(framebufferTexture);
+	}
 
     void DisplaySystem::SwapBuffers()
     {

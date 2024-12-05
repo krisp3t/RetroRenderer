@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <GLAD/glad.h>
 #include "../Window/DisplaySystem.h"
 #include "../Base/Event.h"
 #include "../Scene/Scene.h"
@@ -9,27 +10,27 @@
 namespace RetroRenderer
 {
 
-class RenderSystem
-{
-public:
-    RenderSystem() = default;
-    ~RenderSystem() = default;
+	class RenderSystem
+	{
+	public:
+		RenderSystem() = default;
+		~RenderSystem() = default;
 
-    bool Init(DisplaySystem& displaySystem);
-    void BeforeFrame(Uint32 clearColor);
-    std::queue<Model*>& BuildRenderQueue(Scene &scene, const Camera &camera);
-    void Render(std::queue<Model *>& renderQueue);
-    void TestFill();
-    void Destroy();
-    void OnLoadScene(const SceneLoadEvent& e);
-private:
-    DisplaySystem* pDisplaySystem = nullptr;
-	std::unique_ptr<Scene> pScene = nullptr;
-    std::unique_ptr<SWRenderer> pSWRenderer = nullptr;
+		bool Init(DisplaySystem& displaySystem);
+		void BeforeFrame(Uint32 clearColor);
+		std::queue<Model*>& BuildRenderQueue(Scene& scene, const Camera& camera);
+		void Render(std::queue<Model*>& renderQueue);
+		GLuint TestFill();
+		void Destroy();
+		void OnLoadScene(const SceneLoadEvent& e);
+	private:
+		DisplaySystem* p_DisplaySystem = nullptr;
+		std::unique_ptr<Scene> p_Scene = nullptr;
+		std::unique_ptr<SWRenderer> p_SWRenderer = nullptr;
 
-};
+		GLuint m_framebufferTexture = 0;
+	};
 
 }
-
 
 

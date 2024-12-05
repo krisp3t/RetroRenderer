@@ -1,5 +1,6 @@
 /***
- * Wrapper around ImGui to create a configuration panel for the renderer.
+ * Wrapper around Dear ImGui to create a configuration panel for the renderer.
+ * Also displays rendered image in an ImGui window.
  */
 #define IMGUI_DEFINE_MATH_OPERATORS
 
@@ -138,10 +139,28 @@ namespace RetroRenderer
         ImGui::ShowDemoWindow(&show);
 
         DisplayMainMenu();
-        DisplayPipelineWindow();
+        //DisplayPipelineWindow();
+        // TODO: add examples file browser
         DisplayConfigWindow(*p_Config);
         DisplayControlsOverlay();
         DisplayMetricsOverlay();
+    }
+
+    void ConfigPanel::DisplayRenderedImage()
+    {
+		ImGui::Begin("Output");
+		ImGui::Text("Please select a scene to start rendering!");
+		ImGui::End();
+    }
+
+    void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture)
+    {
+		ImGui::Begin("Output");
+
+		ImVec2 windowSize = ImGui::GetContentRegionAvail();
+        ImGui::Image((void*)(intptr_t)p_framebufferTexture, windowSize);
+
+		ImGui::End();
     }
 
     void ConfigPanel::DisplayMainMenu()
@@ -393,7 +412,7 @@ namespace RetroRenderer
         static bool isOpen = true;
         if (!isOpen) return;
 
-        static int location = 0;
+        static int location = 2;
         ImGuiIO& io = ImGui::GetIO();
         ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
         constexpr float kPadding = 10.0f;
@@ -458,12 +477,18 @@ namespace RetroRenderer
 		// Multi-viewport support
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
-            SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
-            SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+            SDL_Window* backupCurrentWindow = SDL_GL_GetCurrentWindow();
+            SDL_GLContext backupCurrentContext = SDL_GL_GetCurrentContext();
             ImGui::UpdatePlatformWindows();
             //ImGui::RenderPlatformWindowsDefault();
-            SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+            SDL_GL_MakeCurrent(backupCurrentWindow, backupCurrentContext);
         }
+    }
+
+    void ConfigPanel::OnDraw(GLuint p_framebufferTexture)
+    {
+		DisplayRenderedImage(p_framebufferTexture);
+        OnDraw();
     }
 
     void ConfigPanel::Destroy()

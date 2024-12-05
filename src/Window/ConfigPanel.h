@@ -1,5 +1,6 @@
 #pragma once
 
+#include <GLAD/glad.h>
 #include "../Base/Config.h"
 #include "../Scene/Camera.h"
 
@@ -25,12 +26,15 @@ public:
     void Destroy();
     void BeforeFrame();
     void OnDraw();
+    void OnDraw(GLuint framebufferTexture);
 private:
     std::shared_ptr<Config> p_Config = nullptr;
     std::weak_ptr<Camera> p_Camera;
 
     void StyleColorsEnemymouse();
     void DisplayGUI();
+    void DisplayRenderedImage();
+    void DisplayRenderedImage(GLuint p_framebufferTexture);
     void DisplayMetricsOverlay();
     void DisplayCameraSettings();
     void DisplayRendererSettings();

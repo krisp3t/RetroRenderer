@@ -35,7 +35,7 @@ public:
     void SwapBuffers();
     void BeforeFrame(Uint32 c);
     void DrawFrame();
-    void DrawFrame(const Buffer<Uint32> &buffer);
+    void DrawFrame(GLuint framebufferTexture);
     int GetWidth() const;
     int GetHeight() const;
 

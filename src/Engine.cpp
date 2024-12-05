@@ -49,13 +49,15 @@ namespace RetroRenderer
             m_DisplaySystem.BeforeFrame(clearColor); // SDL, imgui clear screen
             auto scene = m_SceneManager.GetScene();
             auto camera = m_SceneManager.GetCamera();
+            GLuint fbTex;
             if (scene && camera)
             {
                 m_RenderSystem.BeforeFrame(clearColor);
                 auto &queue = m_RenderSystem.BuildRenderQueue(*scene, *camera);
-                m_RenderSystem.Render(queue);
+                //m_RenderSystem.Render(queue);
+                fbTex = m_RenderSystem.TestFill();
             }
-            m_DisplaySystem.DrawFrame();
+            m_DisplaySystem.DrawFrame(fbTex);
             m_DisplaySystem.SwapBuffers();
 
             delta = SDL_GetTicks() - start;
