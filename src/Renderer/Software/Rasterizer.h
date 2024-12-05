@@ -18,6 +18,7 @@ public:
     static void DrawTriangle(Buffer<Uint32> &framebuffer, std::array<Vertex, 3>& vertices, const Config::RasterizerSettings& cfg);
     static void DrawQuad(Buffer<Uint32>& framebuffer, std::array<Vertex, 3>& vertices);
     static void DrawLine(Buffer<Uint32> &framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color);
+	static void DrawHLine(Buffer<Uint32>& framebuffer, int x0, int x1, int y, Uint32 color);
     static void DrawPixel(Buffer<Uint32> &framebuffer, float x, float y, Uint32 color);
 
 private:
@@ -30,8 +31,8 @@ private:
     static void DrawWireframeTriangle(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3>& viewportVertices);
     // Flat trig
     static void DrawFlatTriangle(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3>& viewportVertices);
-    static void FillFlatBottomTri(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3>& viewportVertices);
-    static void FillFlatTopTri(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3>& viewportVertices);
+    static void FillFlatBottomTri(Buffer<Uint32> &framebuffer, glm::vec2& v0, glm::vec2& v1, glm::vec2& v2);
+    static void FillFlatTopTri(Buffer<Uint32> &framebuffer, glm::vec2& v0, glm::vec2& v1, glm::vec2& v2);
 };
 
 }

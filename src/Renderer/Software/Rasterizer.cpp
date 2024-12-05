@@ -14,6 +14,12 @@ namespace RetroRenderer
         };
     }
 
+	void Rasterizer::DrawHLine(Buffer<Uint32>& framebuffer, int x0, int x1, int y, Uint32 color)
+	{
+		// TODO: replace with fill
+		DrawLineBresenham(framebuffer, { x0, y }, { x1, y }, color);
+	}
+
 	void Rasterizer::DrawLine(Buffer<Uint32>& framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color)
 	{
 		// DrawLineDDA(framebuffer, p0, p1, color);
@@ -91,9 +97,12 @@ namespace RetroRenderer
 			DrawPointTriangle(framebuffer, viewportVertices);
 			break;
 		case Config::RasterizationPolygonMode::LINE:
+            /*
             cfg.basicLineColors ?
                 DrawWireframeTriangle(framebuffer, viewportVertices) :
                 DrawWireframeTriangle(framebuffer, viewportVertices, cfg.lineColor);
+                */
+			DrawWireframeTriangle(framebuffer, viewportVertices);
 			break;
 		case Config::RasterizationPolygonMode::FILL:
 			DrawFlatTriangle(framebuffer, viewportVertices);
@@ -126,78 +135,105 @@ namespace RetroRenderer
 		if (v0.y > v1.y) std::swap(v0, v1);
 		if (v0.y > v2.y) std::swap(v0, v2);
 		if (v1.y > v2.y) std::swap(v1, v2);
-        /*
-
-        // Split logic into flat-bottom and flat-top
+  
+        // Flat-bottom triangle
         if (v1.y == v2.y)
         {
-            FillFlatBottomTri(framebuffer, v0, v1, v2); // Flat-bottom
+			if (v2.x < v1.x) std::swap(v2, v1); // Ensure v1 is leftmost
+            FillFlatBottomTri(framebuffer, v0, v1, v2);
+            return;
         }
-        else if (v0.y == v1.y)
+        // Flat-top triangle
+        if (v0.y == v1.y)
         {
-            FillFlatTopTri(framebuffer, v0, v1, v2); // Flat-top
+			if (v1.x < v0.x) std::swap(v1, v0); // Ensure v2 is rightmost
+            FillFlatTopTri(framebuffer, v0, v1, v2);
+            return;
         }
-        else
-        {
-            // Find the split point
-            glm::ivec2 mid = {
-                    v0.x + static_cast<int>((v1.y - v0.y) * static_cast<float>(v2.x - v0.x) / (v2.y - v0.y)),
-                    v1.y
-            };
+        // Neither, need to split triangle
+		// Find midpoint with linear interpolation
+		const float alpha = (v1.y - v0.y) / (v2.y - v0.y);
+        glm::vec2 mid = {
+			v0.x + alpha * (v2.x - v0.x),
+			v1.y
+		}; 
 
-            // Split into a flat-bottom and flat-top triangle
-            FillFlatBottomTri(framebuffer, v0, v1, mid);
-            FillFlatTopTri(framebuffer, v1, mid, v2);
-        }
-        */
+        // Split into a flat-bottom and flat-top triangle
+		if (v1.x < mid.x) // Major-right triangle
+		{
+			FillFlatBottomTri(framebuffer, v0, v1, mid);
+			FillFlatTopTri(framebuffer, v1, mid, v2);
+		}
+		else // Major-left triangle
+		{
+			FillFlatBottomTri(framebuffer, v0, mid, v1);
+			FillFlatTopTri(framebuffer, mid, v1, v2);
+		}
     }
 
-   
-    /*
-    void Rasterizer::FillFlatBottomTri(Buffer<Uint32> &framebuffer, glm::ivec2 &v0, glm::ivec2 &v1, glm::ivec2 &mid)
+	/**
+	 * @brief Rasterizes a flat-bottom triangle (flat side: v0-v1)
+	 */
+    void Rasterizer::FillFlatBottomTri(Buffer<Uint32> &framebuffer, glm::vec2 &v0, glm::vec2 &v1, glm::vec2 &v2)
     {
-        // Ensure floating-point division
-        float invslope1 = static_cast<float>(v1.x - v0.x) / (v1.y - v0.y);
-        float invslope2 = static_cast<float>(mid.x - v0.x) / (mid.y - v0.y);
+		// Calculate invslopes in screen space
+		// Run over rise, because edges can be completely vertical (infinite slope)
+		float invslope1 = (v1.x - v0.x) / (v1.y - v0.y);
+		float invslope2 = (v2.x - v0.x) / (v2.y - v0.y);
 
-        // Start and end points
-        float xStart = v0.x;
-        float xEnd = v0.x;
-        int yStart = std::max(v0.y, 0);
-        int yEnd = std::min(v1.y, static_cast<int>(framebuffer.height - 1));
-        Uint32 color = 0xFFFFFFFF;
+		// Start and end scanlines
+		const int yStart = static_cast<int>(ceil(v0.y - 0.5f));
+		const int yEnd = static_cast<int>(ceil(v2.y - 0.5f));
+		const Uint32 color = 0xFFFFFFFF;
 
-        // Scanline from top to flat line
-        for (int y = yStart; y <= yEnd; y++)
-        {
-            DrawLine(framebuffer, { static_cast<int>(xStart), y }, { static_cast<int>(xEnd), y }, color);
-            xStart += invslope1;
-            xEnd += invslope2;
-        }
+		float currentX1 = v0.x;
+		float currentX2 = v0.x;
+
+		for (int y = yStart; y < yEnd; y++)
+		{
+			DrawHLine(
+				framebuffer,
+				static_cast<int>(currentX1),
+				static_cast<int>(currentX2),
+				y,
+				color
+			);
+			currentX1 += invslope1;
+			currentX2 += invslope2;
+		}
     }
 
-    void Rasterizer::FillFlatTopTri(Buffer<Uint32> &framebuffer, glm::ivec2 &v1, glm::ivec2 &mid, glm::ivec2 &v2)
+	/**
+	 * @brief Rasterizes a flat-top triangle (flat side: v1-v2)
+	 */
+    void Rasterizer::FillFlatTopTri(Buffer<Uint32> &framebuffer, glm::vec2 &v0, glm::vec2 &v1, glm::vec2 &v2)
     {
-        // Ensure floating-point division
-        float invslope1 = static_cast<float>(mid.x - v1.x) / (mid.y - v1.y);
-        float invslope2 = static_cast<float>(v2.x - v1.x) / (v2.y - v1.y);
+        // Calculate invslopes in screen space
+		// Run over rise, because edges can be completely vertical (infinite slope)
+		float invslope1 = (v2.x - v0.x) / (v2.y - v0.y);
+		float invslope2 = (v2.x - v1.x) / (v2.y - v1.y);
 
-        // Start and end points
-        float xStart = v1.x;
-        float xEnd = v1.x;
-        int yStart = std::max(v1.y, 0);
-        int yEnd = std::min(v2.y, static_cast<int>(framebuffer.height - 1));
-        Uint32 color = 0xFFFFFFFF;
+		// Start and end scanlines
+		const int yStart = static_cast<int>(ceil(v0.y - 0.5f));
+		const int yEnd = static_cast<int>(ceil(v2.y - 0.5f));
+		const Uint32 color = 0xFFFFFFFF;
 
-        // Scanline from bottom to flat line
-        for (int y = yStart; y <= yEnd; y++) // Increment y
-        {
-            DrawLine(framebuffer, { static_cast<int>(xStart), y }, { static_cast<int>(xEnd), y }, color);
-            xStart += invslope1;
-            xEnd += invslope2;
-        }
+		float currentX1 = v2.x;
+		float currentX2 = v2.x;
+
+		for (int y = yStart; y < yEnd; y--)
+		{
+			DrawHLine(
+				framebuffer, 
+				static_cast<int>(currentX1), 
+				static_cast<int>(currentX2), 
+				y, 
+				color
+			);
+			currentX1 -= invslope1;
+			currentX2 -= invslope2;
+		}
     }
-    */
 
     void Rasterizer::DrawPixel(Buffer<Uint32> &framebuffer, float x, float y, Uint32 color)
     {
