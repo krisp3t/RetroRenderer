@@ -38,6 +38,7 @@ private:
     void DisplayMetricsOverlay();
     void DisplayCameraSettings();
     void DisplayRendererSettings();
+    void DisplayRasterizerSettings();
     void DisplayEnvironmentSettings();
     void DisplayMainMenu();
     void DisplayPipelineWindow();

@@ -23,6 +23,7 @@ public:
     void Destroy();
     void DispatchImmediate(const Event& event);
 	void Dispatch(const Event& event);
+	const std::shared_ptr<Config> GetConfig() const;
 private:
 	Engine() = default;
 	~Engine() = default;

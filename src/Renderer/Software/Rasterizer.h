@@ -1,5 +1,7 @@
 #pragma once
 #include <SDL.h>
+#include <array>
+#include "../../Base/Config.h"
 #include "../Buffer.h"
 #include "../Vertex.h"
 
@@ -11,19 +13,25 @@ class Rasterizer
 public:
     Rasterizer() = default;
     ~Rasterizer() = default;
-    static void DrawTriangle(Buffer<Uint32> &framebuffer, Vertex &v0, Vertex &v1, Vertex &v2);
-    static void DrawQuad(Buffer<Uint32> &framebuffer, Vertex &v0, Vertex &v1, Vertex &v2, Vertex &v3);
-    static void DrawLine(Buffer<Uint32> &framebuffer, glm::ivec2 p0, glm::ivec2 p1, Uint32 color);
-    static void DrawPixel(Buffer<Uint32> &framebuffer, int x, int y, Uint32 color);
-    static glm::ivec2 NDCToViewport(const glm::vec2 &v, int width, int height);
+	// TODO: replace uint32 with color struct
+	static glm::vec2 NDCToViewport(const glm::vec2& v, int width, int height);
+    static void DrawTriangle(Buffer<Uint32> &framebuffer, std::array<Vertex, 3>& vertices, const Config::RasterizerSettings& cfg);
+    static void DrawQuad(Buffer<Uint32>& framebuffer, std::array<Vertex, 3>& vertices);
+    static void DrawLine(Buffer<Uint32> &framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color);
+    static void DrawPixel(Buffer<Uint32> &framebuffer, float x, float y, Uint32 color);
 
 private:
-    static void DrawLineDDA(Buffer<Uint32> &framebuffer, glm::ivec2 p0, glm::ivec2 p1, Uint32 color);
-    static void DrawLineBresenham(Buffer<Uint32> &framebuffer, glm::ivec2 p0, glm::ivec2 p1, Uint32 color);
-    static void DrawWireframeTriangle(Buffer <Uint32> &framebuffer, glm::ivec2 v0, glm::ivec2 v1, glm::ivec2 v2);
-    static void DrawFlatTriangle(Buffer <Uint32> &framebuffer, glm::ivec2 v0, glm::ivec2 v1, glm::ivec2 v2);
-    static void FillFlatBottomTri(Buffer<Uint32> &framebuffer, glm::ivec2 &v0, glm::ivec2 &v1, glm::ivec2 &mid);
-    static void FillFlatTopTri(Buffer<Uint32> &framebuffer, glm::ivec2 &v1, glm::ivec2 &mid, glm::ivec2 &v2);
+    // Line drawing algos
+    static void DrawLineDDA(Buffer<Uint32> &framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color);
+    static void DrawLineBresenham(Buffer<Uint32> &framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color);
+    // Point trig
+    static void DrawPointTriangle(Buffer<Uint32>& framebuffer, std::array<glm::vec2, 3>& viewportVertices);
+    // Wireframe trig
+    static void DrawWireframeTriangle(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3>& viewportVertices);
+    // Flat trig
+    static void DrawFlatTriangle(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3>& viewportVertices);
+    static void FillFlatBottomTri(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3>& viewportVertices);
+    static void FillFlatTopTri(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3>& viewportVertices);
 };
 
 }

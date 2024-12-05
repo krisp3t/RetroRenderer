@@ -104,4 +104,9 @@ namespace RetroRenderer
 			LOGW("Unknown event type");
 		}
     }
+
+	const std::shared_ptr<Config> Engine::GetConfig() const
+	{
+		return p_Config;
+	}
 }

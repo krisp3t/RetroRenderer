@@ -313,6 +313,11 @@ namespace RetroRenderer
                     ImGui::Text("Culling settings");
                     ImGui::EndTabItem();
                 }
+				if (ImGui::BeginTabItem("Rasterization"))
+				{
+                    DisplayRasterizerSettings();
+					ImGui::EndTabItem();
+				}
                 if (ImGui::BeginTabItem("Post-FX"))
                 {
                     ImGui::Text("Post-FX");
@@ -361,6 +366,23 @@ namespace RetroRenderer
         ImGui::SameLine();
         ImGui::Text("Background color:");
         ImGui::InputInt2("Viewport resolution", reinterpret_cast<int*>(&r.viewportResolution)); // TODO: add min, max
+    }
+
+    void ConfigPanel::DisplayRasterizerSettings()
+    {
+        auto& r = p_Config->rasterizer;
+        ImGui::SeparatorText("Rasterizer settings");
+        const char* lineItems[] = { "DDA (slower)", "Bresenham (faster)"};
+        ImGui::Combo("Line mode", reinterpret_cast<int*>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
+		const char* polyItems[] = { "Point", "Wireframe (line)", "Fill triangles" };
+		ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
+        ImGui::SeparatorText("Point");
+		ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
+        ImGui::ColorEdit4("Point color", reinterpret_cast<float*>(&r.lineColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        ImGui::SeparatorText("Wireframe");
+		ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
+        ImGui::ColorEdit4("Line color", reinterpret_cast<float*>(&r.lineColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        ImGui::SeparatorText("Fill");
     }
 
     void ConfigPanel::DisplayEnvironmentSettings()

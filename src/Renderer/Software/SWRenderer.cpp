@@ -1,5 +1,6 @@
 #include "SWRenderer.h"
 #include "../../Base/Logger.h"
+#include "../../Engine.h"
 
 namespace RetroRenderer
 {
@@ -42,14 +43,16 @@ namespace RetroRenderer
         for (int i = 0; i < mesh.m_Indices.size(); i += 3)
         {
             // Input Assembler
-            auto v0 = mesh.m_Vertices[mesh.m_Indices[i]];
-            auto v1 = mesh.m_Vertices[mesh.m_Indices[i + 1]];
-            auto v2 = mesh.m_Vertices[mesh.m_Indices[i + 2]];
+            auto& v0 = mesh.m_Vertices[mesh.m_Indices[i]];
+            auto& v1 = mesh.m_Vertices[mesh.m_Indices[i + 1]];
+            auto& v2 = mesh.m_Vertices[mesh.m_Indices[i + 2]];
+			std::array<Vertex, 3> vertices = { v0, v1, v2 };
 
             // Vertex Shader
 
             // Rasterizer
-            m_Rasterizer->DrawTriangle(*p_FrameBuffer, v0, v1, v2);
+            const auto& cfg = Engine::Get().GetConfig()->rasterizer;
+            m_Rasterizer->DrawTriangle(*p_FrameBuffer, vertices, cfg);
         }
     }
 }
