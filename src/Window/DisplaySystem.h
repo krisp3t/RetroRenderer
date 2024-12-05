@@ -42,8 +42,6 @@ public:
 private:
     SDL_Window* m_Window = nullptr;
 	SDL_GLContext m_glContext = nullptr;
-    SDL_Renderer* m_SDLRenderer = nullptr;
-    SDL_Texture* m_ScreenTexture = nullptr;
     std::shared_ptr<Config> p_Config = nullptr;
     std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
     std::weak_ptr<Camera> p_Camera;

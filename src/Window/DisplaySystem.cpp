@@ -16,23 +16,25 @@ namespace RetroRenderer
             LOGE("Unable to initialize SDL: %s\n", SDL_GetError());
             return false;
         }
+		SDL_GL_LoadLibrary(nullptr); // Load default OpenGL library
+    // TODO: only enable GLAD extensions which are actually used
     #if defined(IMGUI_IMPL_OPENGL_ES2)
 		// GL ES 2.0 + GLSL 100
-		const char* glsl_version = "#version 100";
+		const char* glslVersion = "#version 100";
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     #elif defined(__APPLE__)
 		// GL 3.2 Core + GLSL 150
-		const char* glsl_version = "#version 150";
+		const char* glslVersion = "#version 150";
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     #else
 		// GL 3.0 + GLSL 130
-		const char* glsl_version = "#version 130";
+		const char* glslVersion = "#version 130";
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -60,37 +62,44 @@ namespace RetroRenderer
 			return false;
 		}
         SDL_GL_MakeCurrent(m_Window, m_glContext);
-        // TODO: init glad?
-        /*
-		if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
-			LOGE("Failed to initialize GLAD\n");
-			return false;
-		}
-        */
+
+        if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
+        {
+			LOGE("Error initializing GLAD\n");
+            return false;
+        }
+		LOGI("OpenGL loaded");
+		LOGI("OpenGL Vendor:    %s", glGetString(GL_VENDOR));
+		LOGI("OpenGL Renderer:  %s", glGetString(GL_RENDERER));
+		LOGI("OpenGL Version:   %s", glGetString(GL_VERSION));
+		LOGI("GLSL Version:     %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
+        //LOGI("OpenGL extensions:     %s", glGetString(GL_EXTENSIONS));
+
+		glViewport(0, 0, m_ScreenWidth, m_ScreenHeight);
+
 
 		// SDL_GL_SetSwapInterval(1); // Enable vsync
-        m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_SDLRenderer, p_Config, p_Camera);
+        m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_glContext, p_Config, p_Camera, glslVersion);
         return true;
     }
 
     void DisplaySystem::BeforeFrame(Uint32 c) {
         //SDL_SetRenderDrawColor(m_SDLRenderer, c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF, (c >> 24) & 0xFF);
         //SDL_RenderClear(m_SDLRenderer);
-        //glViewport(0, 0, 
-        glClearColor(0, 0, 0, 0);
-        
-        //m_ConfigPanel.get()->BeforeFrame(m_SDLRenderer);
+        //glClearColor(0, 0, 0, 0);
+		//glClear(GL_COLOR_BUFFER_BIT);
+        m_ConfigPanel.get()->BeforeFrame();
     }
 
     void DisplaySystem::DrawFrame()
     {
         m_ConfigPanel.get()->OnDraw();
     }
+
     void DisplaySystem::DrawFrame(const Buffer<Uint32> &buffer)
     {
         assert(buffer.width == m_ScreenWidth && buffer.height == m_ScreenHeight && "Buffer size does not match window size");
         assert(buffer.data != nullptr && "Buffer data is null");
-        assert(m_ScreenTexture != nullptr && "Screen texture is null");
 
 		// TODO: Replace with OpenGL texture
 
@@ -107,7 +116,8 @@ namespace RetroRenderer
 
     void DisplaySystem::SwapBuffers()
     {
-        SDL_RenderPresent(m_SDLRenderer);
+        SDL_GL_MakeCurrent(m_Window, m_glContext);
+        SDL_GL_SwapWindow(m_Window);
     }
 
     int DisplaySystem::GetWidth() const

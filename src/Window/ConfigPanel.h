@@ -12,16 +12,18 @@ public:
     ConfigPanel(SDL_Window *window,
         SDL_GLContext glContext,
                 std::shared_ptr<Config> config,
-                std::weak_ptr<Camera> camera
+                std::weak_ptr<Camera> camera,
+                const char* glslVersion
                 );
     ~ConfigPanel();
     bool Init(SDL_Window *window,
-        SDL_GLContext glContext,
+              SDL_GLContext glContext,
               std::shared_ptr<Config> config,
-              std::weak_ptr<Camera> camera
+              std::weak_ptr<Camera> camera,
+              const char* glslVersion
               );
     void Destroy();
-    void BeforeFrame(SDL_Renderer *renderer);
+    void BeforeFrame();
     void OnDraw();
 private:
     std::shared_ptr<Config> p_Config = nullptr;

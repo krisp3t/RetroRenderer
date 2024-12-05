@@ -23,9 +23,11 @@ namespace RetroRenderer
     ConfigPanel::ConfigPanel(SDL_Window *window,
                              SDL_GLContext glContext,
                              std::shared_ptr<Config> config,
-                             std::weak_ptr<Camera> camera)
+                             std::weak_ptr<Camera> camera,
+                             const char* glslVersion
+    )
     {
-        Init(window, glContext, config, camera);
+        Init(window, glContext, config, camera, glslVersion);
     }
 
     ConfigPanel::~ConfigPanel()
@@ -36,20 +38,20 @@ namespace RetroRenderer
     bool ConfigPanel::Init(SDL_Window* window,
                            SDL_GLContext glContext,
                            std::shared_ptr<Config> config,
-                           std::weak_ptr<Camera> camera
+                           std::weak_ptr<Camera> camera,
+                           const char* glslVersion
                            )
     {
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard |
-                          ImGuiConfigFlags_DockingEnable |
-                          ImGuiConfigFlags_ViewportsEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard
+                        | ImGuiConfigFlags_DockingEnable;
         StyleColorsEnemymouse();
 		io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
         ImGui_ImplSDL2_InitForOpenGL(window, glContext);
-        ImGui_ImplOpenGL3_Init("#version 330");
+        ImGui_ImplOpenGL3_Init(glslVersion);
 
         p_Config = config;
         p_Camera = camera;
@@ -437,7 +439,7 @@ namespace RetroRenderer
         ImGui::End();
     }
 
-    void ConfigPanel::BeforeFrame(SDL_Renderer* renderer) {
+    void ConfigPanel::BeforeFrame() {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
@@ -449,8 +451,19 @@ namespace RetroRenderer
         ImGui::Render();
 		auto io = ImGui::GetIO();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+        auto c = p_Config->renderer.clearColor;
+		glClearColor(c.x * c.w, c.y * c.w, c.z * c.w, c.w);
+		glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        // SDL_GL_SwapWindow(window);
+		// Multi-viewport support
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+            SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            //ImGui::RenderPlatformWindowsDefault();
+            SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+        }
     }
 
     void ConfigPanel::Destroy()
