@@ -358,7 +358,6 @@ namespace RetroRenderer
             LOGD("Taking screenshot");
         }
         ImGui::SeparatorText("Scene");
-        ImGui::Checkbox("Show wireframe", &r.showWireframe);
         ImGui::Checkbox("Enable perspective-correct interpolation", &r.enablePerspectiveCorrect);
         const char* aaItems[] = { "None", "MSAA", "FXAA" };
         ImGui::Combo("Anti-aliasing", reinterpret_cast<int *>(&r.aaType), aaItems, IM_ARRAYSIZE(aaItems));
@@ -372,16 +371,21 @@ namespace RetroRenderer
     {
         auto& r = p_Config->rasterizer;
         ImGui::SeparatorText("Rasterizer settings");
+
         const char* lineItems[] = { "DDA (slower)", "Bresenham (faster)"};
         ImGui::Combo("Line mode", reinterpret_cast<int*>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
 		const char* polyItems[] = { "Point", "Wireframe (line)", "Fill triangles" };
 		ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
+
         ImGui::SeparatorText("Point");
 		ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
         ImGui::ColorEdit4("Point color", reinterpret_cast<float*>(&r.lineColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+
         ImGui::SeparatorText("Wireframe");
 		ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
         ImGui::ColorEdit4("Line color", reinterpret_cast<float*>(&r.lineColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
+
         ImGui::SeparatorText("Fill");
     }
 

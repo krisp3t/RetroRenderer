@@ -2,6 +2,8 @@
 #include "../../Engine.h"
 #include "Rasterizer.h"
 
+// TODO: possible parallel rasterizing?
+
 namespace RetroRenderer
 {
     glm::vec2 Rasterizer::NDCToViewport(const glm::vec2 &v, int width, int height)
@@ -89,7 +91,9 @@ namespace RetroRenderer
 			DrawPointTriangle(framebuffer, viewportVertices);
 			break;
 		case Config::RasterizationPolygonMode::LINE:
-			DrawWireframeTriangle(framebuffer, viewportVertices);
+            cfg.basicLineColors ?
+                DrawWireframeTriangle(framebuffer, viewportVertices) :
+                DrawWireframeTriangle(framebuffer, viewportVertices, cfg.lineColor);
 			break;
 		case Config::RasterizationPolygonMode::FILL:
 			DrawFlatTriangle(framebuffer, viewportVertices);
@@ -99,7 +103,9 @@ namespace RetroRenderer
 
     void Rasterizer::DrawPointTriangle(Buffer<Uint32>& framebuffer, std::array<glm::vec2, 3>& viewportVertices)
     {
-
+		DrawPixel(framebuffer, viewportVertices[0].x, viewportVertices[0].y, 0xFFFFFFFF);
+		DrawPixel(framebuffer, viewportVertices[1].x, viewportVertices[1].y, 0xFFFFFFFF);
+		DrawPixel(framebuffer, viewportVertices[2].x, viewportVertices[2].y, 0xFFFFFFFF);
     }
 
 	void Rasterizer::DrawWireframeTriangle(Buffer<Uint32>& framebuffer, std::array<glm::vec2, 3>& verts)
