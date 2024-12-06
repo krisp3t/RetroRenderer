@@ -16,14 +16,26 @@ namespace RetroRenderer
 
 	void Rasterizer::DrawHLine(Buffer<Uint32>& framebuffer, int x0, int x1, int y, Uint32 color)
 	{
-		// TODO: replace with fill
-		DrawLineBresenham(framebuffer, { x0, y }, { x1, y }, color);
+		assert(framebuffer.height > y && "Y out of bounds");
+		assert(x0 >= 0 && x0 < framebuffer.width && "X0 out of bounds");
+		assert(x1 >= 0 && x1 < framebuffer.width && "X1 out of bounds");
+
+		if (x0 > x1) std::swap(x0, x1);
+		int startIndex = y * framebuffer.width + x0;
+		std::fill_n(&framebuffer.data[startIndex], x1 - x0 + 1, color);
 	}
 
 	void Rasterizer::DrawLine(Buffer<Uint32>& framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color)
 	{
-		// DrawLineDDA(framebuffer, p0, p1, color);
-		DrawLineBresenham(framebuffer, p0, p1, color);
+		switch (Engine::Get().GetConfig()->rasterizer.lineMode)
+		{
+		case Config::RasterizationLineMode::DDA:
+			DrawLineDDA(framebuffer, p0, p1, color);
+			break;
+		case Config::RasterizationLineMode::BRESENHAM:
+			DrawLineBresenham(framebuffer, p0, p1, color);
+			break;
+		}
 	}
 
 	void Rasterizer::DrawLineDDA(Buffer<Uint32>& framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color)
