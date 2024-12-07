@@ -1,6 +1,6 @@
-#include "assimp/Importer.hpp"
-#include "assimp/scene.h"
-#include "assimp/postprocess.h"
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 #include "Scene.h"
 #include "../Base/Logger.h"
@@ -34,7 +34,7 @@ namespace RetroRenderer
      * @param scene
      * @return true if successful
      */
-    bool Scene::ProcessNode(aiNode *node, const aiScene *scene, const Handle* parent)
+    bool Scene::ProcessNode(aiNode *node, const aiScene *scene, const Model* parent)
     {
         if (!node)
         {
@@ -42,10 +42,11 @@ namespace RetroRenderer
             return false;
         }
 		if (parent) {
-			LOGD("Processing node: %s (%d meshes), parent: %d",
+			auto& parentName = parent->GetName();
+			LOGD("Processing node: %s (%d meshes), parent: %s",
 				node->mName.C_Str(),
 				node->mNumMeshes,
-				parent->index);
+				parentName.c_str());
 		}
 		else 
         {
@@ -53,19 +54,23 @@ namespace RetroRenderer
 				node->mName.C_Str(),
 				node->mNumMeshes);
 		}
+        Model* model = nullptr;
         for (size_t i = 0; i < node->mNumMeshes; i++)
         {
-            // TODO: add parent-child transform relationship
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-            m_Meshes.push_back(ProcessMesh(mesh, scene));
-            auto model = new Model(m_Meshes.back());
+            auto& processedMesh = ProcessMesh(mesh, scene);
+            std::vector<Mesh*> modelMeshes;
+            m_Meshes.push_back(processedMesh); // add to all scene meshes
+			modelMeshes.push_back(&m_Meshes.back()); // add to current model
+            model = new Model(std::move(modelMeshes));
+            model->SetName(node->mName);
             m_Models.push_back(model);
         }
 
         for (size_t i = 0; i < node->mNumChildren; i++)
         {
             // push children
-            ProcessNode(node->mChildren[i], scene);
+            ProcessNode(node->mChildren[i], scene, model);
         }
 
         return true;

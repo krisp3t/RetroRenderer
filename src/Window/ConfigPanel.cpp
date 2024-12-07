@@ -51,7 +51,8 @@ namespace RetroRenderer
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard
                         | ImGuiConfigFlags_DockingEnable;
-		io.IniFilename = "config_panel.ini";
+        // TODO: add ini
+		//io.IniFilename = "config_panel.ini";
         StyleColorsEnemymouse();
 		io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
         ImGui_ImplSDL2_InitForOpenGL(window, glContext);

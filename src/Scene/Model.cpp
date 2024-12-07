@@ -2,13 +2,27 @@
 
 namespace RetroRenderer
 {
-	Model::Model(Mesh& mesh)
-		: m_Mesh(&mesh)
+	Model::Model(std::vector<Mesh*> meshes)
+		: m_Meshes(meshes)
 	{
 	}
 
-	Mesh& Model::GetMesh() const
+	const std::vector<Mesh*>& Model::GetMeshes() const
 	{
-		return *m_Mesh;
+		return m_Meshes;
+	}
+
+	const std::string& Model::GetName() const
+	{
+		if (m_Name.empty())
+		{
+			return "";
+		}
+		return m_Name;
+	}
+
+	void Model::SetName(const aiString& name)
+	{
+		m_Name = name.C_Str();
 	}
 }

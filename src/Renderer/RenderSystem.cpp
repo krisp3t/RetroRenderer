@@ -54,7 +54,7 @@ namespace RetroRenderer
     {
         auto &activeRenderer = p_SWRenderer; // TODO: get from config
         activeRenderer->SetActiveCamera(camera);
-        return scene.GetVisibleModels();
+        return scene.GetVisibleModels(); // TODO: split into meshes?
     }
 
     GLuint RenderSystem::Render(std::queue<Model*>& renderQueue)
@@ -68,10 +68,13 @@ namespace RetroRenderer
         {
 			//LOGD("Render queue size: %d", renderQueue.size());
             const Model* model = renderQueue.front();
-			const Mesh& mesh = model->GetMesh();
-            p_Stats->renderedVerts += mesh.m_numVertices;
-            p_Stats->renderedTris += mesh.m_numFaces;
-            activeRenderer->DrawTriangularMesh(mesh);
+			for (Mesh* mesh : model->GetMeshes()) // TODO: split into meshes?
+			{
+				assert(mesh != nullptr && "Tried to render null mesh");
+				p_Stats->renderedVerts += mesh->m_numVertices;
+				p_Stats->renderedTris += mesh->m_numFaces;
+				activeRenderer->DrawTriangularMesh(*mesh);
+			}
             renderQueue.pop();
         }
 
