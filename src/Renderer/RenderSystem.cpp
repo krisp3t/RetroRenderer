@@ -50,14 +50,14 @@ namespace RetroRenderer
 		p_SWRenderer->GetRenderTarget().Clear(argbColor);
 	}
 
-    std::queue<Model&>& RenderSystem::BuildRenderQueue(Scene& scene, const Camera& camera)
+    std::queue<Model*>& RenderSystem::BuildRenderQueue(Scene& scene, const Camera& camera)
     {
         auto &activeRenderer = p_SWRenderer; // TODO: get from config
         activeRenderer->SetActiveCamera(camera);
         return scene.GetVisibleModels();
     }
 
-    GLuint RenderSystem::Render(std::queue<Model&>& renderQueue)
+    GLuint RenderSystem::Render(std::queue<Model*>& renderQueue)
     {
         auto &activeRenderer = p_SWRenderer; // TODO: get from config
         assert(activeRenderer != nullptr && "Active renderer is null");
@@ -67,8 +67,8 @@ namespace RetroRenderer
         while (!renderQueue.empty())
         {
 			//LOGD("Render queue size: %d", renderQueue.size());
-            const Model& model = renderQueue.front();
-			const Mesh& mesh = model.GetMesh();
+            const Model* model = renderQueue.front();
+			const Mesh& mesh = model->GetMesh();
             p_Stats->renderedVerts += mesh.m_numVertices;
             p_Stats->renderedTris += mesh.m_numFaces;
             activeRenderer->DrawTriangularMesh(mesh);

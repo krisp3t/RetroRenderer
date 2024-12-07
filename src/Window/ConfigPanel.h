@@ -45,6 +45,7 @@ private:
     void DisplayRasterizerSettings();
     void DisplayEnvironmentSettings();
     void DisplayMainMenu();
+    void DisplaySceneGraph();
     void DisplayPipelineWindow();
     void DisplayConfigWindow(Config& config);
     void DisplayControlsOverlay();

@@ -51,6 +51,7 @@ namespace RetroRenderer
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard
                         | ImGuiConfigFlags_DockingEnable;
+		io.IniFilename = "config_panel.ini";
         StyleColorsEnemymouse();
 		io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
         ImGui_ImplSDL2_InitForOpenGL(window, glContext);
@@ -138,21 +139,55 @@ namespace RetroRenderer
                                          ImGuiDockNodeFlags_PassthruCentralNode);
         }
 
-        bool show = true;
-        ImGui::ShowDemoWindow(&show);
+        //bool show = true;
+        //ImGui::ShowDemoWindow(&show);
 
         DisplayMainMenu();
         //DisplayPipelineWindow();
         // TODO: add examples file browser
+        DisplaySceneGraph();
         DisplayConfigWindow(*p_Config);
         DisplayControlsOverlay();
         DisplayMetricsOverlay();
     }
 
+    void ConfigPanel::DisplaySceneGraph()
+    {
+        ImGui::Begin("Scene Graph");
+        //ImGui::Text("Please load a scene!");
+		if (ImGui::TreeNode("Main camera"))
+		{
+			ImGui::Text("Main camera");
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("Ambient light"))
+		{
+			ImGui::Text("Ambient light");
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("Scene"))
+		{
+			if (ImGui::TreeNode("Test Node"))
+			{
+				ImGui::Text("Ambient light");
+				ImGui::TreePop();
+			}
+			ImGui::Text("Scene root");
+			ImGui::TreePop();
+		}
+        /*
+        ImGui::TreeNode("Model 1");
+		ImGui::TreePop();
+		ImGui::TreeNode("Model 3");
+		ImGui::TreePop();
+        */
+        ImGui::End();
+    }
+
     void ConfigPanel::DisplayRenderedImage()
     {
 		ImGui::Begin("Output");
-		ImGui::Text("Please select a scene to start rendering!");
+		ImGui::Text("Please load a scene to start rendering!");
 		ImGui::End();
     }
 

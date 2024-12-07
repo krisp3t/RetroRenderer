@@ -34,21 +34,32 @@ namespace RetroRenderer
      * @param scene
      * @return true if successful
      */
-    bool Scene::ProcessNode(aiNode *node, const aiScene *scene)
+    bool Scene::ProcessNode(aiNode *node, const aiScene *scene, const Handle* parent)
     {
         if (!node)
         {
             LOGE("assimp: Node is null");
             return false;
         }
-        LOGD("Processing node: %s (%d meshes)", node->mName.C_Str(), node->mNumMeshes);
+		if (parent) {
+			LOGD("Processing node: %s (%d meshes), parent: %d",
+				node->mName.C_Str(),
+				node->mNumMeshes,
+				parent->index);
+		}
+		else 
+        {
+			LOGD("Processing node: %s (%d meshes), parent: none",
+				node->mName.C_Str(),
+				node->mNumMeshes);
+		}
         for (size_t i = 0; i < node->mNumMeshes; i++)
         {
             // TODO: add parent-child transform relationship
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
             m_Meshes.push_back(ProcessMesh(mesh, scene));
             auto model = new Model(m_Meshes.back());
-            m_Models.push_back(*model);
+            m_Models.push_back(model);
         }
 
         for (size_t i = 0; i < node->mNumChildren; i++)
@@ -58,6 +69,17 @@ namespace RetroRenderer
         }
 
         return true;
+    }
+
+    /**
+	* Process a root node in the scene
+	 * @param node
+	 * @param scene
+	 * @return true if successful
+	 */
+    bool Scene::ProcessNode(aiNode* node, const aiScene* scene)
+    {
+		return ProcessNode(node, scene, nullptr);
     }
 
     Mesh& Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene)
