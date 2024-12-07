@@ -55,21 +55,29 @@ namespace RetroRenderer
 				node->mNumMeshes);
 		}
         Model* model = nullptr;
+		std::vector<Mesh*> modelMeshes;
+
+        // Process meshes
         for (size_t i = 0; i < node->mNumMeshes; i++)
         {
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
             auto& processedMesh = ProcessMesh(mesh, scene);
-            std::vector<Mesh*> modelMeshes;
             m_Meshes.push_back(processedMesh); // add to all scene meshes
 			modelMeshes.push_back(&m_Meshes.back()); // add to current model
-            model = new Model(std::move(modelMeshes));
-            model->SetName(node->mName);
-            m_Models.push_back(model);
         }
 
+		model = new Model(std::move(modelMeshes)); // TODO: memory leak
+		model->SetName(node->mName);
+        if (parent)
+        {
+			model->SetParentTransform(parent->GetTransform());
+        }
+        model->SetTransform(node->mTransformation);
+		m_Models.push_back(model);
+
+        // Recursively process children
         for (size_t i = 0; i < node->mNumChildren; i++)
         {
-            // push children
             ProcessNode(node->mChildren[i], scene, model);
         }
 
