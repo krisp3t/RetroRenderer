@@ -47,8 +47,8 @@ namespace RetroRenderer
             // TODO: add parent-child transform relationship
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
             m_Meshes.push_back(ProcessMesh(mesh, scene));
-            auto model = new Model(m_Meshes.back()); // TODO: memory leak
-            m_Models.push_back(model);
+            auto model = new Model(m_Meshes.back());
+            m_Models.push_back(*model);
         }
 
         for (size_t i = 0; i < node->mNumChildren; i++)
