@@ -1,6 +1,6 @@
 #include <array>
-#include "../Base/Logger.h"
 #include "SceneManager.h"
+#include "../Base/Logger.h"
 #include "../Base/InputActions.h"
 
 namespace RetroRenderer
@@ -83,6 +83,7 @@ namespace RetroRenderer
         {
             return;
         }
+        p_Camera->UpdateViewMatrix();
         p_Scene->FrustumCull(*p_Camera);
     }
 

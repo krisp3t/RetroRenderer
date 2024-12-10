@@ -109,12 +109,14 @@ namespace RetroRenderer
                 vertex.position.x = mesh->mVertices[i].x;
                 vertex.position.y = mesh->mVertices[i].y;
                 vertex.position.z = mesh->mVertices[i].z;
+				vertex.position.w = 1.0f;
             }
             if (mesh->HasNormals())
             {
                 vertex.normal.x = mesh->mNormals[i].x;
                 vertex.normal.y = mesh->mNormals[i].y;
                 vertex.normal.z = mesh->mNormals[i].z;
+                // TODO: w?
             }
             if (mesh->mTextureCoords[0])
             {

@@ -1,6 +1,7 @@
 #include "SWRenderer.h"
 #include "../../Base/Logger.h"
 #include "../../Engine.h"
+#include <glm/gtx/string_cast.hpp>
 
 namespace RetroRenderer
 {
@@ -47,6 +48,15 @@ namespace RetroRenderer
 		const glm::mat4 mvp = projMat * mv;
 		const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
 
+		LOGD("Drawing model: %s", model.GetName().c_str());
+		LOGD("Model matrix: %s", glm::to_string(modelMat).c_str());
+		LOGD("View matrix: %s", glm::to_string(viewMat).c_str());
+		LOGD("Projection matrix: %s", glm::to_string(projMat).c_str());
+		LOGD("Model-View matrix: %s", glm::to_string(mv).c_str());
+		LOGD("Model-View-Projection matrix: %s", glm::to_string(mvp).c_str());
+		LOGD("Normal matrix: %s", glm::to_string(n).c_str());
+
+
         for (const Mesh* mesh : model.GetMeshes())
         {
 			assert(mesh->m_Indices.size() % 3 == 0 && 
@@ -66,8 +76,14 @@ namespace RetroRenderer
 				// Vertex Shader
 				for (auto& vertex : vertices)
 				{
-					vertex.position = glm::vec3(mvp * glm::vec4(vertex.position, 1.0f));
+					vertex.position = mvp * vertex.position;
 					vertex.normal = glm::normalize(glm::vec3(n * glm::vec4(vertex.normal, 0.0f)));
+				}
+
+                // Perspective division
+				for (auto& vertex : vertices)
+				{
+                    vertex.position /= vertex.position.w;
 				}
 
 				// Rasterizer
