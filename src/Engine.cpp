@@ -29,7 +29,7 @@ namespace RetroRenderer
     void Engine::Run()
     {
         auto start = SDL_GetTicks();
-        auto delta = 0;
+        unsigned int delta = 0;
 
         LOGD("Entered main loop");
         for (;;)
@@ -43,8 +43,11 @@ namespace RetroRenderer
             }
             // TODO: handle camera switching
 
-            m_SceneManager.ProcessInput(inputActions, delta);
-            m_SceneManager.Update(delta);
+			if (m_SceneManager.ProcessInput(inputActions, delta))
+			{
+				m_SceneManager.Update(delta);
+			}
+            m_SceneManager.NewFrame();
 
             ImU32 clearColor = ImGui::ColorConvertFloat4ToU32(p_Config->renderer.clearColor);
             m_DisplaySystem.BeforeFrame(clearColor); // SDL, imgui clear screen

@@ -1,7 +1,6 @@
 #include <array>
 #include "SceneManager.h"
 #include "../Base/Logger.h"
-#include "../Base/InputActions.h"
 
 namespace RetroRenderer
 {
@@ -23,14 +22,19 @@ namespace RetroRenderer
             p_Scene = nullptr;
             return false;
         }
+        // aaaaap_Camera = std::make_shared<Camera>();
         return true;
     }
 
-    void SceneManager::ProcessInput(InputActionMask actions, unsigned int deltaTime)
+    /**
+	 * @brief Process input actions (translate, rotate camera)
+	 * @return true if there was any actions to process, false otherwise
+     */
+    bool SceneManager::ProcessInput(InputActionMask actions, unsigned int deltaTime)
     {
         if (actions == 0)
         {
-            return;
+            return false;
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_FORWARD))
         {
@@ -71,19 +75,24 @@ namespace RetroRenderer
         if (actions & static_cast<InputActionMask>(InputAction::ROTATE_LEFT))
         {
             LOGD("Rotate left");
+            p_Camera->eulerRotation.y += 1.0f * (m_RotateFactor * deltaTime); // Yaw
         }
         if (actions & static_cast<InputActionMask>(InputAction::ROTATE_RIGHT))
         {
             LOGD("Rotate right");
+            p_Camera->eulerRotation.y -= 1.0f * (m_RotateFactor * deltaTime); // Yaw
         }
         if (actions & static_cast<InputActionMask>(InputAction::ROTATE_UP))
         {
             LOGD("Rotate up");
+            p_Camera->eulerRotation.x += 1.0f * (m_RotateFactor * deltaTime); // Pitch
         }
         if (actions & static_cast<InputActionMask>(InputAction::ROTATE_DOWN))
         {
             LOGD("Rotate down");
+            p_Camera->eulerRotation.x -= 1.0f * (m_RotateFactor * deltaTime); // Pitch
         }
+        return true;
     }
 
     void SceneManager::Update(unsigned int deltaTime)
@@ -93,7 +102,15 @@ namespace RetroRenderer
             return;
         }
         p_Camera->UpdateViewMatrix();
-        p_Scene->FrustumCull(*p_Camera);
+    }
+
+    void SceneManager::NewFrame()
+    {
+		if (!p_Scene)
+		{
+			return;
+		}
+		p_Scene->FrustumCull(*p_Camera);
     }
 
     std::shared_ptr<Camera> SceneManager::GetCamera() const

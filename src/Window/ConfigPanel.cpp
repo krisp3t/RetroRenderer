@@ -374,6 +374,7 @@ namespace RetroRenderer
         {
             ImGui::SeparatorText("Camera settings");
             ImGui::DragFloat3("Position", glm::value_ptr(cam->position), 0.1f, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::DragFloat3("Rotation", glm::value_ptr(cam->eulerRotation), 0.1f, -180.0f, 180.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
             ImGui::Combo("Camera type", reinterpret_cast<int *>(&cam->type), "Perspective\0Orthographic\0");
             ImGui::SliderFloat("Field of view", &cam->fov, 1.0f, 179.0f);
             ImGui::SliderFloat("Near plane", &cam->near, 0.1f, 10.0f);
