@@ -4,7 +4,7 @@ namespace RetroRenderer
 {
 	void Camera::UpdateViewMatrix()
 	{
-		viewMat = glm::lookAt(position, target, up);
+		viewMat = glm::lookAt(position, position + direction, up);
 
 		if (type == CameraType::PERSPECTIVE)
 		{

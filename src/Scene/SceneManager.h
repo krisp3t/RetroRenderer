@@ -20,7 +20,7 @@ namespace RetroRenderer
     private:
         std::shared_ptr<Scene> p_Scene = nullptr;
         std::shared_ptr<Camera> p_Camera = std::make_shared<Camera>(); // TODO: init only when loading scene
-        float m_MoveFactor = 0.1f;
+        float m_MoveFactor = 0.02f;
     };
 
 }

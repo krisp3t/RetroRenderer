@@ -35,29 +35,38 @@ namespace RetroRenderer
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_FORWARD))
         {
             LOGD("Move forward");
-            // TODO: move depending on direction vector
-            p_Camera->position.z -= m_MoveFactor * deltaTime;
+			p_Camera->position += p_Camera->direction * (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_BACKWARD))
         {
             LOGD("Move backward");
-            p_Camera->position.z += m_MoveFactor * deltaTime;
+			p_Camera->position -= p_Camera->direction * (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_LEFT))
         {
             LOGD("Move left");
+			p_Camera->position -= glm::normalize(
+                glm::cross(p_Camera->direction, p_Camera->up)
+            ) * 
+                (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_RIGHT))
         {
             LOGD("Move right");
+			p_Camera->position += glm::normalize(
+				glm::cross(p_Camera->direction, p_Camera->up)
+			) *
+				(m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_UP))
         {
             LOGD("Move up");
+			p_Camera->position += p_Camera->up * (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_DOWN))
         {
             LOGD("Move down");
+			p_Camera->position -= p_Camera->up * (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::ROTATE_LEFT))
         {

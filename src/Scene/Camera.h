@@ -14,11 +14,11 @@ namespace RetroRenderer
 	{
 	public:
 		// Matrices
-		glm::mat4 viewMat = glm::lookAt(position, target, up);
+		glm::mat4 viewMat = glm::lookAt(position, position + direction, up);
 		glm::mat4 projMat = glm::perspective(glm::radians(fov), aspectRatio, near, far);
-		glm::vec3 position = { 0.0f, 0.0f, -2.0f };
+		glm::vec3 position = { 0.0f, 0.0f, 3.0f };
 		const glm::vec3 up = { 0.0f, 1.0f, 0.0f };
-		glm::vec3 target = { 0.0f, 0.0f, -1.0f };
+		glm::vec3 direction = { 0.0f, 0.0f, -1.0f };
 
 		// Settings
 		CameraType type = CameraType::PERSPECTIVE;
