@@ -10,7 +10,7 @@
 namespace RetroRenderer
 {
 
-LogLevel Logger::_minLevel = LogLevel::LOG_DEBUG;
+    LogLevel Logger::_minLevel = LogLevel::LOG_WARN;
 
 constexpr int MAX_LOG_LENGTH = 1024;
 

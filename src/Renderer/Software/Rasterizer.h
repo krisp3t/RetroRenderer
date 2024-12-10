@@ -33,6 +33,8 @@ private:
     static void DrawFlatTriangle(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3>& viewportVertices);
     static void FillFlatBottomTri(Buffer<Uint32> &framebuffer, glm::vec2& v0, glm::vec2& v1, glm::vec2& v2);
     static void FillFlatTopTri(Buffer<Uint32> &framebuffer, glm::vec2& v0, glm::vec2& v1, glm::vec2& v2);
+    // Trig cull
+    static bool PixelCullTriangle(const glm::vec2& v0, const glm::vec2& v1, const glm::vec2& v2, const glm::vec2& testPoint);
 };
 
 }

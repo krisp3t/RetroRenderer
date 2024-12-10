@@ -17,14 +17,26 @@ namespace RetroRenderer
 	void Rasterizer::DrawHLine(Buffer<Uint32>& framebuffer, int x0, int x1, int y, Uint32 color)
 	{
 		assert(framebuffer.height > y && "Y out of bounds");
-		assert(x0 >= 0 && x0 < framebuffer.width && "X0 out of bounds");
-		assert(x1 >= 0 && x1 < framebuffer.width && "X1 out of bounds");
 
 		if (x0 > x1) std::swap(x0, x1);
 		int startIndex = y * framebuffer.width + x0;
-		std::fill_n(&framebuffer.data[startIndex], x1 - x0 + 1, color);
+		int length = x1 - x0 + 1;
+		
+		assert(x0 >= 0 && x0 < framebuffer.width && "X0 out of bounds");
+		assert(x1 >= 0 && x1 < framebuffer.width && "X1 out of bounds");
+		assert(startIndex >= 0 && startIndex < framebuffer.GetSize() && "Start index out of bounds");
+		assert(startIndex + length <= framebuffer.GetSize() && "End index out of bounds");
+
+		std::fill_n(&framebuffer.data[startIndex], length, color);
 	}
 
+	/**
+	 * @brief Draws a line between two points using the selected line drawing algorithm
+	 * @param framebuffer The framebuffer to draw on
+	 * @param p0 The start point in screen space
+	 * @param p1 The end point in screen space
+	 * @param color The color of the line
+	 */
 	void Rasterizer::DrawLine(Buffer<Uint32>& framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color)
 	{
 		switch (Engine::Get().GetConfig()->rasterizer.lineMode)
@@ -49,6 +61,7 @@ namespace RetroRenderer
 		float y = p0.y;
 		for (int i = 0; i <= steps; i++)
 		{
+			if (x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height) break;
 			DrawPixel(framebuffer, x, y, color);
 			x += xInc;
 			y += yInc;
@@ -57,7 +70,7 @@ namespace RetroRenderer
 
 	void Rasterizer::DrawLineBresenham(Buffer<Uint32>& fb, glm::vec2 p0, glm::vec2 p1, Uint32 color)
 	{
-        // TODO: rasterization rules
+		// TODO: rasterization rules
 		bool steep = false;
 		if (std::abs(p0.x - p1.x) < std::abs(p0.y - p1.y)) {
 			std::swap(p0.x, p0.y);
@@ -74,12 +87,7 @@ namespace RetroRenderer
 		int error2 = 0;
 		int y = p0.y;
 		for (int x = p0.x; x <= p1.x; x++) {
-			if (steep) {
-				DrawPixel(fb, y, x, color);
-			}
-			else {
-				DrawPixel(fb, x, y, color);
-			}
+			steep ? DrawPixel(fb, y, x, color) : DrawPixel(fb, x, y, color);
 			error2 += derror2;
 			if (error2 > dx) {
 				y += (p1.y > p0.y ? 1 : -1);
@@ -135,6 +143,26 @@ namespace RetroRenderer
 		DrawLine(framebuffer, verts[0], verts[1], 0xFF0000FF);
 		DrawLine(framebuffer, verts[1], verts[2], 0x00FF00FF);
 		DrawLine(framebuffer, verts[2], verts[0], 0x0000FFFF);
+	}
+
+	/**
+	 * @brief Check if point lies inside triangle (barycentric coords)
+	 */
+	bool Rasterizer::PixelCullTriangle(const glm::vec2& v0, const glm::vec2& v1, const glm::vec2& v2, const glm::vec2& testPoint)
+	{
+		float areaTotal = (v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x);
+
+		// Cull if the triangle is degenerate (zero area)
+		if (areaTotal == 0.0f)
+			return true;
+
+		// Calculate barycentric coordinates for the test point
+		float alpha = ((v1.x - testPoint.x) * (v2.y - testPoint.y) - (v1.y - testPoint.y) * (v2.x - testPoint.x)) / areaTotal;
+		float beta = ((v2.x - testPoint.x) * (v0.y - testPoint.y) - (v2.y - testPoint.y) * (v0.x - testPoint.x)) / areaTotal;
+		float gamma = ((v0.x - testPoint.x) * (v1.y - testPoint.y) - (v0.y - testPoint.y) * (v1.x - testPoint.x)) / areaTotal;
+
+		// Cull the triangle if any barycentric coordinate is negative
+		return (alpha < 0.0f || beta < 0.0f || gamma < 0.0f);
 	}
 
     void Rasterizer::DrawFlatTriangle(Buffer <Uint32>& framebuffer, std::array<glm::vec2, 3>& viewportVertices)
@@ -236,10 +264,10 @@ namespace RetroRenderer
 		for (int y = yStart; y < yEnd; y--)
 		{
 			DrawHLine(
-				framebuffer, 
-				static_cast<int>(currentX1), 
-				static_cast<int>(currentX2), 
-				y, 
+				framebuffer,
+				static_cast<int>(currentX1),
+				static_cast<int>(currentX2),
+				y,
 				color
 			);
 			currentX1 -= invslope1;
@@ -249,7 +277,7 @@ namespace RetroRenderer
 
     void Rasterizer::DrawPixel(Buffer<Uint32> &framebuffer, float x, float y, Uint32 color)
     {
-        assert(!(x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height) && "Pixel out of bounds");
+		if (x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height) return;
         // TODO: Rasterization rules
 		framebuffer.Set(static_cast<int>(x), static_cast<int>(y), color);
     }

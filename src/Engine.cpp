@@ -43,10 +43,15 @@ namespace RetroRenderer
             }
             // TODO: handle camera switching
 
+            // TODO: optimisation?
+            /*
 			if (m_SceneManager.ProcessInput(inputActions, delta))
 			{
 				m_SceneManager.Update(delta);
 			}
+            */
+			m_SceneManager.ProcessInput(inputActions, delta);
+			m_SceneManager.Update(delta);
             m_SceneManager.NewFrame();
 
             ImU32 clearColor = ImGui::ColorConvertFloat4ToU32(p_Config->renderer.clearColor);

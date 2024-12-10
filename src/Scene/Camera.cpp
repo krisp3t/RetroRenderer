@@ -10,6 +10,9 @@ namespace RetroRenderer
 	void Camera::UpdateViewMatrix()
 	{
 		eulerRotation.x = glm::clamp(eulerRotation.x, -89.0f, 89.0f);
+		eulerRotation.y = glm::clamp(eulerRotation.y, -180.0f, 180.0f);
+		eulerRotation.z = glm::clamp(eulerRotation.z, -180.0f, 180.0f);
+
 		direction.x = cos(glm::radians(eulerRotation.y)) * cos(glm::radians(eulerRotation.x));
 		direction.y = sin(glm::radians(eulerRotation.x));
 		direction.z = sin(glm::radians(eulerRotation.y)) * cos(glm::radians(eulerRotation.x));
