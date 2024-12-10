@@ -16,7 +16,7 @@ namespace RetroRenderer
         bool Init(int w, int h);
         void Destroy();
         void SetActiveCamera(const Camera &camera);
-        void DrawTriangularMesh(const Mesh &mesh);
+        void DrawTriangularMesh(const Model &model);
         Buffer<Uint32> &GetRenderTarget();
     private:
         Buffer<Uint32> *p_FrameBuffer = nullptr;

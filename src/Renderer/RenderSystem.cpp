@@ -64,17 +64,12 @@ namespace RetroRenderer
 		assert(p_Stats != nullptr && "Stats not initialized!");
 		p_Stats->Reset();
 
+		//LOGD("Render queue size: %d", renderQueue.size());
         while (!renderQueue.empty())
         {
-			//LOGD("Render queue size: %d", renderQueue.size());
             const Model* model = renderQueue.front();
-			for (Mesh* mesh : model->GetMeshes()) // TODO: split into meshes?
-			{
-				assert(mesh != nullptr && "Tried to render null mesh");
-				p_Stats->renderedVerts += mesh->m_numVertices;
-				p_Stats->renderedTris += mesh->m_numFaces;
-				activeRenderer->DrawTriangularMesh(*mesh);
-			}
+			assert(model != nullptr && "Tried to render null model");
+			activeRenderer->DrawTriangularMesh(*model);
             renderQueue.pop();
         }
 
