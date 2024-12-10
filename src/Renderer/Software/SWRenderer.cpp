@@ -41,8 +41,8 @@ namespace RetroRenderer
     void SWRenderer::DrawTriangularMesh(const Model &model)
     {
 		const glm::mat4& modelMat = model.GetTransform();
-		const glm::mat4& viewMat = p_Camera->GetViewMatrix();
-		const glm::mat4& projMat = p_Camera->GetProjectionMatrix();
+        const glm::mat4& viewMat = p_Camera->viewMat;
+        const glm::mat4& projMat = p_Camera->projMat;
 		const glm::mat4 mv = viewMat * modelMat;
 		const glm::mat4 mvp = projMat * mv;
 		const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
