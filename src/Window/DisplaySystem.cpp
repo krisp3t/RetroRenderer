@@ -6,7 +6,7 @@
 
 namespace RetroRenderer
 {
-    bool DisplaySystem::Init(std::shared_ptr<Config> config, std::weak_ptr<Camera> camera, std::shared_ptr<Stats> stats)
+    bool DisplaySystem::Init(std::shared_ptr<Config> config, std::shared_ptr<Camera> camera, std::shared_ptr<Stats> stats)
     {
         p_Config = config;
         p_Camera = camera;

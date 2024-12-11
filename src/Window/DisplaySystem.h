@@ -16,7 +16,7 @@ public:
     DisplaySystem() = default;
     ~DisplaySystem() = default;
 
-    bool Init(std::shared_ptr<Config> config, std::weak_ptr<Camera> camera, std::shared_ptr<Stats> stats);
+    bool Init(std::shared_ptr<Config> config, std::shared_ptr<Camera> camera, std::shared_ptr<Stats> stats);
     void Destroy();
 
     static constexpr SDL_WindowFlags kWindowFlags =
@@ -45,7 +45,7 @@ private:
 	SDL_GLContext m_glContext = nullptr;
     std::shared_ptr<Config> p_Config = nullptr;
     std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
-    std::weak_ptr<Camera> p_Camera;
+    std::shared_ptr<Camera> p_Camera;
 
     int m_ScreenWidth = 1280;
     int m_ScreenHeight = 720;

@@ -24,7 +24,7 @@ namespace RetroRenderer
     ConfigPanel::ConfigPanel(SDL_Window *window,
                              SDL_GLContext glContext,
                              std::shared_ptr<Config> config,
-                             std::weak_ptr<Camera> camera,
+                             std::shared_ptr<Camera> camera,
                              const char* glslVersion,
                              std::shared_ptr<Stats> stats
     )
@@ -40,7 +40,7 @@ namespace RetroRenderer
     bool ConfigPanel::Init(SDL_Window* window,
                            SDL_GLContext glContext,
                            std::shared_ptr<Config> config,
-                           std::weak_ptr<Camera> camera,
+                           std::shared_ptr<Camera> camera,
                            const char* glslVersion,
                            std::shared_ptr<Stats> stats
                            )
@@ -195,6 +195,44 @@ namespace RetroRenderer
     void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture)
     {
 		ImGui::Begin("Output");
+        if (ImGui::IsWindowHovered())
+        {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+            // TODO: emit event instead?
+
+            // Rotate camera
+			if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+			{
+				p_Camera->eulerRotation.y += ImGui::GetMouseDragDelta(ImGuiMouseButton_Left).x * 0.05f;
+                p_Camera->eulerRotation.x -= ImGui::GetMouseDragDelta(ImGuiMouseButton_Left).y * 0.05f;
+                p_Camera->eulerRotation.x = std::clamp(p_Camera->eulerRotation.x, -89.0f, 89.0f);
+                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
+			}
+			// Pan camera (sideways and up/down relative to direction)
+			if (ImGui::IsMouseDragging(ImGuiMouseButton_Right))
+			{
+                glm::vec3& forward = p_Camera->direction;
+				glm::vec3 right = glm::normalize(glm::cross(forward, p_Camera->up));
+				glm::vec3 up = glm::normalize(glm::cross(right, forward));
+
+				p_Camera->position += right * -ImGui::GetMouseDragDelta(ImGuiMouseButton_Right).x * 0.005f;
+				p_Camera->position += up * ImGui::GetMouseDragDelta(ImGuiMouseButton_Right).y * 0.005f;
+                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
+			}
+            // Dolly camera
+			if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
+			{
+				glm::vec3& forward = p_Camera->direction;
+				p_Camera->position += forward * ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle).y * 0.01f;
+                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Middle);
+			}
+            // Zoom camera (forward/backward along forward vector)
+			if (ImGui::GetIO().MouseWheel != 0.0f)
+			{
+				glm::vec3& forward = p_Camera->direction;
+				p_Camera->position += forward * ImGui::GetIO().MouseWheel * 0.1f;
+			}
+        }
 
 		ImVec2 windowSize = ImGui::GetContentRegionAvail();
         ImGui::Image((void*)(intptr_t)p_framebufferTexture, windowSize);
@@ -370,16 +408,16 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayCameraSettings()
     {
-        if (auto cam = p_Camera.lock())
+        if (p_Camera)
         {
             ImGui::SeparatorText("Camera settings");
-            ImGui::DragFloat3("Position", glm::value_ptr(cam->position), 0.1f, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			ImGui::DragFloat3("Rotation", glm::value_ptr(cam->eulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
-            ImGui::Combo("Camera type", reinterpret_cast<int *>(&cam->type), "Perspective\0Orthographic\0");
-            ImGui::SliderFloat("Field of view", &cam->fov, 1.0f, 179.0f);
-            ImGui::SliderFloat("Near plane", &cam->near, 0.1f, 10.0f);
-            ImGui::SliderFloat("Far plane", &cam->far, 1.0f, 100.0f);
-            ImGui::SliderFloat("Orthographic size", &cam->orthoSize, 1.0f, 100.0f);
+            ImGui::DragFloat3("Position", glm::value_ptr(p_Camera->position), 0.1f, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::DragFloat3("Rotation", glm::value_ptr(p_Camera->eulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
+            ImGui::Combo("Camera type", reinterpret_cast<int *>(&p_Camera->type), "Perspective\0Orthographic\0");
+            ImGui::SliderFloat("Field of view", &p_Camera->fov, 1.0f, 179.0f);
+            ImGui::SliderFloat("Near plane", &p_Camera->near, 0.1f, 10.0f);
+            ImGui::SliderFloat("Far plane", &p_Camera->far, 1.0f, 100.0f);
+            ImGui::SliderFloat("Orthographic size", &p_Camera->orthoSize, 1.0f, 100.0f);
         }
         else
         {
@@ -499,10 +537,9 @@ namespace RetroRenderer
         if (ImGui::Begin("Metrics", &isOpen, windowFlags))
         {
             ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-            auto cam = p_Camera.lock();
-            if (cam)
+            if (p_Camera)
             {
-                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", cam->position.x, cam->position.y, cam->position.z);
+                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", p_Camera->position.x, p_Camera->position.y, p_Camera->position.z);
             }
 			assert(p_Stats != nullptr && "Stats not initialized!");
             ImGui::Text("%d verts, %d tris", p_Stats->renderedVerts, p_Stats->renderedTris);

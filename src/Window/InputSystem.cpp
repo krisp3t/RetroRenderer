@@ -1,5 +1,6 @@
 #include <imgui_impl_sdl2.h>
 #include "InputSystem.h"
+#include "../Base/Logger.h"
 
 namespace RetroRenderer
 {
@@ -15,7 +16,7 @@ namespace RetroRenderer
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
-            ImGui_ImplSDL2_ProcessEvent(&event);
+			ImGui_ImplSDL2_ProcessEvent(&event);
             switch (event.type)
             {
                 case SDL_QUIT:
@@ -76,6 +77,18 @@ namespace RetroRenderer
             break;
         }
     }
+
+	void InputSystem::HandleMouseMotion(const SDL_MouseMotionEvent& event)
+	{
+		if (!m_isDragging)
+		{
+			return;
+		}
+
+		// Relative motions
+		int dx = event.xrel;
+		int dy = event.yrel;
+	}
 
     void InputSystem::Destroy()
     {
