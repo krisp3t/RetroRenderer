@@ -33,7 +33,7 @@ struct Config
 
     struct CullSettings
     {
-        bool cullFace = true;
+		bool backfaceCulling = false;
         bool depthTest = true;
 		bool rasterClip = true;
         bool geometricClip = true;

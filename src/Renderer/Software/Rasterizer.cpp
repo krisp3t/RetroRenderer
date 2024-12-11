@@ -165,16 +165,37 @@ namespace RetroRenderer
 		return (alpha < 0.0f || beta < 0.0f || gamma < 0.0f);
 	}
 
+	/**
+	* @brief Check if the triangle is degenerate (zero area)
+	*/
+	bool Rasterizer::IsTriangleDegenerate(std::array<glm::vec2, 3>& vertices)
+	{
+		// Cross product is zero exactly when:
+		// 1. Two vectors are parallel/anti-parallel (linearly dependent)
+		// 2. One of the vectors is zero
+		return glm::cross(glm::vec3(vertices[1] - vertices[0], 0.0f), glm::vec3(vertices[2] - vertices[0], 0.0f)).z == 0.0f;
+	}
+
     void Rasterizer::DrawFlatTriangle(Buffer <Uint32>& framebuffer, std::array<glm::vec2, 3>& viewportVertices)
     {
 		auto& v0 = viewportVertices[0];
 		auto& v1 = viewportVertices[1];
 		auto& v2 = viewportVertices[2];
 
+		auto& p_Config = Engine::Get().GetConfig();
+
 		// Sort vertices by y-coordinate
 		if (v0.y > v1.y) std::swap(v0, v1);
 		if (v0.y > v2.y) std::swap(v0, v2);
 		if (v1.y > v2.y) std::swap(v1, v2);
+
+		// Skip degenerate triangles (zero area)
+		// Done in backface culling already
+		if (!p_Config->cull.backfaceCulling)
+		{
+			if (IsTriangleDegenerate(viewportVertices))
+				return;
+		}
   
         // Flat-bottom triangle
         if (v1.y == v2.y)
@@ -218,26 +239,35 @@ namespace RetroRenderer
     {
 		// Calculate invslopes in screen space
 		// Run over rise, because edges can be completely vertical (infinite slope)
-		float invslope1 = (v1.x - v0.x) / (v1.y - v0.y);
-		float invslope2 = (v2.x - v0.x) / (v2.y - v0.y);
+		double invslope1 = (v1.x - v0.x) / (v1.y - v0.y);
+		double invslope2 = (v2.x - v0.x) / (v2.y - v0.y);
 
 		// Start and end scanlines
-		const int yStart = static_cast<int>(ceil(v0.y - 0.5f));
-		const int yEnd = static_cast<int>(ceil(v2.y - 0.5f));
+		const int yStart = std::max(0, static_cast<int>(ceil(v0.y - 0.5f)));
+		const int yEnd = std::min(static_cast<int>(ceil(v2.y - 0.5f)), static_cast<int>(framebuffer.height - 1));
 		const Uint32 color = 0xFFFFFFFF;
 
 		float currentX1 = v0.x;
 		float currentX2 = v0.x;
 
-		for (int y = yStart; y < yEnd; y++)
+		for (int y = yStart; y < yEnd && currentX1 <= currentX2; y++)
 		{
-			DrawHLine(
-				framebuffer,
-				static_cast<int>(currentX1),
-				static_cast<int>(currentX2),
-				y,
-				color
-			);
+			// TODO: add raster clip toggle
+
+			// Raster clipping
+			const int xStart = std::max(0, static_cast<int>(currentX1));
+			const int xEnd = std::min(static_cast<int>(currentX2), static_cast<int>(framebuffer.width - 1));
+
+			for (int x = xStart; x <= xEnd; x++)
+			{
+				// TODO: depth test
+				DrawPixel(
+					framebuffer,
+					x,
+					y,
+					color
+				);
+			}
 			currentX1 += invslope1;
 			currentX2 += invslope2;
 		}
@@ -250,26 +280,35 @@ namespace RetroRenderer
     {
         // Calculate invslopes in screen space
 		// Run over rise, because edges can be completely vertical (infinite slope)
-		float invslope1 = (v2.x - v0.x) / (v2.y - v0.y);
-		float invslope2 = (v2.x - v1.x) / (v2.y - v1.y);
+		double invslope1 = (v2.x - v0.x) / (v2.y - v0.y);
+		double invslope2 = (v2.x - v1.x) / (v2.y - v1.y);
 
 		// Start and end scanlines
-		const int yStart = static_cast<int>(ceil(v0.y - 0.5f));
-		const int yEnd = static_cast<int>(ceil(v2.y - 0.5f));
+		const int yStart = std::min(static_cast<int>(ceil(v0.y - 0.5f)), static_cast<int>(framebuffer.height - 1));
+		const int yEnd = std::max(0, static_cast<int>(ceil(v2.y - 0.5f)));
 		const Uint32 color = 0xFFFFFFFF;
 
 		float currentX1 = v2.x;
 		float currentX2 = v2.x;
 
-		for (int y = yStart; y < yEnd; y--)
+		for (int y = yStart; y > yEnd && currentX1 <= currentX2; y--)
 		{
-			DrawHLine(
-				framebuffer,
-				static_cast<int>(currentX1),
-				static_cast<int>(currentX2),
-				y,
-				color
-			);
+			// TODO: add raster clip toggle
+			
+			// Raster clipping
+			const int xStart = std::max(0, static_cast<int>(currentX1));
+			const int xEnd = std::min(static_cast<int>(currentX2), static_cast<int>(framebuffer.width - 1));
+
+			for (int x = xStart; x <= xEnd; x++)
+			{
+				// TODO: depth test
+				DrawPixel(
+					framebuffer,
+					x,
+					y,
+					color
+				);
+			}
 			currentX1 -= invslope1;
 			currentX2 -= invslope2;
 		}
