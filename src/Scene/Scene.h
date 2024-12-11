@@ -25,14 +25,13 @@ namespace RetroRenderer
         // TODO: unneeded?
         std::vector<unsigned int> m_Textures;
         std::vector<unsigned int> m_Materials;
-        std::vector<Mesh> m_Meshes;
 
         std::vector<Model*> m_Models;
         std::queue<Model*> m_VisibleModels;
 
         bool ProcessNode(aiNode* node, const aiScene* scene);
         bool ProcessNode(aiNode* node, const aiScene* scene, const Model* parent);
-        Mesh& ProcessMesh(aiMesh* mesh, const aiScene* scene);
+        Mesh* ProcessMesh(aiMesh* mesh, const aiScene* scene);
 
     };
 };

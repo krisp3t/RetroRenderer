@@ -23,7 +23,8 @@ namespace RetroRenderer
 
         if (ProcessNode(scene->mRootNode, scene))
         {
-            LOGI("Successfully processed scene: %s (%d meshes)", scene->mRootNode->mName.C_Str(), m_Meshes.size());
+            // LOGI("Successfully processed scene: %s (%d meshes)", scene->mRootNode->mName.C_Str(), m_Meshes.size());
+			LOGI("Successfully processed scene: %s", scene->mRootNode->mName.C_Str());
         }
         return true;
 	}
@@ -61,9 +62,13 @@ namespace RetroRenderer
         for (size_t i = 0; i < node->mNumMeshes; i++)
         {
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-            auto& processedMesh = ProcessMesh(mesh, scene);
-            m_Meshes.push_back(processedMesh); // add to all scene meshes
-			modelMeshes.push_back(&m_Meshes.back()); // add to current model
+			if (mesh->mNumVertices == 0 || mesh->mNumFaces == 0)
+			{
+				continue;
+			}
+            auto* processedMesh = ProcessMesh(mesh, scene);
+            // m_Meshes.push_back(processedMesh); // add to all scene meshes
+			modelMeshes.push_back(processedMesh); // add to current model
         }
 
 		model = new Model(std::move(modelMeshes)); // TODO: memory leak
@@ -95,7 +100,7 @@ namespace RetroRenderer
 		return ProcessNode(node, scene, nullptr);
     }
 
-    Mesh& Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene)
+    Mesh* Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene)
     {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
@@ -151,7 +156,7 @@ namespace RetroRenderer
         auto *meshObj = new Mesh(std::move(vertices), std::move(indices));
         meshObj->m_numVertices = mesh->mNumVertices;
         meshObj->m_numFaces = mesh->mNumFaces;
-        return *meshObj;
+        return meshObj;
     }
 
     std::queue<Model*>& Scene::GetVisibleModels()

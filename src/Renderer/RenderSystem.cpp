@@ -68,8 +68,8 @@ namespace RetroRenderer
         while (!renderQueue.empty())
         {
             const Model* model = renderQueue.front();
-			assert(model != nullptr && "Tried to render null model");
-			activeRenderer->DrawTriangularMesh(*model);
+			assert(model != nullptr && "Model is null");
+			activeRenderer->DrawTriangularMesh(model);
             renderQueue.pop();
         }
 

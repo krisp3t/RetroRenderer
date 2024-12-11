@@ -39,9 +39,9 @@ namespace RetroRenderer
      * @brief Draw a model on the frame buffer. Must have triangulated meshes!
      * @param mesh
      */
-    void SWRenderer::DrawTriangularMesh(const Model &model)
+    void SWRenderer::DrawTriangularMesh(const Model *model)
     {
-		const glm::mat4& modelMat = model.GetTransform();
+		const glm::mat4& modelMat = model->GetTransform();
         const glm::mat4& viewMat = p_Camera->viewMat;
         const glm::mat4& projMat = p_Camera->projMat;
 		const glm::mat4 mv = viewMat * modelMat;
@@ -59,7 +59,7 @@ namespace RetroRenderer
         */
 
 
-        for (const Mesh* mesh : model.GetMeshes())
+        for (const Mesh* mesh : model->GetMeshes())
         {
 			assert(mesh->m_Indices.size() % 3 == 0 && 
 				   mesh->m_Indices.size() == mesh->m_numFaces * 3 &&
