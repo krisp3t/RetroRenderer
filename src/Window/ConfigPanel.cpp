@@ -428,7 +428,7 @@ namespace RetroRenderer
                 }
                 if (ImGui::BeginTabItem("Culling"))
                 {
-                    ImGui::Text("Culling settings");
+                    DisplayCullSettings();
                     ImGui::EndTabItem();
                 }
 				if (ImGui::BeginTabItem("Rasterization"))
@@ -491,21 +491,38 @@ namespace RetroRenderer
         auto& r = p_Config->rasterizer;
         ImGui::SeparatorText("Rasterizer settings");
 
-        const char* lineItems[] = { "DDA (slower)", "Bresenham (faster)"};
-        ImGui::Combo("Line mode", reinterpret_cast<int*>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
+		const char* lineItems[] = { "DDA (slower)", "Bresenham (faster)" };
 		const char* polyItems[] = { "Point", "Wireframe (line)", "Fill triangles" };
 		ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
 
-        ImGui::SeparatorText("Point");
-		ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
-        ImGui::ColorEdit4("Point color", reinterpret_cast<float*>(&r.lineColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        switch (r.polygonMode)
+        {
+            case Config::RasterizationPolygonMode::POINT:
+				ImGui::SeparatorText("Point");
+				ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
+				ImGui::ColorEdit4("Point color", reinterpret_cast<float*>(&r.lineColor));
+                break;
+            case Config::RasterizationPolygonMode::LINE:
+				ImGui::SeparatorText("Wireframe");
+				ImGui::Combo("Line mode", reinterpret_cast<int*>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
+				ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
+				ImGui::ColorEdit4("Line color", reinterpret_cast<float*>(&r.lineColor));
+				ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
+				break;
+			case Config::RasterizationPolygonMode::FILL:
+				ImGui::SeparatorText("Fill");
+        }
+    }
 
-        ImGui::SeparatorText("Wireframe");
-		ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
-        ImGui::ColorEdit4("Line color", reinterpret_cast<float*>(&r.lineColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-        ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
-
-        ImGui::SeparatorText("Fill");
+    void ConfigPanel::DisplayCullSettings()
+    {
+		auto& c = p_Config->cull;
+		ImGui::SeparatorText("Cull settings");
+		ImGui::SeparatorText("Clip settings");
+        ImGui::Text("Clipping triangles and pixels outside of screen is essential to rendering.");
+		ImGui::TextColored(ImVec4(1.0, 0.0, 0.0, 1.0), "Disabling clipping will produce graphical errors, assert fails and undefined behavior.");
+        ImGui::Checkbox("Raster clip", &c.rasterClip);
+		ImGui::Checkbox("Geometric clip", &c.geometricClip);
     }
 
     void ConfigPanel::DisplayEnvironmentSettings()

@@ -43,6 +43,7 @@ private:
     void DisplayGUI();
     void DisplayMetricsOverlay();
     void DisplayCameraSettings();
+    void DisplayCullSettings();
     void DisplayRendererSettings();
     void DisplayRasterizerSettings();
     void DisplayEnvironmentSettings();

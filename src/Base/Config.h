@@ -35,6 +35,8 @@ struct Config
     {
         bool cullFace = true;
         bool depthTest = true;
+		bool rasterClip = true;
+        bool geometricClip = true;
     };
 
 	enum class RasterizationLineMode
@@ -55,7 +57,7 @@ struct Config
         float pointSize = 1.0f;
 		float lineWidth = 1.0f;
         ImVec4 lineColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-        bool basicLineColors = false; // Display triangle edges as RGB colors
+        bool basicLineColors = true; // Display triangle edges as RGB colors
         RasterizationLineMode lineMode = RasterizationLineMode::BRESENHAM;
 		RasterizationPolygonMode polygonMode = RasterizationPolygonMode::FILL;
     };
