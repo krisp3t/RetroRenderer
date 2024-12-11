@@ -14,8 +14,15 @@ struct Config
         FXAA,
     };
 
+    enum class RendererType
+    {
+        SOFTWARE,
+        GL
+    };
+
     struct RendererSettings
     {
+        RendererType selectedRenderer = RendererType::SOFTWARE;
         AAType aaType = AAType::NONE;
         bool showWireframe = false;
         bool enablePerspectiveCorrect = true;
@@ -52,6 +59,13 @@ struct Config
 		FILL,   // default   = GL_FILL
     };
 
+    enum class RasterizationFillMode
+    {
+        SCANLINE,
+        BARYCENTRIC,
+        PINEDA
+    };
+
     struct RasterizerSettings
 	{
         float pointSize = 1.0f;
@@ -60,6 +74,7 @@ struct Config
         bool basicLineColors = true; // Display triangle edges as RGB colors
         RasterizationLineMode lineMode = RasterizationLineMode::BRESENHAM;
 		RasterizationPolygonMode polygonMode = RasterizationPolygonMode::FILL;
+		RasterizationFillMode fillMode = RasterizationFillMode::SCANLINE;
     };
 
     EnvironmentSettings environment;

@@ -144,13 +144,31 @@ namespace RetroRenderer
         //bool show = true;
         //ImGui::ShowDemoWindow(&show);
 
+
         DisplayMainMenu();
         //DisplayPipelineWindow();
         // TODO: add examples file browser
         DisplaySceneGraph();
+        DisplayInspectorWindow();
         DisplayConfigWindow(*p_Config);
         DisplayControlsOverlay();
         DisplayMetricsOverlay();
+		DisplayExamplesDialog();
+    }
+
+    void ConfigPanel::DisplayExamplesDialog()
+    {
+		IGFD::FileDialogConfig examplesDialogConfig;
+        examplesDialogConfig.countSelectionMax = 1;
+		examplesDialogConfig.filePathName = "tests-visual/basic-tests/";
+		ImGuiFileDialog::Instance()->OpenDialog("OpenExampleFile", "Examples", k_supportedModels, examplesDialogConfig);
+		if (ImGuiFileDialog::Instance()->Display("OpenExampleFile")) {
+			if (ImGuiFileDialog::Instance()->IsOk()) {
+				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+				LOGD("Selected example file: %s", filePathName.c_str());
+				Engine::Get().DispatchImmediate(SceneLoadEvent{ std::move(filePathName) });
+			}
+		}
     }
 
     void ConfigPanel::DisplaySceneGraph()
@@ -184,6 +202,13 @@ namespace RetroRenderer
 		ImGui::TreePop();
         */
         ImGui::End();
+    }
+
+    void ConfigPanel::DisplayInspectorWindow()
+    {
+		ImGui::Begin("Inspector");
+		ImGui::Text("Inspector");
+		ImGui::End();
     }
 
     void ConfigPanel::DisplayRenderedImage()
@@ -289,8 +314,8 @@ namespace RetroRenderer
             // ----------------
             if (ImGui::MenuItem("Open scene"))
             {
-                IGFD::FileDialogConfig config;
-                ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose scene", ".obj,.gltf,.glb,.fbx,.usd", config);
+                IGFD::FileDialogConfig sceneDialogConfig;
+                ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose scene", k_supportedModels, sceneDialogConfig);
             }
 
             if (ImGui::MenuItem("Scene Editor"))
@@ -455,10 +480,17 @@ namespace RetroRenderer
             ImGui::DragFloat3("Position", glm::value_ptr(p_Camera->position), 0.1f, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			ImGui::DragFloat3("Rotation", glm::value_ptr(p_Camera->eulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
             ImGui::Combo("Camera type", reinterpret_cast<int *>(&p_Camera->type), "Perspective\0Orthographic\0");
-            ImGui::SliderFloat("Field of view", &p_Camera->fov, 1.0f, 179.0f);
-            ImGui::SliderFloat("Near plane", &p_Camera->near, 0.1f, 10.0f);
-            ImGui::SliderFloat("Far plane", &p_Camera->far, 1.0f, 100.0f);
-            ImGui::SliderFloat("Orthographic size", &p_Camera->orthoSize, 1.0f, 100.0f);
+            switch (p_Camera->type)
+            {
+			case CameraType::PERSPECTIVE:
+				ImGui::SliderFloat("Field of view", &p_Camera->fov, 1.0f, 179.0f);
+				ImGui::SliderFloat("Near plane", &p_Camera->near, 0.1f, 10.0f);
+				ImGui::SliderFloat("Far plane", &p_Camera->far, 1.0f, 100.0f);
+				break;
+			case CameraType::ORTHOGRAPHIC:
+				ImGui::SliderFloat("Orthographic size", &p_Camera->orthoSize, 1.0f, 100.0f);
+				break;
+            }
         }
         else
         {
@@ -471,6 +503,12 @@ namespace RetroRenderer
     {
         auto &r = p_Config->renderer;
         ImGui::SeparatorText("Renderer settings");
+		const char* rendererItems[] = { "Software", "OpenGL" };
+		ImGui::RadioButton("Software", reinterpret_cast<int*>(&r.selectedRenderer), static_cast<int>(Config::RendererType::SOFTWARE));
+		ImGui::SameLine();
+		ImGui::RadioButton("OpenGL", reinterpret_cast<int*>(&r.selectedRenderer), 
+            static_cast<int>(Config::RendererType::GL));
+
         if (ImGui::Button("Take screenshot"))
         {
             // TODO: implement screenshot
@@ -493,6 +531,7 @@ namespace RetroRenderer
 
 		const char* lineItems[] = { "DDA (slower)", "Bresenham (faster)" };
 		const char* polyItems[] = { "Point", "Wireframe (line)", "Fill triangles" };
+        const char* fillItems[] = { "Scanline", "Barycentric", "Pineda (parallel)" };
 		ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
 
         switch (r.polygonMode)
@@ -511,6 +550,7 @@ namespace RetroRenderer
 				break;
 			case Config::RasterizationPolygonMode::FILL:
 				ImGui::SeparatorText("Fill");
+				ImGui::Combo("Fill mode", reinterpret_cast<int*>(&r.fillMode), fillItems, IM_ARRAYSIZE(lineItems));
         }
     }
 
@@ -518,6 +558,8 @@ namespace RetroRenderer
     {
 		auto& c = p_Config->cull;
 		ImGui::SeparatorText("Cull settings");
+        ImGui::Checkbox("Backface culling", &c.backfaceCulling);
+        ImGui::Checkbox("Depth testing", &c.depthTest);
 		ImGui::SeparatorText("Clip settings");
         ImGui::Text("Clipping triangles and pixels outside of screen is essential to rendering.");
 		ImGui::TextColored(ImVec4(1.0, 0.0, 0.0, 1.0), "Disabling clipping will produce graphical errors, assert fails and undefined behavior.");

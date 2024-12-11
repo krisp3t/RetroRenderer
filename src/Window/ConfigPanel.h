@@ -49,9 +49,13 @@ private:
     void DisplayEnvironmentSettings();
     void DisplayMainMenu();
     void DisplaySceneGraph();
+    void DisplayInspectorWindow();
     void DisplayPipelineWindow();
     void DisplayConfigWindow(Config& config);
     void DisplayControlsOverlay();
+    void DisplayExamplesDialog();
+
+    const char* k_supportedModels = ".obj,.gltf,.glb,.fbx,.usd";
 };
 
 }
