@@ -198,6 +198,25 @@ namespace RetroRenderer
 		ImGui::Begin("Output");
 		ImVec2 contentSize = ImGui::GetContentRegionAvail();
 
+        auto ReleaseMouse = [&]()
+            {
+                ImVec2 windowPos = ImGui::GetWindowPos();
+                ImVec2 windowSize = ImGui::GetWindowSize();
+                ImVec2 resetPos = ImVec2(windowPos.x + windowSize.x / 2, windowPos.y + windowSize.y / 2);
+                LOGD("Stop camera drag, resetting mouse to (%.0f, %.0f)", resetPos.x, resetPos.y);
+                m_isDragging = false;
+                SDL_SetRelativeMouseMode(SDL_FALSE);
+                SDL_WarpMouseInWindow(m_Window, resetPos.x, resetPos.y); // reset to center
+            };
+
+		auto HandleCameraDrag = [&]()
+			{
+				int deltaX, deltaY;
+				SDL_GetRelativeMouseState(&deltaX, &deltaY);
+				p_Camera->eulerRotation.y += deltaX * 0.05f;
+				p_Camera->eulerRotation.x -= deltaY * 0.05f;
+			};
+
         if (ImGui::IsWindowHovered())
         {
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
@@ -205,29 +224,18 @@ namespace RetroRenderer
 
             if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
-                // Start dragging
 				if (!m_isDragging)
 				{
                     LOGD("Start camera drag");
                     m_isDragging = true;
                     SDL_SetRelativeMouseMode(SDL_TRUE); // Capture mouse
 				}
-
-				ImVec2 delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
-				p_Camera->eulerRotation.y += delta.x * 0.05f;
-				p_Camera->eulerRotation.x -= delta.y * 0.05f;
-                ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
+                HandleCameraDrag();
             }
+            // Mouse released when hovering, stop dragging
 			else if (m_isDragging)
 			{
-				ImVec2 windowPos = ImGui::GetWindowPos();
-				ImVec2 windowSize = ImGui::GetWindowSize();
-				ImVec2 resetPos = ImVec2(windowPos.x + windowSize.x / 2, windowPos.y + windowSize.y / 2);
-				// Stop dragging
-                LOGD("Stop camera drag, resetting mouse to (%.0f, %.0f)", resetPos.x, resetPos.y);
-				m_isDragging = false;
-				SDL_SetRelativeMouseMode(SDL_FALSE);
-				SDL_WarpMouseInWindow(m_Window, resetPos.x, resetPos.y); // reset to center
+                ReleaseMouse();
 			}
 
             // Zoom camera (forward/backward along forward vector)
@@ -238,10 +246,14 @@ namespace RetroRenderer
 			}
         }
         else if (m_isDragging) {
-			// Stop dragging
-			LOGD("Stop camera drag");
-			m_isDragging = false;
-			SDL_SetRelativeMouseMode(SDL_FALSE);
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                HandleCameraDrag();
+            }
+            else
+            {
+                ReleaseMouse();
+            }
         }
          
         ImGui::Image((void*)(intptr_t)p_framebufferTexture, contentSize);
