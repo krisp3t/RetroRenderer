@@ -10,16 +10,22 @@ namespace RetroRenderer
     {
         p_DisplaySystem = &displaySystem;
         p_SWRenderer = std::make_unique<SWRenderer>();
+		p_GLRenderer = std::make_unique<GLRenderer>();
         if (!p_SWRenderer->Init(p_DisplaySystem->GetWidth(), p_DisplaySystem->GetHeight()))
         {
             LOGE("Failed to initialize SWRenderer");
             return false;
         }
+		if (!p_GLRenderer->Init(p_DisplaySystem->GetWidth(), p_DisplaySystem->GetHeight()))
+		{
+			LOGE("Failed to initialize GLRenderer");
+			return false;
+		}
 
         p_Stats = stats;
 
-        glGenTextures(1, &m_framebufferTexture);
-		glBindTexture(GL_TEXTURE_2D, m_framebufferTexture);
+        glGenTextures(1, &m_SWFramebufferTexture);
+		glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
 		glTexImage2D(
             GL_TEXTURE_2D, 
             0, 
@@ -33,6 +39,24 @@ namespace RetroRenderer
         );
         // TODO: make filtering configurable
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		glGenTextures(1, &m_GLFramebufferTexture);
+		glBindTexture(GL_TEXTURE_2D, m_GLFramebufferTexture);
+		glTexImage2D(
+			GL_TEXTURE_2D,
+			0,
+			GL_RGBA,
+			p_DisplaySystem->GetWidth(),
+			p_DisplaySystem->GetHeight(),
+			0,
+			GL_RGBA,
+			GL_UNSIGNED_BYTE,
+			nullptr
+		);
+		// glGenerateMipmap(GL_TEXTURE_2D);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glBindTexture(GL_TEXTURE_2D, 0);
 

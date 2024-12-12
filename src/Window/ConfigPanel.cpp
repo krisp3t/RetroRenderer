@@ -167,6 +167,7 @@ namespace RetroRenderer
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 				LOGD("Selected example file: %s", filePathName.c_str());
 				Engine::Get().DispatchImmediate(SceneLoadEvent{ std::move(filePathName) });
+                // IGFD::FileManager::SetCurrentPath("tests-visual/basic-tests/");
 			}
 		}
     }

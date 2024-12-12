@@ -7,6 +7,7 @@
 #include "../Base/Stats.h"
 #include "../Scene/Scene.h"
 #include "Software/SWRenderer.h"
+#include "OpenGL/GLRenderer.h"
 
 namespace RetroRenderer
 {
@@ -29,9 +30,11 @@ namespace RetroRenderer
 
 		std::unique_ptr<Scene> p_Scene = nullptr;
 		std::unique_ptr<SWRenderer> p_SWRenderer = nullptr;
+		std::unique_ptr<GLRenderer> p_GLRenderer = nullptr;
 		std::shared_ptr<Stats> p_Stats = nullptr;
 
-		GLuint m_framebufferTexture = 0;
+		GLuint m_SWFramebufferTexture = 0;
+		GLuint m_GLFramebufferTexture = 0;
 	};
 
 }
