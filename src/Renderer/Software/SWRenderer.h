@@ -5,10 +5,11 @@
 #include "../../Scene/Camera.h"
 #include "../Buffer.h"
 #include "Rasterizer.h"
+#include "../IRenderer.h"
 
 namespace RetroRenderer
 {
-    class SWRenderer
+	class SWRenderer : public IRenderer
     {
     public:
         SWRenderer() = default;

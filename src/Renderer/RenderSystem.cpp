@@ -3,6 +3,7 @@
 #include <random>
 #include "RenderSystem.h"
 #include "../Base/Logger.h"
+#include "../Engine.h"
 
 namespace RetroRenderer
 {
@@ -83,7 +84,21 @@ namespace RetroRenderer
 
     GLuint RenderSystem::Render(std::queue<Model*>& renderQueue)
     {
-        auto &activeRenderer = p_SWRenderer; // TODO: get from config
+		auto p_Config = Engine::Get().GetConfig();
+        auto selectedRenderer = p_Config->renderer.selectedRenderer;
+		IRenderer* activeRenderer = nullptr;
+		GLuint fbTex = 0;
+		switch (selectedRenderer)
+		{
+		case Config::RendererType::SOFTWARE:
+			activeRenderer = p_SWRenderer.get();
+			fbTex = m_SWFramebufferTexture;
+			break;
+		case Config::RendererType::GL:
+			activeRenderer = p_GLRenderer.get();
+			fbTex = m_GLFramebufferTexture;
+			break;
+		}
         assert(activeRenderer != nullptr && "Active renderer is null");
 		assert(p_Stats != nullptr && "Stats not initialized!");
 		p_Stats->Reset();
@@ -97,7 +112,7 @@ namespace RetroRenderer
             renderQueue.pop();
         }
 
-        glBindTexture(GL_TEXTURE_2D, m_framebufferTexture);
+        glBindTexture(GL_TEXTURE_2D, fbTex);
         glTexSubImage2D(
 			GL_TEXTURE_2D,
 			0,
@@ -110,7 +125,7 @@ namespace RetroRenderer
 			p_SWRenderer->GetRenderTarget().data
 		);
         glBindTexture(GL_TEXTURE_2D, 0);
-        return m_framebufferTexture;
+        return fbTex;
     }
 
     /**
@@ -126,7 +141,7 @@ namespace RetroRenderer
         std::uniform_int_distribution<uint32_t>distr(rangeFrom, rangeTo);
 		p_SWRenderer->GetRenderTarget().Clear(distr(generator));
 
-		glBindTexture(GL_TEXTURE_2D, m_framebufferTexture);
+		glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
 		glTexSubImage2D(
 			GL_TEXTURE_2D,
 			0,
@@ -139,7 +154,7 @@ namespace RetroRenderer
 			p_SWRenderer->GetRenderTarget().data
 		);
 		glBindTexture(GL_TEXTURE_2D, 0);
-        return m_framebufferTexture;
+        return m_SWFramebufferTexture;
     }
 
     void RenderSystem::Destroy()

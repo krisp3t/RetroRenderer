@@ -41,6 +41,10 @@ namespace RetroRenderer
      */
     void SWRenderer::DrawTriangularMesh(const Model *model)
     {
+		assert(p_Camera != nullptr && "No active camera set. Did you call SWRenderer::SetActiveCamera()?");
+		assert(p_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
+		assert(model != nullptr && "Tried to draw null model");
+
 		const glm::mat4& modelMat = model->GetTransform();
         const glm::mat4& viewMat = p_Camera->viewMat;
         const glm::mat4& projMat = p_Camera->projMat;

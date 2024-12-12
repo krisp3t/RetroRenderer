@@ -1,8 +1,12 @@
 #pragma once
+#include <glad/glad.h>
+#include "../../Scene/Camera.h"
+#include "../../Scene/Scene.h"
+#include "../IRenderer.h"
 
 namespace RetroRenderer
 {
-	class GLRenderer
+	class GLRenderer : public IRenderer
 	{
 	public:
 		GLRenderer() = default;

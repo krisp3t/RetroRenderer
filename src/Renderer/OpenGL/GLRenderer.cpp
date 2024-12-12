@@ -1,11 +1,11 @@
 #include "GLRenderer.h"
-#include <glad/glad.h>
-#include "../Base/Logger.h"
+#include "../../Base/Logger.h"
 
-namespace GLRenderer
+namespace RetroRenderer
 {
 	bool GLRenderer::Init(int w, int h)
 	{
+		/*
 		glGenFramebuffers(1, &m_FrameBuffer);
 		glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
 
@@ -29,20 +29,20 @@ namespace GLRenderer
 		}
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+		*/
 		return true;
 	}
 
 	void GLRenderer::Destroy()
 	{
-		glDeleteFramebuffers(1, &m_FrameBuffer);
-		glDeleteTextures(1, &m_RenderTexture);
-		glDeleteRenderbuffers(1, &m_DepthBuffer);
+		//glDeleteFramebuffers(1, &m_FrameBuffer);
+		//glDeleteTextures(1, &m_RenderTexture);
+		//glDeleteRenderbuffers(1, &m_DepthBuffer);
 	}
 
 	void GLRenderer::SetActiveCamera(const Camera& camera)
 	{
-		p_Camera = &camera;
+		p_Camera = const_cast<Camera*>(&camera);
 	}
 
 	void GLRenderer::DrawTriangularMesh(const Model* model)
