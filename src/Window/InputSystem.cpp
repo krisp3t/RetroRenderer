@@ -30,6 +30,14 @@ namespace RetroRenderer
                     }
                     HandleKeyDown(event.key.keysym.sym);
                     break;
+                case SDL_WINDOWEVENT:
+                    if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+                    {
+                        LOGD("Window resized to %d x %d", event.window.data1, event.window.data2);
+                        p_Config->window.width = event.window.data1;
+                        p_Config->window.height = event.window.data2;
+                    }
+					break;
             }
         }
         return m_InputState;

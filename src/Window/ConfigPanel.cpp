@@ -129,7 +129,7 @@ namespace RetroRenderer
     void ConfigPanel::DisplayGUI()
     {
         assert(p_Config != nullptr || "Config not initialized!");
-        if (!p_Config->showConfigPanel)
+        if (!p_Config->window.showConfigPanel)
         {
             return;
         }
@@ -515,6 +515,13 @@ namespace RetroRenderer
             // TODO: implement screenshot
             LOGD("Taking screenshot");
         }
+        ImGui::SameLine();
+		if (ImGui::Button("Send to RenderDoc"))
+		{
+			// TODO: implement screenshot
+			LOGD("Sending to RenderDoc");
+		}
+
         ImGui::SeparatorText("Scene");
         ImGui::Checkbox("Enable perspective-correct interpolation", &r.enablePerspectiveCorrect);
         const char* aaItems[] = { "None", "MSAA", "FXAA" };

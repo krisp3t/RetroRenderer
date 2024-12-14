@@ -22,7 +22,7 @@ namespace RetroRenderer
             p_Scene = nullptr;
             return false;
         }
-        // aaaaap_Camera = std::make_shared<Camera>();
+        // p_Camera = std::make_shared<Camera>();
         return true;
     }
 

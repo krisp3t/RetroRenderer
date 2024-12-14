@@ -7,6 +7,16 @@ namespace RetroRenderer
 
 struct Config
 {
+    struct WindowSettings
+    {
+		int width = 1280;
+		int height = 720;
+		bool fullscreen = false;
+		bool enableVsync = true;
+		bool showFPS = true;
+		bool showConfigPanel = true;
+    };
+
     enum class AAType
     {
         NONE,
@@ -77,11 +87,11 @@ struct Config
 		RasterizationFillMode fillMode = RasterizationFillMode::SCANLINE;
     };
 
+    WindowSettings window;
     EnvironmentSettings environment;
     CullSettings cull;
     RendererSettings renderer;
     RasterizerSettings rasterizer;
-    bool showConfigPanel = true;
 };
 
 }
