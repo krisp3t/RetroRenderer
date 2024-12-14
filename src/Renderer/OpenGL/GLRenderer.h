@@ -13,6 +13,7 @@ namespace RetroRenderer
 		~GLRenderer() = default;
 
 		bool Init(int w, int h);
+		void Resize(int w, int h);
 		void Destroy();
 		void SetActiveCamera(const Camera& camera);
 		void DrawTriangularMesh(const Model* model);

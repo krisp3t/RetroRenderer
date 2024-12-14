@@ -1,11 +1,12 @@
 #pragma once
 #include <string>
+#include <glm/glm.hpp>
 
 namespace RetroRenderer
 {
 	enum class EventType
 	{
-		Window_Resize,
+		Output_Image_Resize,
 		Scene_Load,
 		Scene_Reset
 	};
@@ -14,8 +15,8 @@ namespace RetroRenderer
 	{
 		switch (type)
 		{
-		case EventType::Window_Resize:
-			return "Window_Resize";
+		case EventType::Output_Image_Resize:
+			return "Output_Image_Resize";
 		case EventType::Scene_Load:
 			return "Scene_Load";
 		case EventType::Scene_Reset:
@@ -31,11 +32,15 @@ namespace RetroRenderer
 		bool handled = false;
 	};
 
-	struct WindowResizeEvent : public Event
+	struct OutputImageResizeEvent : public Event
 	{
-		Event base{ EventType::Window_Resize };
-		uint32_t width;
-		uint32_t height;
+		glm::ivec2 resolution;
+
+		OutputImageResizeEvent(glm::ivec2 res)
+		{
+			type = EventType::Output_Image_Resize;
+			resolution = res;
+		}
 	};
 
 	struct SceneLoadEvent : public Event

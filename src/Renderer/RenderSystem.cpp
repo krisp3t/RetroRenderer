@@ -7,8 +7,30 @@
 
 namespace RetroRenderer
 {
+	void RenderSystem::CreateFramebufferTexture(GLuint& texId, int width, int height)
+	{
+		glGenTextures(1, &texId);
+		glBindTexture(GL_TEXTURE_2D, texId);
+		glTexImage2D(
+			GL_TEXTURE_2D,
+			0,
+			GL_RGBA,
+			width,
+			height,
+			0,
+			GL_RGBA,
+			GL_UNSIGNED_BYTE,
+			nullptr
+		);
+		// TODO: make filtering configurable
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
     bool RenderSystem::Init(DisplaySystem& displaySystem, std::shared_ptr<Stats> stats)
     {
+		auto& p_Config = Engine::Get().GetConfig();
         p_DisplaySystem = &displaySystem;
         p_SWRenderer = std::make_unique<SWRenderer>();
 		p_GLRenderer = std::make_unique<GLRenderer>();
@@ -25,41 +47,9 @@ namespace RetroRenderer
 
         p_Stats = stats;
 
-        glGenTextures(1, &m_SWFramebufferTexture);
-		glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
-		glTexImage2D(
-            GL_TEXTURE_2D, 
-            0, 
-            GL_RGBA, 
-            p_SWRenderer->GetRenderTarget().width, 
-            p_SWRenderer->GetRenderTarget().height, 
-            0, 
-            GL_RGBA, 
-            GL_UNSIGNED_BYTE, 
-            nullptr
-        );
-        // TODO: make filtering configurable
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		glGenTextures(1, &m_GLFramebufferTexture);
-		glBindTexture(GL_TEXTURE_2D, m_GLFramebufferTexture);
-		glTexImage2D(
-			GL_TEXTURE_2D,
-			0,
-			GL_RGBA,
-			p_DisplaySystem->GetWidth(),
-			p_DisplaySystem->GetHeight(),
-			0,
-			GL_RGBA,
-			GL_UNSIGNED_BYTE,
-			nullptr
-		);
-		// glGenerateMipmap(GL_TEXTURE_2D);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		auto fbResolution = p_Config->renderer.resolution;
+		CreateFramebufferTexture(m_SWFramebufferTexture, fbResolution.x, fbResolution.y);
+		CreateFramebufferTexture(m_GLFramebufferTexture, fbResolution.x, fbResolution.y);
 
         return true;
     }
@@ -157,7 +147,18 @@ namespace RetroRenderer
         return m_SWFramebufferTexture;
     }
 
-    void RenderSystem::Destroy()
+	void RenderSystem::Resize(const glm::ivec2& resolution)
+	{
+		auto& p_Config = Engine::Get().GetConfig();
+		p_Config->renderer.resolution = resolution;
+		CreateFramebufferTexture(m_SWFramebufferTexture, resolution.x, resolution.y);
+		CreateFramebufferTexture(m_GLFramebufferTexture, resolution.x, resolution.y);
+		LOGI("Resizing output image to %d x %d", resolution.x, resolution.y);
+		p_SWRenderer->Resize(resolution.x, resolution.y);
+		p_GLRenderer->Resize(resolution.x, resolution.y);
+	}
+
+	void RenderSystem::Destroy()
     {
     }
 

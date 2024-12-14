@@ -110,6 +110,12 @@ namespace RetroRenderer
 			m_SceneManager.ResetScene();
 			break;
         }
+		case EventType::Output_Image_Resize:
+		{
+			const OutputImageResizeEvent& e = static_cast<const OutputImageResizeEvent&>(event);
+            m_RenderSystem.Resize(e.resolution);
+			break;
+		}
         default:
 			LOGW("Unknown event type");
 		}

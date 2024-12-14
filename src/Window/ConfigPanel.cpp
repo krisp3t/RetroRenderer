@@ -215,6 +215,8 @@ namespace RetroRenderer
     void ConfigPanel::DisplayRenderedImage()
     {
 		ImGui::Begin("Output");
+        ImVec2 contentSize = ImGui::GetContentRegionAvail();
+		p_Config->window.outputWindowSize = { contentSize.x, contentSize.y };
 		ImGui::Text("Please load a scene to start rendering!");
 		ImGui::End();
     }
@@ -222,7 +224,17 @@ namespace RetroRenderer
     void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture)
     {
 		ImGui::Begin("Output");
-		ImVec2 contentSize = ImGui::GetContentRegionAvail();
+		ImVec2 contentRegion = ImGui::GetContentRegionAvail();
+		glm::ivec2 contentSize(contentRegion.x, contentRegion.y);
+		if (p_Config->renderer.resolutionAutoResize)
+		{
+            if (p_Config->window.outputWindowSize != contentSize)
+            {
+                Engine::Get().DispatchImmediate(OutputImageResizeEvent{ contentSize });
+            }
+		}
+        p_Config->window.outputWindowSize = contentSize;
+
 
         auto ReleaseMouse = [&]()
             {
@@ -282,7 +294,7 @@ namespace RetroRenderer
             }
         }
          
-        ImGui::Image((void*)(intptr_t)p_framebufferTexture, contentSize);
+        ImGui::Image((void*)(intptr_t)p_framebufferTexture, contentRegion);
 		ImGui::End();
     }
 
@@ -504,23 +516,45 @@ namespace RetroRenderer
     {
         auto &r = p_Config->renderer;
         ImGui::SeparatorText("Renderer settings");
-		const char* rendererItems[] = { "Software", "OpenGL" };
-		ImGui::RadioButton("Software", reinterpret_cast<int*>(&r.selectedRenderer), static_cast<int>(Config::RendererType::SOFTWARE));
+		if (ImGui::Button("Take screenshot"))
+		{
+			// TODO: implement screenshot
+			LOGD("Taking screenshot");
+		}
 		ImGui::SameLine();
-		ImGui::RadioButton("OpenGL", reinterpret_cast<int*>(&r.selectedRenderer), 
-            static_cast<int>(Config::RendererType::GL));
-
-        if (ImGui::Button("Take screenshot"))
-        {
-            // TODO: implement screenshot
-            LOGD("Taking screenshot");
-        }
-        ImGui::SameLine();
 		if (ImGui::Button("Send to RenderDoc"))
 		{
 			// TODO: implement screenshot
 			LOGD("Sending to RenderDoc");
 		}
+
+		ImGui::RadioButton("Software", reinterpret_cast<int*>(&r.selectedRenderer), static_cast<int>(Config::RendererType::SOFTWARE));
+		ImGui::SameLine();
+		ImGui::RadioButton("OpenGL", reinterpret_cast<int*>(&r.selectedRenderer), 
+            static_cast<int>(Config::RendererType::GL));
+
+		ImGui::SeparatorText("Resolution");
+		ImGui::Text("Render resolution: %d x %d (@ %.1f scale)", static_cast<int>(r.resolution.x), static_cast<int>(r.resolution.y), r.resolutionScale);
+		ImGui::Text("Output window size: %d x %d (@ 1.0 scale)", p_Config->window.outputWindowSize.x, p_Config->window.outputWindowSize.y);
+        if (!r.resolutionAutoResize)
+        {
+			if (ImGui::InputFloat("Render resolution scale", reinterpret_cast<float*>(&r.resolutionScale), 0.1f, 4.0f, "%.1f"))
+			{
+				LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
+				glm::ivec2 newResolution = {
+					static_cast<int>(floor(p_Config->window.outputWindowSize.x * r.resolutionScale)),
+					static_cast<int>(floor(p_Config->window.outputWindowSize.y * r.resolutionScale))
+				};
+				Engine::Get().DispatchImmediate(OutputImageResizeEvent{ newResolution });
+			}
+        }
+        if (ImGui::Checkbox("Auto-resize (fit rendered image to output window)", &r.resolutionAutoResize))
+        {
+            if (r.resolutionAutoResize)
+            {
+                Engine::Get().DispatchImmediate(OutputImageResizeEvent{ p_Config->window.outputWindowSize });
+            }
+        }
 
         ImGui::SeparatorText("Scene");
         ImGui::Checkbox("Enable perspective-correct interpolation", &r.enablePerspectiveCorrect);
@@ -529,7 +563,7 @@ namespace RetroRenderer
         ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float*>(&r.clearColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
         ImGui::Text("Background color:");
-        ImGui::InputInt2("Viewport resolution", reinterpret_cast<int*>(&r.viewportResolution)); // TODO: add min, max
+        // ImGui::InputInt2("Viewport resolution", reinterpret_cast<int*>(&r.viewportResolution)); // TODO: add min, max
     }
 
     void ConfigPanel::DisplayRasterizerSettings()
@@ -645,12 +679,18 @@ namespace RetroRenderer
         if (ImGui::Begin("Metrics", &isOpen, windowFlags))
         {
             ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+			ImGui::Text(
+                "%d x %d; %d verts, %d tris", 
+                p_Config->renderer.resolution.x, 
+                p_Config->renderer.resolution.y, 
+                p_Stats->renderedVerts, 
+                p_Stats->renderedTris
+            );
             if (p_Camera)
             {
                 ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", p_Camera->position.x, p_Camera->position.y, p_Camera->position.z);
             }
 			assert(p_Stats != nullptr && "Stats not initialized!");
-            ImGui::Text("%d verts, %d tris", p_Stats->renderedVerts, p_Stats->renderedTris);
             ImGui::PlotLines("", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
             if (ImGui::BeginPopupContextWindow())
             {

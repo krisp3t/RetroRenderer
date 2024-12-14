@@ -7,39 +7,42 @@ namespace RetroRenderer
 
 struct Config
 {
+    // Window
     struct WindowSettings
     {
-		int width = 1280;
-		int height = 720;
+		glm::ivec2 size = { 1280, 720 };
+		glm::ivec2 outputWindowSize = { 1280, 720 }; // Size of the window that shows rendered image (can be different from image size)
 		bool fullscreen = false;
 		bool enableVsync = true;
 		bool showFPS = true;
 		bool showConfigPanel = true;
     };
 
+    // Renderer
     enum class AAType
     {
         NONE,
         MSAA,
         FXAA,
     };
-
     enum class RendererType
     {
         SOFTWARE,
         GL
     };
-
     struct RendererSettings
     {
+		glm::ivec2 resolution = { 1280, 720 }; // Resolution of the render target (can have different size than window, stretching will occur)
+        float resolutionScale = 1.0f;
+        bool resolutionAutoResize = false;
         RendererType selectedRenderer = RendererType::SOFTWARE;
         AAType aaType = AAType::NONE;
         bool showWireframe = false;
         bool enablePerspectiveCorrect = true;
         ImVec4 clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-        int viewportResolution[2] = {1280, 720};
     };
 
+	// Environment
     struct EnvironmentSettings
     {
         bool showSkybox = false;
@@ -48,6 +51,7 @@ struct Config
         bool shadowMap = true;
     };
 
+	// Culling
     struct CullSettings
     {
 		bool backfaceCulling = false;
@@ -56,26 +60,24 @@ struct Config
         bool geometricClip = true;
     };
 
+    // Rasterizer
 	enum class RasterizationLineMode
 	{
 		DDA,
         BRESENHAM
 	};
-
     enum class RasterizationPolygonMode
     {
         POINT,  // GL_POINT 
         LINE,   // wireframe = GL_LINE
 		FILL,   // default   = GL_FILL
     };
-
     enum class RasterizationFillMode
     {
         SCANLINE,
         BARYCENTRIC,
         PINEDA
     };
-
     struct RasterizerSettings
 	{
         float pointSize = 1.0f;

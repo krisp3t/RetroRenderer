@@ -1,6 +1,7 @@
 #include <imgui_impl_sdl2.h>
 #include "InputSystem.h"
 #include "../Base/Logger.h"
+#include "../Engine.h"
 
 namespace RetroRenderer
 {
@@ -34,8 +35,12 @@ namespace RetroRenderer
                     if (event.window.event == SDL_WINDOWEVENT_RESIZED)
                     {
                         LOGD("Window resized to %d x %d", event.window.data1, event.window.data2);
-                        p_Config->window.width = event.window.data1;
-                        p_Config->window.height = event.window.data2;
+                        p_Config->window.size.x = event.window.data1;
+                        p_Config->window.size.y = event.window.data2;
+						if (p_Config->renderer.resolutionAutoResize)
+						{
+							Engine::Get().DispatchImmediate(OutputImageResizeEvent{ p_Config->window.outputWindowSize });
+						}
                     }
 					break;
             }

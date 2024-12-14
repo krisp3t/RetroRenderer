@@ -20,7 +20,12 @@ namespace RetroRenderer
         return true;
     }
 
-    void SWRenderer::Destroy()
+	void SWRenderer::Resize(int w, int h)
+	{
+		p_FrameBuffer = new Buffer<Uint32>(w, h);
+	}
+
+	void SWRenderer::Destroy()
     {
     }
 

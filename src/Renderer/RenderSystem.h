@@ -18,11 +18,13 @@ namespace RetroRenderer
 		RenderSystem() = default;
 		~RenderSystem() = default;
 
+		void CreateFramebufferTexture(GLuint& texId, int width, int height);
 		bool Init(DisplaySystem& displaySystem, std::shared_ptr<Stats> stats);
 		void BeforeFrame(Uint32 clearColor);
 		[[nodiscard]] std::queue<Model*>& BuildRenderQueue(Scene& scene, const Camera& camera);
 		GLuint Render(std::queue<Model*>& renderQueue);
 		GLuint TestFill();
+		void Resize(const glm::ivec2& resolution);
 		void Destroy();
 		void OnLoadScene(const SceneLoadEvent& e);
 	private:

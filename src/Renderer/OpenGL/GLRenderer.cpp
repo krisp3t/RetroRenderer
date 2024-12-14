@@ -33,6 +33,11 @@ namespace RetroRenderer
 		return true;
 	}
 
+	void GLRenderer::Resize(int w, int h)
+	{
+
+	}
+
 	void GLRenderer::Destroy()
 	{
 		//glDeleteFramebuffers(1, &m_FrameBuffer);
