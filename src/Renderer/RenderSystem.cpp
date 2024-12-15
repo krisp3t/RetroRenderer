@@ -75,13 +75,13 @@ namespace RetroRenderer
         p_activeRenderer->BeforeFrame(clearColor);
     }
 
-    std::queue<Model *> &RenderSystem::BuildRenderQueue(Scene &scene, const Camera &camera)
+    std::vector<int> &RenderSystem::BuildRenderQueue(Scene &scene, const Camera &camera)
     {
         p_activeRenderer->SetActiveCamera(camera);
         return scene.GetVisibleModels(); // TODO: split into meshes?
     }
 
-    GLuint RenderSystem::Render(std::queue<Model *> &renderQueue)
+    GLuint RenderSystem::Render(std::vector<int> &renderQueue, std::vector<Model> &models)
     {
         assert(p_Stats != nullptr && "Stats not initialized!");
         p_Stats->Reset();
@@ -104,16 +104,14 @@ namespace RetroRenderer
         assert(activeRenderer != nullptr && "Active renderer is null");
 
         //LOGD("Render queue size: %d", renderQueue.size());
-        while (!renderQueue.empty())
+        for (int modelIx: renderQueue)
         {
-            // const Model *model = renderQueue.front();
-            Model *model = renderQueue.front();
+            const Model *model = &models[modelIx];
             assert(model != nullptr && "Model is null");
             if (model->GetMeshes().size() > 0)
             {
                 activeRenderer->DrawTriangularMesh(model);
             }
-            renderQueue.pop();
         }
         return activeRenderer->EndFrame();
     }

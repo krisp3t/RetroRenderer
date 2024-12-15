@@ -21,11 +21,11 @@ namespace RetroRenderer
         ~Scene() = default;
 
         bool Load(const std::string &path);
-        [[nodiscard]] std::queue<Model *> &GetVisibleModels();
+        [[nodiscard]] std::vector<int> &GetVisibleModels();
         void FrustumCull(const Camera &camera);
-    private:
         std::vector<Model> m_Models;
-        std::queue<Model *> m_VisibleModels;
+    private:
+        std::vector<int> m_VisibleModels;
 
         bool ProcessNode(aiNode *node, const aiScene *scene);
         bool ProcessNode(aiNode *node, const aiScene *scene, int parentIndex);

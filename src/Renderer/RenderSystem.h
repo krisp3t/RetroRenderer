@@ -26,9 +26,9 @@ namespace RetroRenderer
 
         void BeforeFrame(const Color &clearColor);
 
-        [[nodiscard]] std::queue<Model *> &BuildRenderQueue(Scene &scene, const Camera &camera);
+        [[nodiscard]] std::vector<int> &BuildRenderQueue(Scene &scene, const Camera &camera);
 
-        GLuint Render(std::queue<Model *> &renderQueue);
+        GLuint Render(std::vector<int> &renderQueue, std::vector<Model> &models);
 
         void Resize(const glm::ivec2 &resolution);
 

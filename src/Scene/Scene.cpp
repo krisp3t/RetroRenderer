@@ -162,7 +162,7 @@ namespace RetroRenderer
         meshes.emplace_back(std::move(vertices), std::move(indices));
     }
 
-    std::queue<Model *> &Scene::GetVisibleModels()
+    std::vector<int> &Scene::GetVisibleModels()
     {
         return m_VisibleModels;
     }
@@ -170,11 +170,12 @@ namespace RetroRenderer
     void Scene::FrustumCull(const Camera &camera)
     {
         // TODO: actually implement frustum culling
-
+        m_VisibleModels.clear();
+        m_VisibleModels.reserve(m_Models.size());
         int i = 0;
         for (int i = 0; i < m_Models.size(); i++)
         {
-            m_VisibleModels.push(&m_Models[i]);
+            m_VisibleModels.push_back(i);
         }
     }
 }
