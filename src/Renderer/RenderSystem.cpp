@@ -71,6 +71,7 @@ namespace RetroRenderer
                 return;
         }
         assert(p_activeRenderer != nullptr && "Active renderer is null");
+        glViewport(0, 0, p_Config->renderer.resolution.x, p_Config->renderer.resolution.y);
         p_activeRenderer->BeforeFrame(clearColor);
     }
 

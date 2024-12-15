@@ -55,7 +55,6 @@ namespace RetroRenderer
             m_SceneManager.NewFrame();
 
             Color clearColor = Color{p_Config->renderer.clearColor};
-            m_DisplaySystem.BeforeFrame(); // SDL, imgui clear screen
             auto scene = m_SceneManager.GetScene();
             auto camera = m_SceneManager.GetCamera();
             if (scene && camera)
@@ -63,10 +62,12 @@ namespace RetroRenderer
                 m_RenderSystem.BeforeFrame(clearColor);
                 auto &queue = m_RenderSystem.BuildRenderQueue(*scene, *camera);
                 GLuint fbTex = m_RenderSystem.Render(queue);
+                m_DisplaySystem.BeforeFrame();
                 m_DisplaySystem.DrawFrame(fbTex);
             } else
             {
                 p_Stats->Reset();
+                m_DisplaySystem.BeforeFrame();
                 m_DisplaySystem.DrawFrame();
             }
 

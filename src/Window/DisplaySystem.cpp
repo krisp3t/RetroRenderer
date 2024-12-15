@@ -97,6 +97,7 @@ namespace RetroRenderer
     void DisplaySystem::BeforeFrame()
     {
         ResetGlContext();
+        glViewport(0, 0, p_Config->window.size.x, p_Config->window.size.y);
         // color is cleared in imgui loop
         m_ConfigPanel.get()->BeforeFrame();
     }

@@ -585,6 +585,15 @@ namespace RetroRenderer
             if (r.resolutionAutoResize)
             {
                 Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_Config->window.outputWindowSize});
+            } else
+            {
+                r.resolutionScale = glm::clamp(r.resolutionScale, 0.1f, 4.0f);
+                LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
+                glm::ivec2 newResolution = {
+                        static_cast<int>(floor(p_Config->window.outputWindowSize.x * r.resolutionScale)),
+                        static_cast<int>(floor(p_Config->window.outputWindowSize.y * r.resolutionScale))
+                };
+                Engine::Get().DispatchImmediate(OutputImageResizeEvent{newResolution});
             }
         }
 
@@ -759,7 +768,6 @@ namespace RetroRenderer
     {
         ImGui::Render();
         auto io = ImGui::GetIO();
-        glViewport(0, 0, (int) io.DisplaySize.x, (int) io.DisplaySize.y);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         // Multi-viewport support
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
