@@ -38,20 +38,21 @@ namespace RetroRenderer
         auto &fbResolution = p_Config->renderer.resolution;
         assert(fbResolution.x > 0 && fbResolution.y > 0 && "Tried to initialize renderers with invalid resolution");
 
+
+        CreateFramebufferTexture(m_SWFramebufferTexture, fbResolution.x, fbResolution.y);
+        CreateFramebufferTexture(m_GLFramebufferTexture, fbResolution.x, fbResolution.y);
+
         if (!p_SWRenderer->Init(fbResolution.x, fbResolution.y))
         {
             LOGE("Failed to initialize SWRenderer");
             return false;
         }
-        if (!p_GLRenderer->Init(window, fbResolution.x, fbResolution.y))
+        if (!p_GLRenderer->Init(window, m_GLFramebufferTexture, fbResolution.x, fbResolution.y))
         {
             LOGE("Failed to initialize GLRenderer");
             return false;
         }
-
-        CreateFramebufferTexture(m_SWFramebufferTexture, fbResolution.x, fbResolution.y);
-        CreateFramebufferTexture(m_GLFramebufferTexture, fbResolution.x, fbResolution.y);
-
+        
         return true;
     }
 

@@ -14,7 +14,7 @@ namespace RetroRenderer
 
         ~GLRenderer() = default;
 
-        bool Init(SDL_Window *window, int w, int h);
+        bool Init(SDL_Window *window, GLuint renderTarget, int w, int h);
 
         void Resize(int w, int h);
 
@@ -30,13 +30,16 @@ namespace RetroRenderer
 
     private:
         SDL_Window *m_Window = nullptr;
-        GLuint m_FrameBuffer = 0;
         Camera *p_Camera = nullptr;
         SDL_GLContext m_glContext = nullptr;
 
         GLuint m_VAO = 0;
         GLuint m_VBO = 0;
         GLuint m_EBO = 0;
+
+        GLuint m_FrameBuffer = 0;
+        GLuint m_DepthBuffer = 0;
+        GLuint m_RenderTarget = 0;
 
         static void
         DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message,

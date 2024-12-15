@@ -6,12 +6,26 @@ namespace RetroRenderer
     void APIENTRY GLRenderer::DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                                             GLsizei length, const GLchar *message, const void *userParam)
     {
-        LOGD("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
-             (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
-             type, severity, message);
+        // TODO: add line where error occurred
+        if (severity == GL_DEBUG_SEVERITY_MEDIUM)
+        {
+            LOGW("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
+                 (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+                 type, severity, message);
+        } else if (severity == GL_DEBUG_SEVERITY_HIGH)
+        {
+            LOGE("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
+                 (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+                 type, severity, message);
+        } else
+        {
+            LOGD("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
+                 (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+                 type, severity, message);
+        }
     }
 
-    bool GLRenderer::Init(SDL_Window *window, int w, int h)
+    bool GLRenderer::Init(SDL_Window *window, GLuint renderTarget, int w, int h)
     {
         SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1); // enable resource sharing with main context
         m_glContext = SDL_GL_CreateContext(window);
@@ -21,6 +35,8 @@ namespace RetroRenderer
             return false;
         }
         m_Window = window;
+
+        // Enable Debug Output
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         // TODO: check if extension supported
@@ -29,6 +45,24 @@ namespace RetroRenderer
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, nullptr, GL_TRUE);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
+
+        // Create the framebuffer for rendering texture (output image)
+        glGenFramebuffers(1, &m_FrameBuffer);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_RenderTarget, 0);
+        glGenRenderbuffers(1, &m_DepthBuffer);
+        glBindRenderbuffer(GL_RENDERBUFFER, m_DepthBuffer);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_DepthBuffer);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        {
+            LOGE("Framebuffer is not complete!");
+            return false;
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        // TODO: add depth buffer
         glViewport(0, 0, w, h);
         return true;
     }
@@ -52,6 +86,7 @@ namespace RetroRenderer
 
     void GLRenderer::DrawTriangularMesh(const Model *model)
     {
+        glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
         SDL_GL_MakeCurrent(m_Window, m_glContext);
         float vertices[] = {
                 -0.5f, -0.5f, 0.0f,
@@ -103,6 +138,7 @@ namespace RetroRenderer
 
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
 }
