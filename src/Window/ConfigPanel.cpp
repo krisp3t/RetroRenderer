@@ -565,9 +565,13 @@ namespace RetroRenderer
                     p_Config->window.outputWindowSize.y);
         if (!r.resolutionAutoResize)
         {
-            if (ImGui::InputFloat("Render resolution scale", reinterpret_cast<float *>(&r.resolutionScale), 0.1f, 4.0f,
+            if (ImGui::InputFloat("Render resolution scale",
+                                  reinterpret_cast<float *>(&r.resolutionScale),
+                                  0.1f,
+                                  0.5f,
                                   "%.1f"))
             {
+                r.resolutionScale = glm::clamp(r.resolutionScale, 0.1f, 4.0f);
                 LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
                 glm::ivec2 newResolution = {
                         static_cast<int>(floor(p_Config->window.outputWindowSize.x * r.resolutionScale)),

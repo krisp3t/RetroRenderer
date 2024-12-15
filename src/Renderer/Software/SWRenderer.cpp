@@ -21,8 +21,9 @@ namespace RetroRenderer
         return true;
     }
 
-    void SWRenderer::Resize(int w, int h)
+    void SWRenderer::Resize(GLuint newFbTex, int w, int h)
     {
+        p_FrameBufferTexture = newFbTex;
         m_FrameBuffer = new Buffer<uint32_t>(w, h);
     }
 

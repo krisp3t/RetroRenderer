@@ -19,7 +19,7 @@ namespace RetroRenderer
 
         bool Init(GLuint fbTexture, int w, int h);
 
-        void Resize(int w, int h);
+        void Resize(GLuint newFbTex, int w, int h);
 
         void Destroy();
 

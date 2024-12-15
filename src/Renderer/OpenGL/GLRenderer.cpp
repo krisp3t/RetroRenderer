@@ -40,7 +40,27 @@ namespace RetroRenderer
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, nullptr, GL_TRUE);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
 
-        // Create the framebuffer for rendering texture (output image)
+        if (!CreateFramebuffer(fbTex, w, h))
+        {
+            return false;
+        }
+
+        // TODO: remove
+        auto shaderProgram = CreateShaderProgram();
+        glUseProgram(shaderProgram);
+
+        // TODO: add depth buffer
+        glViewport(0, 0, w, h);
+        return true;
+    }
+
+    /**
+     * @brief Create a framebuffer for rendering to a texture.
+     * @param fbTex
+     * @return
+     */
+    bool GLRenderer::CreateFramebuffer(GLuint fbTex, int w, int h)
+    {
         p_FrameBufferTexture = fbTex;
         glGenFramebuffers(1, &m_FrameBuffer);
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
@@ -56,19 +76,14 @@ namespace RetroRenderer
             return false;
         }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        // TODO: remove
-        auto shaderProgram = CreateShaderProgram();
-        glUseProgram(shaderProgram);
-
-        // TODO: add depth buffer
-        glViewport(0, 0, w, h);
         return true;
     }
 
-    void GLRenderer::Resize(int w, int h)
+    void GLRenderer::Resize(GLuint newFbTex, int w, int h)
     {
+        p_FrameBufferTexture = newFbTex;
         glViewport(0, 0, w, h);
+        CreateFramebuffer(p_FrameBufferTexture, w, h);
     }
 
     void GLRenderer::Destroy()

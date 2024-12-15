@@ -17,7 +17,7 @@ namespace RetroRenderer
 
         bool Init(GLuint fbTex, int w, int h);
 
-        void Resize(int w, int h);
+        void Resize(GLuint newFbTex, int w, int h);
 
         void Destroy();
 
@@ -49,5 +49,7 @@ namespace RetroRenderer
         static void
         DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message,
                       const void *userParam);
+
+        bool CreateFramebuffer(GLuint fbTex, int w, int h);
     };
 }

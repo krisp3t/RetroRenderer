@@ -121,8 +121,8 @@ namespace RetroRenderer
         CreateFramebufferTexture(m_SWFramebufferTexture, resolution.x, resolution.y);
         CreateFramebufferTexture(m_GLFramebufferTexture, resolution.x, resolution.y);
         LOGI("Resizing output image to %d x %d", resolution.x, resolution.y);
-        p_SWRenderer->Resize(resolution.x, resolution.y);
-        p_GLRenderer->Resize(resolution.x, resolution.y);
+        p_SWRenderer->Resize(m_SWFramebufferTexture, resolution.x, resolution.y);
+        p_GLRenderer->Resize(m_GLFramebufferTexture, resolution.x, resolution.y);
     }
 
     void RenderSystem::Destroy()
