@@ -138,7 +138,7 @@ void main() {
         const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
 
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // TODO: get from config
 
         // Per-mesh uniforms
         GLint modelLoc = glGetUniformLocation(m_ShaderProgram, "u_ModelMatrix");

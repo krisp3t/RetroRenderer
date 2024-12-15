@@ -307,8 +307,28 @@ namespace RetroRenderer
                 ReleaseMouse();
             }
         }
+        switch (p_Config->renderer.selectedRenderer)
+        {
+            case Config::RendererType::SOFTWARE:
+                ImGui::Image(
+                        (void *) (intptr_t) p_framebufferTexture,
+                        contentRegion
+                );
+                break;
+            case Config::RendererType::GL:
+                // OpenGL textures are flipped vertically
+                ImGui::Image(
+                        (void *) (intptr_t) p_framebufferTexture,
+                        contentRegion,
+                        ImVec2(0.0f, 1.0f),
+                        ImVec2(1.0f, 0.0f)
+                );
+                break;
+            default:
+                ImGui::Text("Renderer type %d not implemented!", p_Config->renderer.selectedRenderer);
+                break;
+        }
 
-        ImGui::Image((void *) (intptr_t) p_framebufferTexture, contentRegion);
         ImGui::End();
     }
 
