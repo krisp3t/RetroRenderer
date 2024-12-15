@@ -142,11 +142,11 @@ namespace RetroRenderer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    void GLRenderer::BeforeFrame(Uint32 clearColor)
+    void GLRenderer::BeforeFrame(const Color &clearColor)
     {
-        // TODO: clear with parameter
+        auto c = clearColor.ToImVec4();
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
-        glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+        glClearColor(c.x, c.y, c.z, c.w);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         //glEnable(GL_DEPTH_TEST);
     }

@@ -6,6 +6,12 @@
 
 namespace RetroRenderer
 {
+    class Camera;
+
+    class Model;
+
+    struct Color;
+
     class IRenderer
     {
     public:
@@ -16,7 +22,7 @@ namespace RetroRenderer
         // virtual bool Init(int w, int h) = 0;
         virtual void Destroy() = 0;
 
-        virtual void BeforeFrame(Uint32 clearColor) = 0; // Clear screen / framebuffer texture
+        virtual void BeforeFrame(const Color &clearColor) = 0; // Clear screen / framebuffer texture
 
         virtual GLuint EndFrame() = 0; // Copy to framebuffer texture
 

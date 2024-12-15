@@ -1,102 +1,107 @@
 #pragma once
 
+#include <algorithm>
+#include <cstdint>
+#include <imgui.h>
+
 namespace RetroRenderer
 {
-	struct Color
-	{
-		uint8_t r, g, b, a;
+    struct Color
+    {
+        uint8_t r, g, b, a;
+        // Tag structs for constructor differentiation
+        struct Uint8Tag
+        {
+        };
+        struct FloatTag
+        {
+        };
 
-		// Constructors
-		Color() : r(0), g(0), b(0), a(255) {} // Default: opaque black
-		Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha = 255)
-			: r(red), g(green), b(blue), a(alpha) {}
+        // Constructors
+        // Default constructor
+        Color() : r(0), g(0), b(0), a(255)
+        {}
+        Color(const Color &c) : r(c.r), g(c.g), b(c.b), a(c.a)
+        {}
+        explicit Color(Uint8Tag, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha = 255)
+                : r(red), g(green), b(blue), a(alpha)
+        {}
+        explicit Color(FloatTag, float red, float green, float blue, float alpha = 1.0f)
+                : r(static_cast<uint8_t>(std::clamp(red, 0.0f, 1.0f) * 255.0f)),
+                  g(static_cast<uint8_t>(std::clamp(green, 0.0f, 1.0f) * 255.0f)),
+                  b(static_cast<uint8_t>(std::clamp(blue, 0.0f, 1.0f) * 255.0f)),
+                  a(static_cast<uint8_t>(std::clamp(alpha, 0.0f, 1.0f) * 255.0f))
+        {}
+        explicit Color(uint8_t gray, uint8_t alpha = 255)
+                : r(gray), g(gray), b(gray), a(alpha)
+        {}
+        explicit Color(const ImVec4 &c)
+                : r(static_cast<uint8_t>(std::clamp(c.x, 0.0f, 1.0f) * 255.0f)),
+                  g(static_cast<uint8_t>(std::clamp(c.y, 0.0f, 1.0f) * 255.0f)),
+                  b(static_cast<uint8_t>(std::clamp(c.z, 0.0f, 1.0f) * 255.0f)),
+                  a(static_cast<uint8_t>(std::clamp(c.w, 0.0f, 1.0f) * 255.0f))
+        {}
 
-		// Pre-defined colors
-		static const Color Black() { return Color(0, 0, 0); }
-		static const Color White() { return Color(255, 255, 255); }
-		static const Color Red() { return Color(255, 0, 0); }
-		static const Color Green() { return Color(0, 255, 0); }
-		static const Color Blue() { return Color(0, 0, 255); }
-		static const Color Yellow() { return Color(255, 255, 0); }
-		static const Color Cyan() { return Color(0, 255, 255); }
-		static const Color Magenta() { return Color(255, 0, 255); }
-		static const Color Gray() { return Color(128, 128, 128); }
-		static const Color DarkGray() { return Color(64, 64, 64); }
-		static const Color LightGray() { return Color(192, 192, 192); }
-		static const Color Orange() { return Color(255, 165, 0); }
-		static const Color Purple() { return Color(128, 0, 128); }
-		static const Color Brown() { return Color(139, 69, 19); }
-		static const Color Pink() { return Color(255, 192, 203); }
-		static const Color Teal() { return Color(0, 128, 128); }
+        // Comparison operators
+        bool operator==(const Color &other) const
+        {
+            return r == other.r && g == other.g && b == other.b && a == other.a;
+        }
 
-		// From uint32_t in ARGB8888 format
-		static Color FromARGB(uint32_t argb)
-		{
-			return Color(
-				(argb >> 16) & 0xFF, // Red
-				(argb >> 8) & 0xFF,  // Green
-				argb & 0xFF,         // Blue
-				(argb >> 24) & 0xFF  // Alpha
-			);
-		}
+        bool operator!=(const Color &other) const
+        {
+            return !(*this == other);
+        }
 
-		// From uint32_t in RGBA8888 format
-		static Color FromRGBA(uint32_t rgba)
-		{
-			return Color(
-				(rgba >> 24) & 0xFF, // Red
-				(rgba >> 16) & 0xFF, // Green
-				(rgba >> 8) & 0xFF,  // Blue
-				rgba & 0xFF          // Alpha
-			);
-		}
+        // Converters
+        uint32_t ToARGB() const
+        {
+            return (a << 24) | (r << 16) | (g << 8) | b;
+        }
+        uint32_t ToRGBA() const
+        {
+            return (r << 24) | (g << 16) | (b << 8) | a;
+        }
+        ImVec4 ToImVec4() const
+        {
+            return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
+        }
 
-		// To uint32_t in ARGB8888 format
-		uint32_t ToARGB() const
-		{
-			return (a << 24) | (r << 16) | (g << 8) | b;
-		}
+        // Pre-defined colors
+        static const Color Black()
+        { return Color(Color::Uint8Tag{}, 0, 0, 0); }
+        static const Color White()
+        { return Color(Color::Uint8Tag{}, 255, 255, 255); }
+        static const Color Red()
+        { return Color(Color::Uint8Tag{}, 255, 0, 0); }
+        static const Color Green()
+        { return Color(Color::Uint8Tag{}, 0, 255, 0); }
+        static const Color Blue()
+        { return Color(Color::Uint8Tag{}, 0, 0, 255); }
+        static const Color Yellow()
+        { return Color(Color::Uint8Tag{}, 255, 255, 0); }
+        static const Color Cyan()
+        { return Color(Color::Uint8Tag{}, 0, 255, 255); }
+        static const Color Magenta()
+        { return Color(Color::Uint8Tag{}, 255, 0, 255); }
+        static const Color Gray()
+        { return Color(Color::Uint8Tag{}, 128, 128, 128); }
+        static const Color DarkGray()
+        { return Color(Color::Uint8Tag{}, 64, 64, 64); }
+        static const Color LightGray()
+        { return Color(Color::Uint8Tag{}, 192, 192, 192); }
+        static const Color Orange()
+        { return Color(Color::Uint8Tag{}, 255, 165, 0); }
+        static const Color Purple()
+        { return Color(Color::Uint8Tag{}, 128, 0, 128); }
+        static const Color Brown()
+        { return Color(Color::Uint8Tag{}, 139, 69, 19); }
+        static const Color Pink()
+        { return Color(Color::Uint8Tag{}, 255, 192, 203); }
+        static const Color Teal()
+        { return Color(Color::Uint8Tag{}, 0, 128, 128); }
 
-		// To uint32_t in RGBA8888 format
-		uint32_t ToRGBA() const
-		{
-			return (r << 24) | (g << 16) | (b << 8) | a;
-		}
+        // TODO: add blending (alpha compositing), premultiply alpha
 
-		// Helper to blend two colors (alpha compositing)
-		static Color Blend(const Color& src, const Color& dest)
-		{
-			float srcAlpha = src.a / 255.0f;
-			float invAlpha = 1.0f - srcAlpha;
-
-			return Color(
-				std::clamp(static_cast<int>(src.r * srcAlpha + dest.r * invAlpha), 0, 255),
-				std::clamp(static_cast<int>(src.g * srcAlpha + dest.g * invAlpha), 0, 255),
-				std::clamp(static_cast<int>(src.b * srcAlpha + dest.b * invAlpha), 0, 255),
-				std::clamp(static_cast<int>(src.a + dest.a * invAlpha), 0, 255)
-			);
-		}
-
-		// Premultiply alpha for optimization
-		Color PremultiplyAlpha() const
-		{
-			return Color(
-				static_cast<uint8_t>(r * (a / 255.0f)),
-				static_cast<uint8_t>(g * (a / 255.0f)),
-				static_cast<uint8_t>(b * (a / 255.0f)),
-				a
-			);
-		}
-
-		// Comparison operators
-		bool operator==(const Color& other) const
-		{
-			return r == other.r && g == other.g && b == other.b && a == other.a;
-		}
-
-		bool operator!=(const Color& other) const
-		{
-			return !(*this == other);
-		}
-	};
+    };
 }

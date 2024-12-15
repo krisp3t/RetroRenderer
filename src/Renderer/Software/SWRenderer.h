@@ -7,6 +7,7 @@
 #include "../Buffer.h"
 #include "Rasterizer.h"
 #include "../IRenderer.h"
+#include "../../Base/Color.h"
 
 namespace RetroRenderer
 {
@@ -27,11 +28,9 @@ namespace RetroRenderer
 
         void DrawTriangularMesh(const Model *model);
 
-        void BeforeFrame(Uint32 clearColor) override;
+        void BeforeFrame(const Color &clearColor) override;
 
         GLuint EndFrame() override;
-
-        Buffer<Uint32> &GetRenderBuffer();
 
     private:
         Buffer<Uint32> *m_FrameBuffer = nullptr;

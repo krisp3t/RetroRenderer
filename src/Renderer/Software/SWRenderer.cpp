@@ -31,12 +31,6 @@ namespace RetroRenderer
         delete m_FrameBuffer;
     }
 
-    Buffer<Uint32> &SWRenderer::GetRenderBuffer()
-    {
-        assert(m_FrameBuffer != nullptr && "Tried to get null render buffer. Did you call SWRenderer::Init()?");
-        return *m_FrameBuffer;
-    }
-
     void SWRenderer::SetActiveCamera(const Camera &camera)
     {
         p_Camera = const_cast<Camera *>(&camera);
@@ -110,9 +104,9 @@ namespace RetroRenderer
         }
     }
 
-    void SWRenderer::BeforeFrame(Uint32 clearColor)
+    void SWRenderer::BeforeFrame(const Color &clearColor)
     {
-        m_FrameBuffer->Clear(clearColor);
+        m_FrameBuffer->Clear(clearColor.ToRGBA());
         // TODO: clear opengl texture?
     }
 

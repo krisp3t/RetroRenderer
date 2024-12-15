@@ -6,10 +6,10 @@
 #include "../Renderer/Buffer.h"
 #include "../Scene/Camera.h"
 #include "../Base/Stats.h"
+#include "../Base/Color.h"
 
 namespace RetroRenderer
 {
-
     class DisplaySystem
     {
     public:
@@ -41,7 +41,7 @@ namespace RetroRenderer
 
         void SwapBuffers();
 
-        void BeforeFrame(Uint32 c);
+        void BeforeFrame();
 
         void DrawFrame();
 
@@ -59,9 +59,6 @@ namespace RetroRenderer
         std::shared_ptr<Config> p_Config = nullptr;
         std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
         std::shared_ptr<Camera> p_Camera;
-
-        int m_ScreenWidth = 1280;
-        int m_ScreenHeight = 720;
 
         void OnResize(int width, int height);
 

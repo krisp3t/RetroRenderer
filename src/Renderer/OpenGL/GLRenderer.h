@@ -4,6 +4,7 @@
 #include "../../Scene/Camera.h"
 #include "../../Scene/Scene.h"
 #include "../IRenderer.h"
+#include "../../Base/Color.h"
 
 namespace RetroRenderer
 {
@@ -24,7 +25,7 @@ namespace RetroRenderer
 
         void DrawTriangularMesh(const Model *model);
 
-        void BeforeFrame(Uint32 clearColor) override;
+        void BeforeFrame(const Color &clearColor) override;
 
         GLuint EndFrame() override;
 

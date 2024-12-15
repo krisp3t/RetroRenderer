@@ -17,6 +17,9 @@ namespace RetroRenderer
         p_Config = config;
         p_Camera = camera;
 
+        int screenWidth = p_Config->window.size.x;
+        int screenHeight = p_Config->window.size.y;
+
         if (SDL_Init(SDL_INIT_VIDEO) < 0)
         {
             LOGE("Unable to initialize SDL: %s\n", SDL_GetError());
@@ -55,8 +58,8 @@ namespace RetroRenderer
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-        m_Window = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_ScreenWidth,
-                                    m_ScreenHeight, kWindowFlags);
+        m_Window = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth,
+                                    screenHeight, kWindowFlags);
         if (m_Window == nullptr)
         {
             LOGE("Unable to create window: %s", SDL_GetError());
@@ -82,7 +85,7 @@ namespace RetroRenderer
         LOGI("GLSL Version:     %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
         //LOGI("OpenGL extensions:     %s", glGetString(GL_EXTENSIONS));
 
-        glViewport(0, 0, m_ScreenWidth, m_ScreenHeight);
+        glViewport(0, 0, screenWidth, screenHeight);
 
 
         // SDL_GL_SetSwapInterval(1); // Enable vsync
@@ -90,9 +93,9 @@ namespace RetroRenderer
         return true;
     }
 
-    void DisplaySystem::BeforeFrame(Uint32 c)
+    void DisplaySystem::BeforeFrame()
     {
-        SDL_GL_MakeCurrent(m_Window, m_glContext);
+        ResetGlContext();
         // color is cleared in imgui loop
         m_ConfigPanel.get()->BeforeFrame();
     }
@@ -113,16 +116,6 @@ namespace RetroRenderer
     {
         SDL_GL_MakeCurrent(m_Window, m_glContext);
         SDL_GL_SwapWindow(m_Window);
-    }
-
-    int DisplaySystem::GetWidth() const
-    {
-        return m_ScreenWidth;
-    }
-
-    int DisplaySystem::GetHeight() const
-    {
-        return m_ScreenHeight;
     }
 
     void DisplaySystem::Destroy()

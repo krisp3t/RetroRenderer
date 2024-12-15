@@ -8,6 +8,7 @@
 #include "../Scene/Scene.h"
 #include "Software/SWRenderer.h"
 #include "OpenGL/GLRenderer.h"
+#include "../Base/Color.h"
 
 namespace RetroRenderer
 {
@@ -23,12 +24,12 @@ namespace RetroRenderer
 
         bool Init(SDL_Window *window, std::shared_ptr<Stats> stats);
 
-        void BeforeFrame(Uint32 clearColor);
+        void BeforeFrame(const Color &clearColor);
 
         [[nodiscard]] std::queue<Model *> &BuildRenderQueue(Scene &scene, const Camera &camera);
 
         GLuint Render(std::queue<Model *> &renderQueue);
-        
+
         void Resize(const glm::ivec2 &resolution);
 
         void Destroy();
