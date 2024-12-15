@@ -34,7 +34,7 @@ namespace RetroRenderer
         auto &p_Config = Engine::Get().GetConfig();
         p_SWRenderer = std::make_unique<SWRenderer>();
         p_GLRenderer = std::make_unique<GLRenderer>();
-        p_activeRenderer = p_SWRenderer.get();
+        p_ActiveRenderer = p_SWRenderer.get();
         auto &fbResolution = p_Config->renderer.resolution;
         assert(fbResolution.x > 0 && fbResolution.y > 0 && "Tried to initialize renderers with invalid resolution");
 
@@ -61,23 +61,23 @@ namespace RetroRenderer
         switch (p_Config->renderer.selectedRenderer)
         {
             case Config::RendererType::SOFTWARE:
-                p_activeRenderer = p_SWRenderer.get();
+                p_ActiveRenderer = p_SWRenderer.get();
                 break;
             case Config::RendererType::GL:
-                p_activeRenderer = p_GLRenderer.get();
+                p_ActiveRenderer = p_GLRenderer.get();
                 break;
             default:
                 LOGE("Renderer type %d not implemented!", p_Config->renderer.selectedRenderer);
                 return;
         }
-        assert(p_activeRenderer != nullptr && "Active renderer is null");
+        assert(p_ActiveRenderer != nullptr && "Active renderer is null");
         glViewport(0, 0, p_Config->renderer.resolution.x, p_Config->renderer.resolution.y);
-        p_activeRenderer->BeforeFrame(clearColor);
+        p_ActiveRenderer->BeforeFrame(clearColor);
     }
 
     std::vector<int> &RenderSystem::BuildRenderQueue(Scene &scene, const Camera &camera)
     {
-        p_activeRenderer->SetActiveCamera(camera);
+        p_ActiveRenderer->SetActiveCamera(camera);
         return scene.GetVisibleModels(); // TODO: split into meshes?
     }
 
@@ -86,23 +86,6 @@ namespace RetroRenderer
         assert(p_Stats != nullptr && "Stats not initialized!");
         p_Stats->Reset();
 
-        auto p_Config = Engine::Get().GetConfig();
-        auto selectedRenderer = p_Config->renderer.selectedRenderer;
-        IRenderer *activeRenderer = nullptr;
-        switch (selectedRenderer)
-        {
-            case Config::RendererType::SOFTWARE:
-                activeRenderer = p_SWRenderer.get();
-                break;
-            case Config::RendererType::GL:
-                activeRenderer = p_GLRenderer.get();
-                break;
-            default:
-                LOGE("Renderer type %d not implemented!", selectedRenderer);
-                return 0;
-        }
-        assert(activeRenderer != nullptr && "Active renderer is null");
-
         //LOGD("Render queue size: %d", renderQueue.size());
         for (int modelIx: renderQueue)
         {
@@ -110,10 +93,10 @@ namespace RetroRenderer
             assert(model != nullptr && "Model is null");
             if (model->GetMeshes().size() > 0)
             {
-                activeRenderer->DrawTriangularMesh(model);
+                p_ActiveRenderer->DrawTriangularMesh(model);
             }
         }
-        return activeRenderer->EndFrame();
+        return p_ActiveRenderer->EndFrame();
     }
 
     void RenderSystem::Resize(const glm::ivec2 &resolution)

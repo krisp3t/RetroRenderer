@@ -41,7 +41,7 @@ namespace RetroRenderer
         std::unique_ptr<SWRenderer> p_SWRenderer = nullptr;
         std::unique_ptr<GLRenderer> p_GLRenderer = nullptr;
         std::shared_ptr<Stats> p_Stats = nullptr;
-        IRenderer *p_activeRenderer = nullptr;
+        IRenderer *p_ActiveRenderer = nullptr;
 
         GLuint m_SWFramebufferTexture = 0;
         GLuint m_GLFramebufferTexture = 0;

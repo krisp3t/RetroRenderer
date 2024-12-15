@@ -10,7 +10,6 @@ namespace RetroRenderer
     class Mesh
     {
     public:
-        Mesh() = default;
         ~Mesh() = default;
         Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices);
 

@@ -1,5 +1,6 @@
 #include "GLRenderer.h"
 #include "../../Base/Logger.h"
+#include "glm/gtc/type_ptr.hpp"
 
 namespace RetroRenderer
 {
@@ -46,7 +47,36 @@ namespace RetroRenderer
         }
 
         // TODO: remove
-        m_ShaderProgram = CreateShaderProgram();
+        const char *vertexShaderSource = R"glsl(
+#version 330 core
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aTexCoord;
+
+uniform mat4 u_ModelMatrix;
+uniform mat4 u_ViewProjectionMatrix;
+
+out vec3 FragPos;
+out vec2 TexCoord;
+
+void main() {
+    FragPos = vec3(u_ModelMatrix * vec4(aPos, 1.0));
+    TexCoord = aTexCoord;
+    gl_Position = u_ViewProjectionMatrix * vec4(FragPos, 1.0);
+}
+)glsl";
+        const char *fragmentShaderSource = R"glsl(
+#version 330 core
+in vec3 FragPos;
+in vec2 TexCoord;
+
+out vec4 FragColor;
+
+void main() {
+    FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}
+)glsl";
+        m_ShaderProgram = CreateShaderProgram(vertexShaderSource, fragmentShaderSource);
         glUseProgram(m_ShaderProgram);
 
         // TODO: add depth buffer
@@ -100,42 +130,33 @@ namespace RetroRenderer
 
     void GLRenderer::DrawTriangularMesh(const Model *model)
     {
+        const glm::mat4 &modelMat = model->GetTransform();
+        const glm::mat4 &viewMat = p_Camera->viewMat;
+        const glm::mat4 &projMat = p_Camera->projMat;
+        const glm::mat4 mv = viewMat * modelMat;
+        const glm::mat4 mvp = projMat * mv;
+        const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
+
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+        // Per-mesh uniforms
+        GLint modelLoc = glGetUniformLocation(m_ShaderProgram, "u_ModelMatrix");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMat));
+        GLint viewProjLoc = glGetUniformLocation(m_ShaderProgram, "u_ViewProjectionMatrix");
+        glUniformMatrix4fv(viewProjLoc, 1, GL_FALSE, glm::value_ptr(mvp));
 
         auto &meshes = model->GetMeshes();
-        /*
-        for (Mesh mesh.get(): meshes)
+        for (const Mesh &mesh: meshes)
         {
-            glBindVertexArray(mesh->VAO);
-            glDrawElements(GL_TRIANGLES, mesh->m_Indices.size(), GL_UNSIGNED_INT, nullptr);
+            glBindVertexArray(mesh.VAO);
+            glDrawElements(GL_TRIANGLES, mesh.m_Indices.size(), GL_UNSIGNED_INT, nullptr);
             glBindVertexArray(0);
-        } */
+        }
 
-        /*
-        float vertices[] = {
-                -0.5f, -0.5f, 0.0f,
-                0.5f, -0.5f, 0.0f,
-                0.0f, 0.5f, 0.0f
-        };
-
-
-        unsigned int VAO;
-        glGenVertexArrays(1, &VAO);
-        glBindVertexArray(VAO);
-
-        unsigned int VBO;
-        glGenBuffers(1, &VBO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *) 0);
-        glEnableVertexAttribArray(0);
-
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-         */
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // glUseProgram(0);
     }
 
     void GLRenderer::BeforeFrame(const Color &clearColor)
@@ -153,9 +174,83 @@ namespace RetroRenderer
         return p_FrameBufferTexture;
     }
 
+
+    GLuint GLRenderer::CompileShader(GLenum shaderType, const char *shaderSource)
+    {
+        GLuint shader = glCreateShader(shaderType);
+        if (shader == 0)
+        {
+            LOGE("Error creating shader");
+            return 0;
+        }
+        glShaderSource(shader, 1, &shaderSource, nullptr);
+        glCompileShader(shader);
+
+        GLint success;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+        if (success == GL_FALSE)
+        {
+            GLint logLength;
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+            std::vector<char> errorLog(logLength);
+            glGetShaderInfoLog(shader, logLength, &logLength, errorLog.data());
+            LOGE("Error compiling shader: %s", errorLog.data());
+            glDeleteShader(shader);
+            return 0;
+        }
+        return shader;
+    }
+
     GLuint GLRenderer::CreateShaderProgram(const char *vertexShaderSource, const char *fragmentShaderSource)
     {
-        return 0;
+        GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
+        if (vertexShader == 0)
+        {
+            return 0;
+        }
+
+        GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
+        if (fragmentShader == 0)
+        {
+            glDeleteShader(vertexShader);
+            return 0;
+        }
+
+        GLuint shaderProgram = glCreateProgram();
+        if (shaderProgram == 0)
+        {
+            LOGE("Error creating shader program");
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return 0;
+        }
+
+        glAttachShader(shaderProgram, vertexShader);
+        glAttachShader(shaderProgram, fragmentShader);
+
+
+        glLinkProgram(shaderProgram);
+        GLint linkStatus;
+        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &linkStatus);
+        if (linkStatus == GL_FALSE)
+        {
+            GLint logLength;
+            glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &logLength);
+            std::vector<char> errorLog(logLength);
+            glGetProgramInfoLog(shaderProgram, logLength, &logLength, errorLog.data());
+            LOGE("Error linking shader program: %s", errorLog.data());
+            glDeleteProgram(shaderProgram);
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return 0;
+        }
+
+        glDetachShader(shaderProgram, vertexShader);
+        glDetachShader(shaderProgram, fragmentShader);
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+
+        return shaderProgram;
     }
 
     /**
@@ -169,7 +264,7 @@ namespace RetroRenderer
                                          "void main()\n"
                                          "{\n"
                                          "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-                                         "   vertexColor = vec4(0.5, 0.0, 0.0, 1.0);\n"
+                                         "   vertexColor = vec4(1.0, 0.5, 0.0, 1.0);\n"
                                          "}\0";
         GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
@@ -189,7 +284,6 @@ namespace RetroRenderer
         glAttachShader(shaderProgram, vertexShader);
         glAttachShader(shaderProgram, fragmentShader);
         glLinkProgram(shaderProgram);
-        glUseProgram(shaderProgram);
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
         return shaderProgram;

@@ -32,6 +32,7 @@ namespace RetroRenderer
         GLuint CreateShaderProgram(const char *vertexShaderSource, const char *fragmentShaderSource);
         GLuint CreateShaderProgram();
 
+
     private:
         Camera *p_Camera = nullptr;
 
@@ -50,5 +51,6 @@ namespace RetroRenderer
                       const void *userParam);
 
         bool CreateFramebuffer(GLuint fbTex, int w, int h);
+        GLuint CompileShader(GLenum shaderType, const char *shaderSource);
     };
 }
