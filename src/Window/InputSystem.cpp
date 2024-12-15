@@ -83,7 +83,8 @@ namespace RetroRenderer
             m_InputState |= static_cast<InputActionMask>(InputAction::ROTATE_DOWN);
             break;
         case SDLK_h:
-            m_InputState |= static_cast<InputActionMask>(InputAction::TOGGLE_CONFIG_PANEL);
+			p_Config->window.showConfigPanel = !p_Config->window.showConfigPanel;
+            // m_InputState |= static_cast<InputActionMask>(InputAction::TOGGLE_CONFIG_PANEL);
             break;
         case SDLK_1:
             m_InputState |= static_cast<InputActionMask>(InputAction::TOGGLE_WIREFRAME);
@@ -93,6 +94,8 @@ namespace RetroRenderer
 
 	void InputSystem::HandleMouseMotion(const SDL_MouseMotionEvent& event)
 	{
+        // Currently handled in imgui
+        /*
 		if (!m_isDragging)
 		{
 			return;
@@ -101,6 +104,7 @@ namespace RetroRenderer
 		// Relative motions
 		int dx = event.xrel;
 		int dy = event.yrel;
+        */
 	}
 
     void InputSystem::Destroy()

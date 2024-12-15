@@ -11,7 +11,7 @@ namespace RetroRenderer
 		IRenderer() = default;
 		virtual ~IRenderer() = default;
 
-		virtual bool Init(int w, int h) = 0;
+		// virtual bool Init(int w, int h) = 0;
 		virtual void Destroy() = 0;
 		virtual void SetActiveCamera(const Camera& camera) = 0;
 		virtual void DrawTriangularMesh(const Model* model) = 0;

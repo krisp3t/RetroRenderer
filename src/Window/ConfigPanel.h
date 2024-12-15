@@ -56,6 +56,7 @@ private:
     void DisplayExamplesDialog();
 
     const char* k_supportedModels = ".obj,.gltf,.glb,.fbx,.usd";
+    void DisplayWindowSettings();
 };
 
 }

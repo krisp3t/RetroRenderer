@@ -16,6 +16,7 @@ public:
     DisplaySystem() = default;
     ~DisplaySystem() = default;
 
+    SDL_Window* GetWindow() const;
     bool Init(std::shared_ptr<Config> config, std::shared_ptr<Camera> camera, std::shared_ptr<Stats> stats);
     void Destroy();
 

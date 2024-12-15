@@ -28,26 +28,27 @@ namespace RetroRenderer
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-    bool RenderSystem::Init(DisplaySystem& displaySystem, std::shared_ptr<Stats> stats)
+    bool RenderSystem::Init(SDL_Window* window, std::shared_ptr<Stats> stats)
     {
+		p_Stats = stats;
+
 		auto& p_Config = Engine::Get().GetConfig();
-        p_DisplaySystem = &displaySystem;
         p_SWRenderer = std::make_unique<SWRenderer>();
 		p_GLRenderer = std::make_unique<GLRenderer>();
-        if (!p_SWRenderer->Init(p_DisplaySystem->GetWidth(), p_DisplaySystem->GetHeight()))
+		auto& fbResolution = p_Config->renderer.resolution;
+		assert(fbResolution.x > 0 && fbResolution.y > 0 && "Tried to initialize renderers with invalid resolution");
+
+        if (!p_SWRenderer->Init(fbResolution.x, fbResolution.y))
         {
             LOGE("Failed to initialize SWRenderer");
             return false;
         }
-		if (!p_GLRenderer->Init(p_DisplaySystem->GetWidth(), p_DisplaySystem->GetHeight()))
+		if (!p_GLRenderer->Init(window, fbResolution.x, fbResolution.y))
 		{
 			LOGE("Failed to initialize GLRenderer");
 			return false;
 		}
 
-        p_Stats = stats;
-
-		auto fbResolution = p_Config->renderer.resolution;
 		CreateFramebufferTexture(m_SWFramebufferTexture, fbResolution.x, fbResolution.y);
 		CreateFramebufferTexture(m_GLFramebufferTexture, fbResolution.x, fbResolution.y);
 

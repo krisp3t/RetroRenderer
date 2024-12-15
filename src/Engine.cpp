@@ -15,7 +15,7 @@ namespace RetroRenderer
         {
             return false;
         }
-        if (!m_RenderSystem.Init(m_DisplaySystem, p_Stats))
+        if (!m_RenderSystem.Init(m_DisplaySystem.GetWindow(), p_Stats))
         {
             return false;
         }

@@ -172,7 +172,16 @@ namespace RetroRenderer
 		}
     }
 
-    void ConfigPanel::DisplaySceneGraph()
+	void ConfigPanel::DisplayWindowSettings()
+	{
+		auto& w = p_Config->window;
+		ImGui::SeparatorText("Window settings");
+		// ImGui::Checkbox("Show configuration panel", &w.showConfigPanel);
+        ImGui::Checkbox("Show FPS", &w.showFPS);
+        ImGui::Checkbox("Enable VSync", &w.enableVsync); // TODO: implement
+	}
+
+	void ConfigPanel::DisplaySceneGraph()
     {
         ImGui::Begin("Scene Graph");
         //ImGui::Text("Please load a scene!");
@@ -454,6 +463,11 @@ namespace RetroRenderer
                     DisplayCameraSettings();
                     ImGui::EndTabItem();
                 }
+				if (ImGui::BeginTabItem("Window"))
+				{
+					DisplayWindowSettings();
+					ImGui::EndTabItem();
+				}
                 if (ImGui::BeginTabItem("Renderer"))
                 {
                     DisplayRendererSettings();
@@ -650,8 +664,7 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayMetricsOverlay()
     {
-        static bool isOpen = true;
-        if (!isOpen) return;
+        if (!p_Config->window.showFPS) return;
 
         static int location = 2;
         ImGuiIO& io = ImGui::GetIO();
@@ -676,16 +689,20 @@ namespace RetroRenderer
         windowFlags |= ImGuiWindowFlags_NoMove;
 
         ImGui::SetNextWindowBgAlpha(0.35f);
-        if (ImGui::Begin("Metrics", &isOpen, windowFlags))
+        if (ImGui::Begin("Metrics", &p_Config->window.showFPS, windowFlags))
         {
             ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 			ImGui::Text(
-                "%d x %d; %d verts, %d tris", 
+                "%d x %d (%s)", 
                 p_Config->renderer.resolution.x, 
                 p_Config->renderer.resolution.y, 
-                p_Stats->renderedVerts, 
-                p_Stats->renderedTris
+				p_Config->renderer.selectedRenderer == Config::RendererType::SOFTWARE ? "software" : "OpenGL"
             );
+			ImGui::Text(
+				"%d verts, %d tris",
+				p_Stats->renderedVerts,
+				p_Stats->renderedTris
+			);
             if (p_Camera)
             {
                 ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", p_Camera->position.x, p_Camera->position.y, p_Camera->position.z);
@@ -698,7 +715,7 @@ namespace RetroRenderer
                 if (ImGui::MenuItem("Top-right", nullptr, location == 1)) location = 1;
                 if (ImGui::MenuItem("Bottom-left",nullptr, location == 2)) location = 2;
                 if (ImGui::MenuItem("Bottom-right",nullptr, location == 3)) location = 3;
-                if (ImGui::MenuItem("Close")) isOpen = false;
+                if (ImGui::MenuItem("Close")) p_Config->window.showFPS = false;
                 ImGui::EndPopup();
             }
         }

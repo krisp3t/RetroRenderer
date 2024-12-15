@@ -12,7 +12,7 @@ namespace RetroRenderer
 		GLRenderer() = default;
 		~GLRenderer() = default;
 
-		bool Init(int w, int h);
+		bool Init(SDL_Window* window, int w, int h);
 		void Resize(int w, int h);
 		void Destroy();
 		void SetActiveCamera(const Camera& camera);
@@ -22,5 +22,6 @@ namespace RetroRenderer
 	private:
 		GLuint m_FrameBuffer = 0;
 		Camera* p_Camera = nullptr;
+		SDL_GLContext m_glContext = nullptr;
 	};
 }

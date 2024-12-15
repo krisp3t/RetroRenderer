@@ -6,6 +6,11 @@
 
 namespace RetroRenderer
 {
+	SDL_Window* DisplaySystem::GetWindow() const
+	{
+		return m_Window;
+	}
+
     bool DisplaySystem::Init(std::shared_ptr<Config> config, std::shared_ptr<Camera> camera, std::shared_ptr<Stats> stats)
     {
         p_Config = config;
@@ -84,6 +89,7 @@ namespace RetroRenderer
     }
 
     void DisplaySystem::BeforeFrame(Uint32 c) {
+		SDL_GL_MakeCurrent(m_Window, m_glContext);
         // color is cleared in imgui loop
         m_ConfigPanel.get()->BeforeFrame();
     }

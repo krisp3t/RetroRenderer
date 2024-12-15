@@ -3,9 +3,25 @@
 
 namespace RetroRenderer
 {
-	bool GLRenderer::Init(int w, int h)
+	bool GLRenderer::Init(SDL_Window* window, int w, int h)
 	{
+		SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1); // enable resource sharing with main context
+		m_glContext = SDL_GL_CreateContext(window);
+		if (!m_glContext)
+		{
+			LOGE("Failed to create GL context: %s", SDL_GetError());
+			return false;
+		}
+		// already initialized in DisplaySystem
 		/*
+		if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
+		{
+			LOGE("Failed to initialize GLAD");
+			return false;
+		}
+		/*
+		
+
 		glGenFramebuffers(1, &m_FrameBuffer);
 		glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
 
