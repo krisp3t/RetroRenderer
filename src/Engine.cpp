@@ -63,7 +63,6 @@ namespace RetroRenderer
                 m_RenderSystem.BeforeFrame(clearColor);
                 auto &queue = m_RenderSystem.BuildRenderQueue(*scene, *camera);
                 GLuint fbTex = m_RenderSystem.Render(queue);
-                m_DisplaySystem.ResetGlContext();
                 m_DisplaySystem.DrawFrame(fbTex);
             } else
             {

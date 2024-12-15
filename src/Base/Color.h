@@ -54,15 +54,18 @@ namespace RetroRenderer
         }
 
         // Converters
-        uint32_t ToARGB() const
+        [[nodiscard]] uint32_t ToARGB() const
         {
             return (a << 24) | (r << 16) | (g << 8) | b;
         }
-        uint32_t ToRGBA() const
+        [[nodiscard]] uint32_t ToRGBA() const
         {
-            return (r << 24) | (g << 16) | (b << 8) | a;
+            return (static_cast<uint32_t>(r) << 24) |
+                   (static_cast<uint32_t>(g) << 16) |
+                   (static_cast<uint32_t>(b) << 8) |
+                   static_cast<uint32_t>(a);
         }
-        ImVec4 ToImVec4() const
+        [[nodiscard]] ImVec4 ToImVec4() const
         {
             return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
         }

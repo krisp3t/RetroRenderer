@@ -9,7 +9,7 @@ namespace RetroRenderer
     {
         try
         {
-            m_FrameBuffer = new Buffer<Uint32>(w, h);
+            m_FrameBuffer = new Buffer<uint32_t>(w, h);
         }
         catch (const std::bad_alloc &)
         {
@@ -23,7 +23,7 @@ namespace RetroRenderer
 
     void SWRenderer::Resize(int w, int h)
     {
-        m_FrameBuffer = new Buffer<Uint32>(w, h);
+        m_FrameBuffer = new Buffer<uint32_t>(w, h);
     }
 
     void SWRenderer::Destroy()
@@ -106,7 +106,8 @@ namespace RetroRenderer
 
     void SWRenderer::BeforeFrame(const Color &clearColor)
     {
-        m_FrameBuffer->Clear(clearColor.ToRGBA());
+        uint32_t c = clearColor.ToRGBA();
+        m_FrameBuffer->Clear(c);
         // TODO: clear opengl texture?
     }
 
@@ -121,7 +122,7 @@ namespace RetroRenderer
                 m_FrameBuffer->width,
                 m_FrameBuffer->height,
                 GL_RGBA,
-                GL_UNSIGNED_BYTE,
+                GL_UNSIGNED_INT_8_8_8_8,
                 m_FrameBuffer->data
         );
         glBindTexture(GL_TEXTURE_2D, 0);

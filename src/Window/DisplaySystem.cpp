@@ -86,9 +86,10 @@ namespace RetroRenderer
         //LOGI("OpenGL extensions:     %s", glGetString(GL_EXTENSIONS));
 
         glViewport(0, 0, screenWidth, screenHeight);
+        // glEnable(GL_DEPTH_TEST);
 
+        SDL_GL_SetSwapInterval(p_Config->window.enableVsync ? 1 : 0);
 
-        // SDL_GL_SetSwapInterval(1); // Enable vsync
         m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_glContext, p_Config, p_Camera, glslVersion, stats);
         return true;
     }
@@ -108,6 +109,7 @@ namespace RetroRenderer
 
     void DisplaySystem::DrawFrame(GLuint p_framebufferTexture)
     {
+        ResetGlContext();
         m_ConfigPanel->DisplayRenderedImage(p_framebufferTexture);
         m_ConfigPanel->OnDraw();
     }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <SDL.h>
 #include <memory>
 #include "../../Scene/Scene.h"
 #include "../../Scene/Camera.h"
@@ -33,7 +32,7 @@ namespace RetroRenderer
         GLuint EndFrame() override;
 
     private:
-        Buffer<Uint32> *m_FrameBuffer = nullptr;
+        Buffer<uint32_t> *m_FrameBuffer = nullptr;
         GLuint p_FrameBufferTexture = 0;
         Camera *p_Camera = nullptr;
         std::unique_ptr<Rasterizer> m_Rasterizer = nullptr;

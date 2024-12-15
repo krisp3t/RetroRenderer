@@ -25,7 +25,7 @@ namespace RetroRenderer
                              SDL_GLContext glContext,
                              std::shared_ptr<Config> config,
                              std::shared_ptr<Camera> camera,
-                             const char* glslVersion,
+                             const char *glslVersion,
                              std::shared_ptr<Stats> stats
     )
     {
@@ -37,24 +37,25 @@ namespace RetroRenderer
         Destroy();
     }
 
-    bool ConfigPanel::Init(SDL_Window* window,
+    bool ConfigPanel::Init(SDL_Window *window,
                            SDL_GLContext glContext,
                            std::shared_ptr<Config> config,
                            std::shared_ptr<Camera> camera,
-                           const char* glslVersion,
+                           const char *glslVersion,
                            std::shared_ptr<Stats> stats
-                           )
+    )
     {
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        ImGuiIO &io = ImGui::GetIO();
+        (void) io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard
-                        | ImGuiConfigFlags_DockingEnable;
+                          | ImGuiConfigFlags_DockingEnable;
         // TODO: add ini
-		//io.IniFilename = "config_panel.ini";
+        //io.IniFilename = "config_panel.ini";
         StyleColorsEnemymouse();
-		io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
+        io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
         ImGui_ImplSDL2_InitForOpenGL(window, glContext);
         ImGui_ImplOpenGL3_Init(glslVersion);
 
@@ -71,59 +72,59 @@ namespace RetroRenderer
         // Theme from @enemymouse
         // https://gist.github.com/enemymouse/c8aa24e247a1d7b9fc33d45091cbb8f0
         // https://github.com/GraphicsProgramming/dear-imgui-styles
-		ImGuiStyle& style = ImGui::GetStyle();
-		style.Alpha = 1.0;
-		//style.WindowFillAlpha = 0.83;
-		style.ChildRounding = 3;
-		style.WindowRounding = 3;
-		style.GrabRounding = 1;
-		style.GrabMinSize = 20;
-		style.FrameRounding = 3;
+        ImGuiStyle &style = ImGui::GetStyle();
+        style.Alpha = 1.0;
+        //style.WindowFillAlpha = 0.83;
+        style.ChildRounding = 3;
+        style.WindowRounding = 3;
+        style.GrabRounding = 1;
+        style.GrabMinSize = 20;
+        style.FrameRounding = 3;
 
 
-		style.Colors[ImGuiCol_Text] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
-		style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.00f, 0.40f, 0.41f, 1.00f);
-		style.Colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
-		style.Colors[ImGuiCol_ChildBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-		style.Colors[ImGuiCol_Border] = ImVec4(0.00f, 1.00f, 1.00f, 0.65f);
-		style.Colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-		style.Colors[ImGuiCol_FrameBg] = ImVec4(0.44f, 0.80f, 0.80f, 0.18f);
-		style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.44f, 0.80f, 0.80f, 0.27f);
-		style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.44f, 0.81f, 0.86f, 0.66f);
-		style.Colors[ImGuiCol_TitleBg] = ImVec4(0.14f, 0.18f, 0.21f, 0.73f);
-		style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.54f);
-		style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.00f, 1.00f, 1.00f, 0.27f);
-		style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.20f);
-		style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.22f, 0.29f, 0.30f, 0.71f);
-		style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.00f, 1.00f, 1.00f, 0.44f);
-		style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.00f, 1.00f, 1.00f, 0.74f);
-		style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
-		//style.Colors[ImGuiCol_ComboBg] = ImVec4(0.16f, 0.24f, 0.22f, 0.60f);
-		style.Colors[ImGuiCol_CheckMark] = ImVec4(0.00f, 1.00f, 1.00f, 0.68f);
-		style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.00f, 1.00f, 1.00f, 0.36f);
-		style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.00f, 1.00f, 1.00f, 0.76f);
-		style.Colors[ImGuiCol_Button] = ImVec4(0.00f, 0.65f, 0.65f, 0.46f);
-		style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.01f, 1.00f, 1.00f, 0.43f);
-		style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.00f, 1.00f, 1.00f, 0.62f);
-		style.Colors[ImGuiCol_Header] = ImVec4(0.00f, 1.00f, 1.00f, 0.33f);
-		style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.00f, 1.00f, 1.00f, 0.42f);
-		style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.00f, 1.00f, 1.00f, 0.54f);
-		//style.Colors[ImGuiCol_Column] = ImVec4(0.00f, 0.50f, 0.50f, 0.33f);
-		//style.Colors[ImGuiCol_ColumnHovered] = ImVec4(0.00f, 0.50f, 0.50f, 0.47f);
-		//style.Colors[ImGuiCol_ColumnActive] = ImVec4(0.00f, 0.70f, 0.70f, 1.00f);
-		style.Colors[ImGuiCol_ResizeGrip] = ImVec4(0.00f, 1.00f, 1.00f, 0.54f);
-		style.Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.00f, 1.00f, 1.00f, 0.74f);
-		style.Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
-		//style.Colors[ImGuiCol_CloseButton] = ImVec4(0.00f, 0.78f, 0.78f, 0.35f);
-		//style.Colors[ImGuiCol_CloseButtonHovered] = ImVec4(0.00f, 0.78f, 0.78f, 0.47f);
-		//style.Colors[ImGuiCol_CloseButtonActive] = ImVec4(0.00f, 0.78f, 0.78f, 1.00f);
-		style.Colors[ImGuiCol_PlotLines] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
-		style.Colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
-		style.Colors[ImGuiCol_PlotHistogram] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
-		style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
-		style.Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.00f, 1.00f, 1.00f, 0.22f);
-		//style.Colors[ImGuiCol_TooltipBg] = ImVec4(0.00f, 0.13f, 0.13f, 0.90f);
-		//style.Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(0.04f, 0.10f, 0.09f, 0.51f);
+        style.Colors[ImGuiCol_Text] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
+        style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.00f, 0.40f, 0.41f, 1.00f);
+        style.Colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+        style.Colors[ImGuiCol_ChildBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+        style.Colors[ImGuiCol_Border] = ImVec4(0.00f, 1.00f, 1.00f, 0.65f);
+        style.Colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+        style.Colors[ImGuiCol_FrameBg] = ImVec4(0.44f, 0.80f, 0.80f, 0.18f);
+        style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.44f, 0.80f, 0.80f, 0.27f);
+        style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.44f, 0.81f, 0.86f, 0.66f);
+        style.Colors[ImGuiCol_TitleBg] = ImVec4(0.14f, 0.18f, 0.21f, 0.73f);
+        style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.54f);
+        style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.00f, 1.00f, 1.00f, 0.27f);
+        style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.20f);
+        style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.22f, 0.29f, 0.30f, 0.71f);
+        style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.00f, 1.00f, 1.00f, 0.44f);
+        style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.00f, 1.00f, 1.00f, 0.74f);
+        style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
+        //style.Colors[ImGuiCol_ComboBg] = ImVec4(0.16f, 0.24f, 0.22f, 0.60f);
+        style.Colors[ImGuiCol_CheckMark] = ImVec4(0.00f, 1.00f, 1.00f, 0.68f);
+        style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.00f, 1.00f, 1.00f, 0.36f);
+        style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.00f, 1.00f, 1.00f, 0.76f);
+        style.Colors[ImGuiCol_Button] = ImVec4(0.00f, 0.65f, 0.65f, 0.46f);
+        style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.01f, 1.00f, 1.00f, 0.43f);
+        style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.00f, 1.00f, 1.00f, 0.62f);
+        style.Colors[ImGuiCol_Header] = ImVec4(0.00f, 1.00f, 1.00f, 0.33f);
+        style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.00f, 1.00f, 1.00f, 0.42f);
+        style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.00f, 1.00f, 1.00f, 0.54f);
+        //style.Colors[ImGuiCol_Column] = ImVec4(0.00f, 0.50f, 0.50f, 0.33f);
+        //style.Colors[ImGuiCol_ColumnHovered] = ImVec4(0.00f, 0.50f, 0.50f, 0.47f);
+        //style.Colors[ImGuiCol_ColumnActive] = ImVec4(0.00f, 0.70f, 0.70f, 1.00f);
+        style.Colors[ImGuiCol_ResizeGrip] = ImVec4(0.00f, 1.00f, 1.00f, 0.54f);
+        style.Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.00f, 1.00f, 1.00f, 0.74f);
+        style.Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
+        //style.Colors[ImGuiCol_CloseButton] = ImVec4(0.00f, 0.78f, 0.78f, 0.35f);
+        //style.Colors[ImGuiCol_CloseButtonHovered] = ImVec4(0.00f, 0.78f, 0.78f, 0.47f);
+        //style.Colors[ImGuiCol_CloseButtonActive] = ImVec4(0.00f, 0.78f, 0.78f, 1.00f);
+        style.Colors[ImGuiCol_PlotLines] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
+        style.Colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
+        style.Colors[ImGuiCol_PlotHistogram] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
+        style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
+        style.Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.00f, 1.00f, 1.00f, 0.22f);
+        //style.Colors[ImGuiCol_TooltipBg] = ImVec4(0.00f, 0.13f, 0.13f, 0.90f);
+        //style.Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(0.04f, 0.10f, 0.09f, 0.51f);
     }
 
     void ConfigPanel::DisplayGUI()
@@ -134,7 +135,7 @@ namespace RetroRenderer
             return;
         }
 
-        ImGuiIO& io = ImGui::GetIO();
+        ImGuiIO &io = ImGui::GetIO();
         if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
         {
             ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(),
@@ -153,58 +154,63 @@ namespace RetroRenderer
         DisplayConfigWindow(*p_Config);
         DisplayControlsOverlay();
         DisplayMetricsOverlay();
-		DisplayExamplesDialog();
+        DisplayExamplesDialog();
     }
 
     void ConfigPanel::DisplayExamplesDialog()
     {
-		IGFD::FileDialogConfig examplesDialogConfig;
+        IGFD::FileDialogConfig examplesDialogConfig;
         examplesDialogConfig.countSelectionMax = 1;
-		examplesDialogConfig.filePathName = "tests-visual/basic-tests/";
-		ImGuiFileDialog::Instance()->OpenDialog("OpenExampleFile", "Examples", k_supportedModels, examplesDialogConfig);
-		if (ImGuiFileDialog::Instance()->Display("OpenExampleFile")) {
-			if (ImGuiFileDialog::Instance()->IsOk()) {
-				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-				LOGD("Selected example file: %s", filePathName.c_str());
-				Engine::Get().DispatchImmediate(SceneLoadEvent{ std::move(filePathName) });
+        examplesDialogConfig.filePathName = "tests-visual/basic-tests/";
+        ImGuiFileDialog::Instance()->OpenDialog("OpenExampleFile", "Examples", k_supportedModels, examplesDialogConfig);
+        if (ImGuiFileDialog::Instance()->Display("OpenExampleFile"))
+        {
+            if (ImGuiFileDialog::Instance()->IsOk())
+            {
+                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                LOGD("Selected example file: %s", filePathName.c_str());
+                Engine::Get().DispatchImmediate(SceneLoadEvent{std::move(filePathName)});
                 // IGFD::FileManager::SetCurrentPath("tests-visual/basic-tests/");
-			}
-		}
+            }
+        }
     }
 
-	void ConfigPanel::DisplayWindowSettings()
-	{
-		auto& w = p_Config->window;
-		ImGui::SeparatorText("Window settings");
-		// ImGui::Checkbox("Show configuration panel", &w.showConfigPanel);
+    void ConfigPanel::DisplayWindowSettings()
+    {
+        auto &w = p_Config->window;
+        ImGui::SeparatorText("Window settings");
+        // ImGui::Checkbox("Show configuration panel", &w.showConfigPanel);
         ImGui::Checkbox("Show FPS", &w.showFPS);
-        ImGui::Checkbox("Enable VSync", &w.enableVsync); // TODO: implement
-	}
+        if (ImGui::Checkbox("Enable VSync", &w.enableVsync))
+        {
+            SDL_GL_SetSwapInterval(w.enableVsync ? 1 : 0);
+        }
+    }
 
-	void ConfigPanel::DisplaySceneGraph()
+    void ConfigPanel::DisplaySceneGraph()
     {
         ImGui::Begin("Scene Graph");
         //ImGui::Text("Please load a scene!");
-		if (ImGui::TreeNode("Main camera"))
-		{
-			ImGui::Text("Main camera");
-			ImGui::TreePop();
-		}
-		if (ImGui::TreeNode("Ambient light"))
-		{
-			ImGui::Text("Ambient light");
-			ImGui::TreePop();
-		}
-		if (ImGui::TreeNode("Scene"))
-		{
-			if (ImGui::TreeNode("Test Node"))
-			{
-				ImGui::Text("Ambient light");
-				ImGui::TreePop();
-			}
-			ImGui::Text("Scene root");
-			ImGui::TreePop();
-		}
+        if (ImGui::TreeNode("Main camera"))
+        {
+            ImGui::Text("Main camera");
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNode("Ambient light"))
+        {
+            ImGui::Text("Ambient light");
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNode("Scene"))
+        {
+            if (ImGui::TreeNode("Test Node"))
+            {
+                ImGui::Text("Ambient light");
+                ImGui::TreePop();
+            }
+            ImGui::Text("Scene root");
+            ImGui::TreePop();
+        }
         /*
         ImGui::TreeNode("Model 1");
 		ImGui::TreePop();
@@ -216,53 +222,53 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayInspectorWindow()
     {
-		ImGui::Begin("Inspector");
-		ImGui::Text("Inspector");
-		ImGui::End();
+        ImGui::Begin("Inspector");
+        ImGui::Text("Inspector");
+        ImGui::End();
     }
 
     void ConfigPanel::DisplayRenderedImage()
     {
-		ImGui::Begin("Output");
+        ImGui::Begin("Output");
         ImVec2 contentSize = ImGui::GetContentRegionAvail();
-		p_Config->window.outputWindowSize = { contentSize.x, contentSize.y };
-		ImGui::Text("Please load a scene to start rendering!");
-		ImGui::End();
+        p_Config->window.outputWindowSize = {contentSize.x, contentSize.y};
+        ImGui::Text("Please load a scene to start rendering!");
+        ImGui::End();
     }
 
     void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture)
     {
-		ImGui::Begin("Output");
-		ImVec2 contentRegion = ImGui::GetContentRegionAvail();
-		glm::ivec2 contentSize(contentRegion.x, contentRegion.y);
-		if (p_Config->renderer.resolutionAutoResize)
-		{
+        ImGui::Begin("Output");
+        ImVec2 contentRegion = ImGui::GetContentRegionAvail();
+        glm::ivec2 contentSize(contentRegion.x, contentRegion.y);
+        if (p_Config->renderer.resolutionAutoResize)
+        {
             if (p_Config->window.outputWindowSize != contentSize)
             {
-                Engine::Get().DispatchImmediate(OutputImageResizeEvent{ contentSize });
+                Engine::Get().DispatchImmediate(OutputImageResizeEvent{contentSize});
             }
-		}
+        }
         p_Config->window.outputWindowSize = contentSize;
 
 
         auto ReleaseMouse = [&]()
-            {
-                ImVec2 windowPos = ImGui::GetWindowPos();
-                ImVec2 windowSize = ImGui::GetWindowSize();
-                ImVec2 resetPos = ImVec2(windowPos.x + windowSize.x / 2, windowPos.y + windowSize.y / 2);
-                LOGD("Stop camera drag, resetting mouse to (%.0f, %.0f)", resetPos.x, resetPos.y);
-                m_isDragging = false;
-                SDL_SetRelativeMouseMode(SDL_FALSE);
-                SDL_WarpMouseInWindow(m_Window, resetPos.x, resetPos.y); // reset to center
-            };
+        {
+            ImVec2 windowPos = ImGui::GetWindowPos();
+            ImVec2 windowSize = ImGui::GetWindowSize();
+            ImVec2 resetPos = ImVec2(windowPos.x + windowSize.x / 2, windowPos.y + windowSize.y / 2);
+            LOGD("Stop camera drag, resetting mouse to (%.0f, %.0f)", resetPos.x, resetPos.y);
+            m_isDragging = false;
+            SDL_SetRelativeMouseMode(SDL_FALSE);
+            SDL_WarpMouseInWindow(m_Window, resetPos.x, resetPos.y); // reset to center
+        };
 
-		auto HandleCameraDrag = [&]()
-			{
-				int deltaX, deltaY;
-				SDL_GetRelativeMouseState(&deltaX, &deltaY);
-				p_Camera->eulerRotation.y += deltaX * 0.05f;
-				p_Camera->eulerRotation.x -= deltaY * 0.05f;
-			};
+        auto HandleCameraDrag = [&]()
+        {
+            int deltaX, deltaY;
+            SDL_GetRelativeMouseState(&deltaX, &deltaY);
+            p_Camera->eulerRotation.y += deltaX * 0.05f;
+            p_Camera->eulerRotation.x -= deltaY * 0.05f;
+        };
 
         if (ImGui::IsWindowHovered())
         {
@@ -271,40 +277,39 @@ namespace RetroRenderer
 
             if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
-				if (!m_isDragging)
-				{
+                if (!m_isDragging)
+                {
                     LOGD("Start camera drag");
                     m_isDragging = true;
                     SDL_SetRelativeMouseMode(SDL_TRUE); // Capture mouse
-				}
+                }
                 HandleCameraDrag();
             }
-            // Mouse released when hovering, stop dragging
-			else if (m_isDragging)
-			{
+                // Mouse released when hovering, stop dragging
+            else if (m_isDragging)
+            {
                 ReleaseMouse();
-			}
+            }
 
             // Zoom camera (forward/backward along forward vector)
-			if (ImGui::GetIO().MouseWheel != 0.0f)
-			{
-				glm::vec3& forward = p_Camera->direction;
-				p_Camera->position += forward * ImGui::GetIO().MouseWheel * 0.1f;
-			}
-        }
-        else if (m_isDragging) {
+            if (ImGui::GetIO().MouseWheel != 0.0f)
+            {
+                glm::vec3 &forward = p_Camera->direction;
+                p_Camera->position += forward * ImGui::GetIO().MouseWheel * 0.1f;
+            }
+        } else if (m_isDragging)
+        {
             if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
                 HandleCameraDrag();
-            }
-            else
+            } else
             {
                 ReleaseMouse();
             }
         }
-         
-        ImGui::Image((void*)(intptr_t)p_framebufferTexture, contentRegion);
-		ImGui::End();
+
+        ImGui::Image((void *) (intptr_t) p_framebufferTexture, contentRegion);
+        ImGui::End();
     }
 
     /*
@@ -337,7 +342,8 @@ namespace RetroRenderer
             if (ImGui::MenuItem("Open scene"))
             {
                 IGFD::FileDialogConfig sceneDialogConfig;
-                ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose scene", k_supportedModels, sceneDialogConfig);
+                ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose scene", k_supportedModels,
+                                                        sceneDialogConfig);
             }
 
             if (ImGui::MenuItem("Scene Editor"))
@@ -346,7 +352,7 @@ namespace RetroRenderer
 
             if (ImGui::MenuItem("Reset"))
             {
-				Engine::Get().DispatchImmediate(SceneResetEvent{});
+                Engine::Get().DispatchImmediate(SceneResetEvent{});
             }
 
             if (ImGui::MenuItem("About"))
@@ -357,11 +363,13 @@ namespace RetroRenderer
             // Dialog windows
             // ----------------
             // Open Model File dialog
-            if (ImGuiFileDialog::Instance()->Display("OpenSceneFile")) {
-                if (ImGuiFileDialog::Instance()->IsOk()) {
-					std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+            if (ImGuiFileDialog::Instance()->Display("OpenSceneFile"))
+            {
+                if (ImGuiFileDialog::Instance()->IsOk())
+                {
+                    std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                     LOGD("Selected model file: %s", filePathName.c_str());
-					Engine::Get().DispatchImmediate(SceneLoadEvent{ std::move(filePathName) });
+                    Engine::Get().DispatchImmediate(SceneLoadEvent{std::move(filePathName)});
                 }
                 ImGuiFileDialog::Instance()->Close();
             }
@@ -396,66 +404,68 @@ namespace RetroRenderer
     {
         // TODO: disable resizing below min size?
         // TODO: open separate windows by clicking
-		if (ImGui::Begin("Graphics pipeline"))
-		{
-			ImDrawList* drawList = ImGui::GetWindowDrawList();
+        if (ImGui::Begin("Graphics pipeline"))
+        {
+            ImDrawList *drawList = ImGui::GetWindowDrawList();
 
-			static const char* stages[] = {
-				"Input Assembler", "Vertex Shader", "Tessellation",
-				"Geometry Shader", "Rasterization",
-				"Fragment Shader", "Color Blending"
-			};
-			int numStages = sizeof(stages) / sizeof(stages[0]);
+            static const char *stages[] = {
+                    "Input Assembler", "Vertex Shader", "Tessellation",
+                    "Geometry Shader", "Rasterization",
+                    "Fragment Shader", "Color Blending"
+            };
+            int numStages = sizeof(stages) / sizeof(stages[0]);
 
-			ImVec2 windowPos = ImGui::GetWindowPos();  // Window top-left corner
+            ImVec2 windowPos = ImGui::GetWindowPos();  // Window top-left corner
             ImVec2 windowSize = ImGui::GetWindowSize();
             windowSize.y -= ImGui::GetFrameHeight();
-			windowPos.y += ImGui::GetFrameHeight();
-			constexpr ImVec2 padding(40, 0);
+            windowPos.y += ImGui::GetFrameHeight();
+            constexpr ImVec2 padding(40, 0);
             ImVec2 boxSize(
-                ((windowSize.x - (numStages + 1) * padding.x) / numStages),
-                50
+                    ((windowSize.x - (numStages + 1) * padding.x) / numStages),
+                    50
             );
-			constexpr ImU32 arrowColor = IM_COL32(255, 255, 255, 255);
+            constexpr ImU32 arrowColor = IM_COL32(255, 255, 255, 255);
 
-			ImVec2 startPos = ImVec2(
-                windowPos.x + padding.x, 
-                windowPos.y + windowSize.y / 2 - boxSize.y / 2
+            ImVec2 startPos = ImVec2(
+                    windowPos.x + padding.x,
+                    windowPos.y + windowSize.y / 2 - boxSize.y / 2
             );
 
-			for (int i = 0; i < numStages; ++i) 
+            for (int i = 0; i < numStages; ++i)
             {
-				ImVec2 boxMin = ImVec2(startPos.x + i * (boxSize.x + padding.x), startPos.y);
-				ImVec2 boxMax = ImVec2(boxMin.x + boxSize.x, boxMin.y + boxSize.y);
-				ImU32 boxColor = ImGui::ColorConvertFloat4ToU32(ImVec4(ImColor::HSV(i / (float)numStages, 0.6f, 0.6f)));
+                ImVec2 boxMin = ImVec2(startPos.x + i * (boxSize.x + padding.x), startPos.y);
+                ImVec2 boxMax = ImVec2(boxMin.x + boxSize.x, boxMin.y + boxSize.y);
+                ImU32 boxColor = ImGui::ColorConvertFloat4ToU32(
+                        ImVec4(ImColor::HSV(i / (float) numStages, 0.6f, 0.6f)));
 
-				drawList->AddRectFilled(boxMin, boxMax, boxColor, 5.0f);  // Rounded box
-				drawList->AddRect(boxMin, boxMax, IM_COL32_BLACK);  // Border
+                drawList->AddRectFilled(boxMin, boxMax, boxColor, 5.0f);  // Rounded box
+                drawList->AddRect(boxMin, boxMax, IM_COL32_BLACK);  // Border
 
-				ImVec2 text_pos = ImVec2(boxMin.x + 10, boxMin.y + 15);
-				drawList->AddText(text_pos, IM_COL32_BLACK, stages[i]);
+                ImVec2 text_pos = ImVec2(boxMin.x + 10, boxMin.y + 15);
+                drawList->AddText(text_pos, IM_COL32_BLACK, stages[i]);
 
-				if (i < numStages - 1) 
+                if (i < numStages - 1)
                 {
-					ImVec2 arrowStart = ImVec2(boxMax.x, boxMin.y + boxSize.y / 2);
-					ImVec2 arrowEnd = ImVec2(arrowStart.x + padding.x, arrowStart.y);
+                    ImVec2 arrowStart = ImVec2(boxMax.x, boxMin.y + boxSize.y / 2);
+                    ImVec2 arrowEnd = ImVec2(arrowStart.x + padding.x, arrowStart.y);
 
-					// Arrow line
-					drawList->AddLine(arrowStart, arrowEnd, arrowColor, 2.0f);
+                    // Arrow line
+                    drawList->AddLine(arrowStart, arrowEnd, arrowColor, 2.0f);
 
-					// Arrow head
-					ImVec2 arrow_head1 = ImVec2(arrowEnd.x - 5, arrowEnd.y - 5);
-					ImVec2 arrow_head2 = ImVec2(arrowEnd.x - 5, arrowEnd.y + 5);
-					drawList->AddTriangleFilled(arrowEnd, arrow_head1, arrow_head2, arrowColor);
-				}
-			}
-		}
-		ImGui::End();
+                    // Arrow head
+                    ImVec2 arrow_head1 = ImVec2(arrowEnd.x - 5, arrowEnd.y - 5);
+                    ImVec2 arrow_head2 = ImVec2(arrowEnd.x - 5, arrowEnd.y + 5);
+                    drawList->AddTriangleFilled(arrowEnd, arrow_head1, arrow_head2, arrowColor);
+                }
+            }
+        }
+        ImGui::End();
     }
 
-    void ConfigPanel::DisplayConfigWindow(Config& config) 
+    void ConfigPanel::DisplayConfigWindow(Config &config)
     {
-        if (ImGui::Begin("Configuration")) {
+        if (ImGui::Begin("Configuration"))
+        {
             if (ImGui::BeginTabBar("Camera"))
             {
                 if (ImGui::BeginTabItem("Camera"))
@@ -463,11 +473,11 @@ namespace RetroRenderer
                     DisplayCameraSettings();
                     ImGui::EndTabItem();
                 }
-				if (ImGui::BeginTabItem("Window"))
-				{
-					DisplayWindowSettings();
-					ImGui::EndTabItem();
-				}
+                if (ImGui::BeginTabItem("Window"))
+                {
+                    DisplayWindowSettings();
+                    ImGui::EndTabItem();
+                }
                 if (ImGui::BeginTabItem("Renderer"))
                 {
                     DisplayRendererSettings();
@@ -483,11 +493,11 @@ namespace RetroRenderer
                     DisplayCullSettings();
                     ImGui::EndTabItem();
                 }
-				if (ImGui::BeginTabItem("Rasterization"))
-				{
+                if (ImGui::BeginTabItem("Rasterization"))
+                {
                     DisplayRasterizerSettings();
-					ImGui::EndTabItem();
-				}
+                    ImGui::EndTabItem();
+                }
                 if (ImGui::BeginTabItem("Post-FX"))
                 {
                     ImGui::Text("Post-FX");
@@ -504,22 +514,22 @@ namespace RetroRenderer
         if (p_Camera)
         {
             ImGui::SeparatorText("Camera settings");
-            ImGui::DragFloat3("Position", glm::value_ptr(p_Camera->position), 0.1f, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			ImGui::DragFloat3("Rotation", glm::value_ptr(p_Camera->eulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
+            ImGui::DragFloat3("Position", glm::value_ptr(p_Camera->position), 0.1f, 0.0f, 0.0f, "%.3f",
+                              ImGuiSliderFlags_Logarithmic);
+            ImGui::DragFloat3("Rotation", glm::value_ptr(p_Camera->eulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
             ImGui::Combo("Camera type", reinterpret_cast<int *>(&p_Camera->type), "Perspective\0Orthographic\0");
             switch (p_Camera->type)
             {
-			case CameraType::PERSPECTIVE:
-				ImGui::SliderFloat("Field of view", &p_Camera->fov, 1.0f, 179.0f);
-				ImGui::SliderFloat("Near plane", &p_Camera->near, 0.1f, 10.0f);
-				ImGui::SliderFloat("Far plane", &p_Camera->far, 1.0f, 100.0f);
-				break;
-			case CameraType::ORTHOGRAPHIC:
-				ImGui::SliderFloat("Orthographic size", &p_Camera->orthoSize, 1.0f, 100.0f);
-				break;
+                case CameraType::PERSPECTIVE:
+                    ImGui::SliderFloat("Field of view", &p_Camera->fov, 1.0f, 179.0f);
+                    ImGui::SliderFloat("Near plane", &p_Camera->near, 0.1f, 10.0f);
+                    ImGui::SliderFloat("Far plane", &p_Camera->far, 1.0f, 100.0f);
+                    break;
+                case CameraType::ORTHOGRAPHIC:
+                    ImGui::SliderFloat("Orthographic size", &p_Camera->orthoSize, 1.0f, 100.0f);
+                    break;
             }
-        }
-        else
+        } else
         {
             ImGui::Text("No camera available");
         }
@@ -530,51 +540,56 @@ namespace RetroRenderer
     {
         auto &r = p_Config->renderer;
         ImGui::SeparatorText("Renderer settings");
-		if (ImGui::Button("Take screenshot"))
-		{
-			// TODO: implement screenshot
-			LOGD("Taking screenshot");
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Send to RenderDoc"))
-		{
-			// TODO: implement screenshot
-			LOGD("Sending to RenderDoc");
-		}
+        if (ImGui::Button("Take screenshot"))
+        {
+            // TODO: implement screenshot
+            LOGD("Taking screenshot");
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Send to RenderDoc"))
+        {
+            // TODO: implement screenshot
+            LOGD("Sending to RenderDoc");
+        }
 
-		ImGui::RadioButton("Software", reinterpret_cast<int*>(&r.selectedRenderer), static_cast<int>(Config::RendererType::SOFTWARE));
-		ImGui::SameLine();
-		ImGui::RadioButton("OpenGL", reinterpret_cast<int*>(&r.selectedRenderer), 
-            static_cast<int>(Config::RendererType::GL));
+        ImGui::RadioButton("Software", reinterpret_cast<int *>(&r.selectedRenderer),
+                           static_cast<int>(Config::RendererType::SOFTWARE));
+        ImGui::SameLine();
+        ImGui::RadioButton("OpenGL", reinterpret_cast<int *>(&r.selectedRenderer),
+                           static_cast<int>(Config::RendererType::GL));
 
-		ImGui::SeparatorText("Resolution");
-		ImGui::Text("Render resolution: %d x %d (@ %.1f scale)", static_cast<int>(r.resolution.x), static_cast<int>(r.resolution.y), r.resolutionScale);
-		ImGui::Text("Output window size: %d x %d (@ 1.0 scale)", p_Config->window.outputWindowSize.x, p_Config->window.outputWindowSize.y);
+        ImGui::SeparatorText("Resolution");
+        ImGui::Text("Render resolution: %d x %d (@ %.1f scale)", static_cast<int>(r.resolution.x),
+                    static_cast<int>(r.resolution.y), r.resolutionScale);
+        ImGui::Text("Output window size: %d x %d (@ 1.0 scale)", p_Config->window.outputWindowSize.x,
+                    p_Config->window.outputWindowSize.y);
         if (!r.resolutionAutoResize)
         {
-			if (ImGui::InputFloat("Render resolution scale", reinterpret_cast<float*>(&r.resolutionScale), 0.1f, 4.0f, "%.1f"))
-			{
-				LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
-				glm::ivec2 newResolution = {
-					static_cast<int>(floor(p_Config->window.outputWindowSize.x * r.resolutionScale)),
-					static_cast<int>(floor(p_Config->window.outputWindowSize.y * r.resolutionScale))
-				};
-				Engine::Get().DispatchImmediate(OutputImageResizeEvent{ newResolution });
-			}
+            if (ImGui::InputFloat("Render resolution scale", reinterpret_cast<float *>(&r.resolutionScale), 0.1f, 4.0f,
+                                  "%.1f"))
+            {
+                LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
+                glm::ivec2 newResolution = {
+                        static_cast<int>(floor(p_Config->window.outputWindowSize.x * r.resolutionScale)),
+                        static_cast<int>(floor(p_Config->window.outputWindowSize.y * r.resolutionScale))
+                };
+                Engine::Get().DispatchImmediate(OutputImageResizeEvent{newResolution});
+            }
         }
         if (ImGui::Checkbox("Auto-resize (fit rendered image to output window)", &r.resolutionAutoResize))
         {
             if (r.resolutionAutoResize)
             {
-                Engine::Get().DispatchImmediate(OutputImageResizeEvent{ p_Config->window.outputWindowSize });
+                Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_Config->window.outputWindowSize});
             }
         }
 
         ImGui::SeparatorText("Scene");
         ImGui::Checkbox("Enable perspective-correct interpolation", &r.enablePerspectiveCorrect);
-        const char* aaItems[] = { "None", "MSAA", "FXAA" };
+        const char *aaItems[] = {"None", "MSAA", "FXAA"};
         ImGui::Combo("Anti-aliasing", reinterpret_cast<int *>(&r.aaType), aaItems, IM_ARRAYSIZE(aaItems));
-        ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float*>(&r.clearColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float *>(&r.clearColor),
+                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
         ImGui::Text("Background color:");
         // ImGui::InputInt2("Viewport resolution", reinterpret_cast<int*>(&r.viewportResolution)); // TODO: add min, max
@@ -582,45 +597,46 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayRasterizerSettings()
     {
-        auto& r = p_Config->rasterizer;
+        auto &r = p_Config->rasterizer;
         ImGui::SeparatorText("Rasterizer settings");
 
-		const char* lineItems[] = { "DDA (slower)", "Bresenham (faster)" };
-		const char* polyItems[] = { "Point", "Wireframe (line)", "Fill triangles" };
-        const char* fillItems[] = { "Scanline", "Barycentric", "Pineda (parallel)" };
-		ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
+        const char *lineItems[] = {"DDA (slower)", "Bresenham (faster)"};
+        const char *polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
+        const char *fillItems[] = {"Scanline", "Barycentric", "Pineda (parallel)"};
+        ImGui::Combo("Polygon mode", reinterpret_cast<int *>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
 
         switch (r.polygonMode)
         {
             case Config::RasterizationPolygonMode::POINT:
-				ImGui::SeparatorText("Point");
-				ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
-				ImGui::ColorEdit4("Point color", reinterpret_cast<float*>(&r.lineColor));
+                ImGui::SeparatorText("Point");
+                ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
+                ImGui::ColorEdit4("Point color", reinterpret_cast<float *>(&r.lineColor));
                 break;
             case Config::RasterizationPolygonMode::LINE:
-				ImGui::SeparatorText("Wireframe");
-				ImGui::Combo("Line mode", reinterpret_cast<int*>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
-				ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
-				ImGui::ColorEdit4("Line color", reinterpret_cast<float*>(&r.lineColor));
-				ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
-				break;
-			case Config::RasterizationPolygonMode::FILL:
-				ImGui::SeparatorText("Fill");
-				ImGui::Combo("Fill mode", reinterpret_cast<int*>(&r.fillMode), fillItems, IM_ARRAYSIZE(lineItems));
+                ImGui::SeparatorText("Wireframe");
+                ImGui::Combo("Line mode", reinterpret_cast<int *>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
+                ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
+                ImGui::ColorEdit4("Line color", reinterpret_cast<float *>(&r.lineColor));
+                ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
+                break;
+            case Config::RasterizationPolygonMode::FILL:
+                ImGui::SeparatorText("Fill");
+                ImGui::Combo("Fill mode", reinterpret_cast<int *>(&r.fillMode), fillItems, IM_ARRAYSIZE(lineItems));
         }
     }
 
     void ConfigPanel::DisplayCullSettings()
     {
-		auto& c = p_Config->cull;
-		ImGui::SeparatorText("Cull settings");
+        auto &c = p_Config->cull;
+        ImGui::SeparatorText("Cull settings");
         ImGui::Checkbox("Backface culling", &c.backfaceCulling);
         ImGui::Checkbox("Depth testing", &c.depthTest);
-		ImGui::SeparatorText("Clip settings");
+        ImGui::SeparatorText("Clip settings");
         ImGui::Text("Clipping triangles and pixels outside of screen is essential to rendering.");
-		ImGui::TextColored(ImVec4(1.0, 0.0, 0.0, 1.0), "Disabling clipping will produce graphical errors, assert fails and undefined behavior.");
+        ImGui::TextColored(ImVec4(1.0, 0.0, 0.0, 1.0),
+                           "Disabling clipping will produce graphical errors, assert fails and undefined behavior.");
         ImGui::Checkbox("Raster clip", &c.rasterClip);
-		ImGui::Checkbox("Geometric clip", &c.geometricClip);
+        ImGui::Checkbox("Geometric clip", &c.geometricClip);
     }
 
     void ConfigPanel::DisplayEnvironmentSettings()
@@ -638,11 +654,13 @@ namespace RetroRenderer
         static bool isOpen = true;
         if (!isOpen) return;
 
-        ImGuiIO& io = ImGui::GetIO();
-        ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+        ImGuiIO &io = ImGui::GetIO();
+        ImGuiWindowFlags windowFlags =
+                ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
         constexpr float kPadding = 10.0f;
 
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
         ImVec2 work_size = viewport->WorkSize;
         ImVec2 window_pos, window_pos_pivot;
@@ -667,17 +685,19 @@ namespace RetroRenderer
         if (!p_Config->window.showFPS) return;
 
         static int location = 2;
-        ImGuiIO& io = ImGui::GetIO();
-        ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+        ImGuiIO &io = ImGui::GetIO();
+        ImGuiWindowFlags windowFlags =
+                ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
         constexpr float kPadding = 10.0f;
 
-        static float frameTimes[100] = { 0 };  // Buffer for frame times
+        static float frameTimes[100] = {0};  // Buffer for frame times
         static int frameIndex = 0;
         frameTimes[frameIndex] = 1000.0f / io.Framerate;  // Store current frame time in milliseconds
         frameIndex = (frameIndex + 1) % 100;  // Wrap index around when it reaches the buffer size
 
 
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        const ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
         ImVec2 work_size = viewport->WorkSize;
         ImVec2 window_pos, window_pos_pivot;
@@ -692,29 +712,30 @@ namespace RetroRenderer
         if (ImGui::Begin("Metrics", &p_Config->window.showFPS, windowFlags))
         {
             ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-			ImGui::Text(
-                "%d x %d (%s)", 
-                p_Config->renderer.resolution.x, 
-                p_Config->renderer.resolution.y, 
-				p_Config->renderer.selectedRenderer == Config::RendererType::SOFTWARE ? "software" : "OpenGL"
+            ImGui::Text(
+                    "%d x %d (%s)",
+                    p_Config->renderer.resolution.x,
+                    p_Config->renderer.resolution.y,
+                    p_Config->renderer.selectedRenderer == Config::RendererType::SOFTWARE ? "software" : "OpenGL"
             );
-			ImGui::Text(
-				"%d verts, %d tris",
-				p_Stats->renderedVerts,
-				p_Stats->renderedTris
-			);
+            ImGui::Text(
+                    "%d verts, %d tris",
+                    p_Stats->renderedVerts,
+                    p_Stats->renderedTris
+            );
             if (p_Camera)
             {
-                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", p_Camera->position.x, p_Camera->position.y, p_Camera->position.z);
+                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", p_Camera->position.x, p_Camera->position.y,
+                            p_Camera->position.z);
             }
-			assert(p_Stats != nullptr && "Stats not initialized!");
+            assert(p_Stats != nullptr && "Stats not initialized!");
             ImGui::PlotLines("", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
             if (ImGui::BeginPopupContextWindow())
             {
-                if (ImGui::MenuItem("Top-left",nullptr, location == 0)) location = 0;
+                if (ImGui::MenuItem("Top-left", nullptr, location == 0)) location = 0;
                 if (ImGui::MenuItem("Top-right", nullptr, location == 1)) location = 1;
-                if (ImGui::MenuItem("Bottom-left",nullptr, location == 2)) location = 2;
-                if (ImGui::MenuItem("Bottom-right",nullptr, location == 3)) location = 3;
+                if (ImGui::MenuItem("Bottom-left", nullptr, location == 2)) location = 2;
+                if (ImGui::MenuItem("Bottom-right", nullptr, location == 3)) location = 3;
                 if (ImGui::MenuItem("Close")) p_Config->window.showFPS = false;
                 ImGui::EndPopup();
             }
@@ -722,7 +743,8 @@ namespace RetroRenderer
         ImGui::End();
     }
 
-    void ConfigPanel::BeforeFrame() {
+    void ConfigPanel::BeforeFrame()
+    {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
@@ -732,16 +754,13 @@ namespace RetroRenderer
     void ConfigPanel::OnDraw()
     {
         ImGui::Render();
-		auto io = ImGui::GetIO();
-        glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-        auto c = p_Config->renderer.clearColor;
-		glClearColor(c.x * c.w, c.y * c.w, c.z * c.w, c.w);
-		glClear(GL_COLOR_BUFFER_BIT);
+        auto io = ImGui::GetIO();
+        glViewport(0, 0, (int) io.DisplaySize.x, (int) io.DisplaySize.y);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		// Multi-viewport support
+        // Multi-viewport support
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
-            SDL_Window* backupCurrentWindow = SDL_GL_GetCurrentWindow();
+            SDL_Window *backupCurrentWindow = SDL_GL_GetCurrentWindow();
             SDL_GLContext backupCurrentContext = SDL_GL_GetCurrentContext();
             ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();

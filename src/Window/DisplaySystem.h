@@ -29,15 +29,7 @@ namespace RetroRenderer
                         SDL_WINDOW_MAXIMIZED |
                         SDL_WINDOW_RESIZABLE |
                         SDL_WINDOW_ALLOW_HIGHDPI);
-        static constexpr SDL_RendererFlags kRendererFlags =
-                static_cast<const SDL_RendererFlags>(
-                        SDL_RENDERER_PRESENTVSYNC
-                );
         static constexpr char kWindowTitle[] = "RetroRenderer";
-
-        void Clear();
-
-        void DrawConfigPanel();
 
         void SwapBuffers();
 
@@ -48,21 +40,12 @@ namespace RetroRenderer
         void DrawFrame(GLuint framebufferTexture);
 
         void ResetGlContext();
-
-        int GetWidth() const;
-
-        int GetHeight() const;
-
     private:
         SDL_Window *m_Window = nullptr;
         SDL_GLContext m_glContext = nullptr;
         std::shared_ptr<Config> p_Config = nullptr;
         std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
         std::shared_ptr<Camera> p_Camera;
-
-        void OnResize(int width, int height);
-
-        float GetScale() const;
     };
 
 }
