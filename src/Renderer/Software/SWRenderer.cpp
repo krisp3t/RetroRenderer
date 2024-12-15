@@ -5,39 +5,41 @@
 
 namespace RetroRenderer
 {
-    bool SWRenderer::Init(int w, int h)
+    bool SWRenderer::Init(GLuint fbTex, int w, int h)
     {
         try
         {
-            p_FrameBuffer = new Buffer<Uint32>(w, h);
+            m_FrameBuffer = new Buffer<Uint32>(w, h);
         }
-        catch (const std::bad_alloc&)
+        catch (const std::bad_alloc &)
         {
             LOGE("Failed to create frame buffer");
             return false;
         }
+        p_FrameBufferTexture = fbTex;
         m_Rasterizer = std::make_unique<Rasterizer>();
         return true;
     }
 
-	void SWRenderer::Resize(int w, int h)
-	{
-		p_FrameBuffer = new Buffer<Uint32>(w, h);
-	}
-
-	void SWRenderer::Destroy()
+    void SWRenderer::Resize(int w, int h)
     {
+        m_FrameBuffer = new Buffer<Uint32>(w, h);
     }
 
-    Buffer<Uint32>& SWRenderer::GetRenderTarget()
+    void SWRenderer::Destroy()
     {
-        assert(p_FrameBuffer != nullptr && "Tried to get null render target. Did you call SWRenderer::Init()?");
-        return *p_FrameBuffer;
+        delete m_FrameBuffer;
+    }
+
+    Buffer<Uint32> &SWRenderer::GetRenderBuffer()
+    {
+        assert(m_FrameBuffer != nullptr && "Tried to get null render buffer. Did you call SWRenderer::Init()?");
+        return *m_FrameBuffer;
     }
 
     void SWRenderer::SetActiveCamera(const Camera &camera)
     {
-        p_Camera = const_cast<Camera*>(&camera);
+        p_Camera = const_cast<Camera *>(&camera);
     }
 
     /**
@@ -46,16 +48,16 @@ namespace RetroRenderer
      */
     void SWRenderer::DrawTriangularMesh(const Model *model)
     {
-		assert(p_Camera != nullptr && "No active camera set. Did you call SWRenderer::SetActiveCamera()?");
-		assert(p_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
-		assert(model != nullptr && "Tried to draw null model");
+        assert(p_Camera != nullptr && "No active camera set. Did you call SWRenderer::SetActiveCamera()?");
+        assert(m_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
+        assert(model != nullptr && "Tried to draw null model");
 
-		const glm::mat4& modelMat = model->GetTransform();
-        const glm::mat4& viewMat = p_Camera->viewMat;
-        const glm::mat4& projMat = p_Camera->projMat;
-		const glm::mat4 mv = viewMat * modelMat;
-		const glm::mat4 mvp = projMat * mv;
-		const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
+        const glm::mat4 &modelMat = model->GetTransform();
+        const glm::mat4 &viewMat = p_Camera->viewMat;
+        const glm::mat4 &projMat = p_Camera->projMat;
+        const glm::mat4 mv = viewMat * modelMat;
+        const glm::mat4 mvp = projMat * mv;
+        const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
 
         /*
 		LOGD("Drawing model: %s", model.GetName().c_str());
@@ -68,43 +70,67 @@ namespace RetroRenderer
         */
 
 
-        for (const Mesh* mesh : model->GetMeshes())
+        for (const Mesh *mesh: model->GetMeshes())
         {
-			assert(mesh->m_Indices.size() % 3 == 0 && 
-				   mesh->m_Indices.size() == mesh->m_numFaces * 3 &&
+            assert(mesh->m_Indices.size() % 3 == 0 &&
+                   mesh->m_Indices.size() == mesh->m_numFaces * 3 &&
                    "Mesh is not triangulated");
 
-			for (int i = 0; i < mesh->m_numFaces; i ++)
-			{
-				// Input Assembler
-				auto& v0 = mesh->m_Vertices[mesh->m_Indices[i]];
-				auto& v1 = mesh->m_Vertices[mesh->m_Indices[i + 1]];
-				auto& v2 = mesh->m_Vertices[mesh->m_Indices[i + 2]];
-				std::array<Vertex, 3> vertices = { v0, v1, v2 };
+            for (int i = 0; i < mesh->m_numFaces; i++)
+            {
+                // Input Assembler
+                auto &v0 = mesh->m_Vertices[mesh->m_Indices[i]];
+                auto &v1 = mesh->m_Vertices[mesh->m_Indices[i + 1]];
+                auto &v2 = mesh->m_Vertices[mesh->m_Indices[i + 2]];
+                std::array<Vertex, 3> vertices = {v0, v1, v2};
 
                 // TODO: backface cull
-                
-				// Vertex Shader
-				for (auto& vertex : vertices)
-				{
-					vertex.position = mvp * vertex.position;
-					vertex.normal = glm::normalize(glm::vec3(n * glm::vec4(vertex.normal, 0.0f)));
-				}
+
+                // Vertex Shader
+                for (auto &vertex: vertices)
+                {
+                    vertex.position = mvp * vertex.position;
+                    vertex.normal = glm::normalize(glm::vec3(n * glm::vec4(vertex.normal, 0.0f)));
+                }
 
                 // Perspective division
-				for (auto& vertex : vertices)
-				{
+                for (auto &vertex: vertices)
+                {
                     vertex.position /= vertex.position.w;
-				}
+                }
 
-				// Rasterizer
-				const auto& cfg = Engine::Get().GetConfig()->rasterizer;
-				m_Rasterizer->DrawTriangle(*p_FrameBuffer, vertices, cfg);
+                // Rasterizer
+                const auto &cfg = Engine::Get().GetConfig()->rasterizer;
+                m_Rasterizer->DrawTriangle(*m_FrameBuffer, vertices, cfg);
 
-				// Stats
-				// p_Stats->renderedVerts += mesh->m_numVertices;
-				// p_Stats->renderedTris += mesh->m_numFaces;
-			}
+                // Stats
+                // p_Stats->renderedVerts += mesh->m_numVertices;
+                // p_Stats->renderedTris += mesh->m_numFaces;
+            }
         }
+    }
+
+    void SWRenderer::BeforeFrame(Uint32 clearColor)
+    {
+        m_FrameBuffer->Clear(clearColor);
+        // TODO: clear opengl texture?
+    }
+
+    GLuint SWRenderer::EndFrame()
+    {
+        glBindTexture(GL_TEXTURE_2D, p_FrameBufferTexture);
+        glTexSubImage2D(
+                GL_TEXTURE_2D,
+                0,
+                0,
+                0,
+                m_FrameBuffer->width,
+                m_FrameBuffer->height,
+                GL_RGBA,
+                GL_UNSIGNED_BYTE,
+                m_FrameBuffer->data
+        );
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return p_FrameBufferTexture;
     }
 }

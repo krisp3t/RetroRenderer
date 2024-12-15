@@ -35,14 +35,14 @@ namespace RetroRenderer
         auto &p_Config = Engine::Get().GetConfig();
         p_SWRenderer = std::make_unique<SWRenderer>();
         p_GLRenderer = std::make_unique<GLRenderer>();
+        p_activeRenderer = p_SWRenderer.get();
         auto &fbResolution = p_Config->renderer.resolution;
         assert(fbResolution.x > 0 && fbResolution.y > 0 && "Tried to initialize renderers with invalid resolution");
-
 
         CreateFramebufferTexture(m_SWFramebufferTexture, fbResolution.x, fbResolution.y);
         CreateFramebufferTexture(m_GLFramebufferTexture, fbResolution.x, fbResolution.y);
 
-        if (!p_SWRenderer->Init(fbResolution.x, fbResolution.y))
+        if (!p_SWRenderer->Init(m_SWFramebufferTexture, fbResolution.x, fbResolution.y))
         {
             LOGE("Failed to initialize SWRenderer");
             return false;
@@ -52,19 +52,33 @@ namespace RetroRenderer
             LOGE("Failed to initialize GLRenderer");
             return false;
         }
-        
+
         return true;
     }
 
     void RenderSystem::BeforeFrame(Uint32 clearColor)
     {
+        auto &p_Config = Engine::Get().GetConfig();
+        switch (p_Config->renderer.selectedRenderer)
+        {
+            case Config::RendererType::SOFTWARE:
+                p_activeRenderer = p_SWRenderer.get();
+                break;
+            case Config::RendererType::GL:
+                p_activeRenderer = p_GLRenderer.get();
+                break;
+            default:
+                LOGE("Renderer type %d not implemented!", p_Config->renderer.selectedRenderer);
+                return;
+        }
+        assert(p_activeRenderer != nullptr && "Active renderer is null");
         // TODO: utility function?
         Uint32 a = (clearColor & 0xFF000000) >> 24;
         Uint32 b = (clearColor & 0x00FF0000) >> 16;
         Uint32 g = (clearColor & 0x0000FF00) >> 8;
         Uint32 r = (clearColor & 0x000000FF);
         Uint32 argbColor = (a << 24) | (r << 16) | (g << 8) | b;
-        p_SWRenderer->GetRenderTarget().Clear(argbColor);
+        p_activeRenderer->BeforeFrame(clearColor);
     }
 
     std::queue<Model *> &RenderSystem::BuildRenderQueue(Scene &scene, const Camera &camera)
@@ -76,24 +90,25 @@ namespace RetroRenderer
 
     GLuint RenderSystem::Render(std::queue<Model *> &renderQueue)
     {
+        assert(p_Stats != nullptr && "Stats not initialized!");
+        p_Stats->Reset();
+
         auto p_Config = Engine::Get().GetConfig();
         auto selectedRenderer = p_Config->renderer.selectedRenderer;
         IRenderer *activeRenderer = nullptr;
-        GLuint fbTex = 0;
         switch (selectedRenderer)
         {
             case Config::RendererType::SOFTWARE:
                 activeRenderer = p_SWRenderer.get();
-                fbTex = m_SWFramebufferTexture;
                 break;
             case Config::RendererType::GL:
                 activeRenderer = p_GLRenderer.get();
-                fbTex = m_GLFramebufferTexture;
                 break;
+            default:
+                LOGE("Renderer type %d not implemented!", selectedRenderer);
+                return 0;
         }
         assert(activeRenderer != nullptr && "Active renderer is null");
-        assert(p_Stats != nullptr && "Stats not initialized!");
-        p_Stats->Reset();
 
         //LOGD("Render queue size: %d", renderQueue.size());
         while (!renderQueue.empty())
@@ -103,50 +118,7 @@ namespace RetroRenderer
             activeRenderer->DrawTriangularMesh(model);
             renderQueue.pop();
         }
-
-        glBindTexture(GL_TEXTURE_2D, fbTex);
-        glTexSubImage2D(
-                GL_TEXTURE_2D,
-                0,
-                0,
-                0,
-                p_SWRenderer->GetRenderTarget().width,
-                p_SWRenderer->GetRenderTarget().height,
-                GL_RGBA,
-                GL_UNSIGNED_BYTE,
-                p_SWRenderer->GetRenderTarget().data
-        );
-        glBindTexture(GL_TEXTURE_2D, 0);
-        return fbTex;
-    }
-
-    /**
-	* @brief Fill the framebuffer with random color for testing whether framebuffer texture is working.
-	* @return GLuint framebuffer texture handle
-	*/
-    GLuint RenderSystem::TestFill()
-    {
-        const int rangeFrom = 0x0;
-        const int rangeTo = 0xFFFFFFFF;
-        std::random_device randDev;
-        std::mt19937 generator(randDev());
-        std::uniform_int_distribution<uint32_t> distr(rangeFrom, rangeTo);
-        p_SWRenderer->GetRenderTarget().Clear(distr(generator));
-
-        glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
-        glTexSubImage2D(
-                GL_TEXTURE_2D,
-                0,
-                0,
-                0,
-                p_SWRenderer->GetRenderTarget().width,
-                p_SWRenderer->GetRenderTarget().height,
-                GL_RGBA,
-                GL_UNSIGNED_BYTE,
-                p_SWRenderer->GetRenderTarget().data
-        );
-        glBindTexture(GL_TEXTURE_2D, 0);
-        return m_SWFramebufferTexture;
+        return activeRenderer->EndFrame();
     }
 
     void RenderSystem::Resize(const glm::ivec2 &resolution)

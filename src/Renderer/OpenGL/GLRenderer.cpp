@@ -25,7 +25,7 @@ namespace RetroRenderer
         }
     }
 
-    bool GLRenderer::Init(SDL_Window *window, GLuint renderTarget, int w, int h)
+    bool GLRenderer::Init(SDL_Window *window, GLuint fbTex, int w, int h)
     {
         SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1); // enable resource sharing with main context
         m_glContext = SDL_GL_CreateContext(window);
@@ -47,9 +47,10 @@ namespace RetroRenderer
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
 
         // Create the framebuffer for rendering texture (output image)
+        p_FrameBufferTexture = fbTex;
         glGenFramebuffers(1, &m_FrameBuffer);
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_RenderTarget, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, p_FrameBufferTexture, 0);
         glGenRenderbuffers(1, &m_DepthBuffer);
         glBindRenderbuffer(GL_RENDERBUFFER, m_DepthBuffer);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
@@ -87,7 +88,7 @@ namespace RetroRenderer
     void GLRenderer::DrawTriangularMesh(const Model *model)
     {
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
-        SDL_GL_MakeCurrent(m_Window, m_glContext);
+        //SDL_GL_MakeCurrent(m_Window, m_glContext);
         float vertices[] = {
                 -0.5f, -0.5f, 0.0f,
                 0.5f, -0.5f, 0.0f,
@@ -139,6 +140,20 @@ namespace RetroRenderer
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    void GLRenderer::BeforeFrame(Uint32 clearColor)
+    {
+        // TODO: clear with parameter
+        glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
+        glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //glEnable(GL_DEPTH_TEST);
+    }
+
+    GLuint GLRenderer::EndFrame()
+    {
+        return p_FrameBufferTexture;
     }
 
 }

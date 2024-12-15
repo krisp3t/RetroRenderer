@@ -28,9 +28,7 @@ namespace RetroRenderer
         [[nodiscard]] std::queue<Model *> &BuildRenderQueue(Scene &scene, const Camera &camera);
 
         GLuint Render(std::queue<Model *> &renderQueue);
-
-        GLuint TestFill();
-
+        
         void Resize(const glm::ivec2 &resolution);
 
         void Destroy();
@@ -42,6 +40,7 @@ namespace RetroRenderer
         std::unique_ptr<SWRenderer> p_SWRenderer = nullptr;
         std::unique_ptr<GLRenderer> p_GLRenderer = nullptr;
         std::shared_ptr<Stats> p_Stats = nullptr;
+        IRenderer *p_activeRenderer = nullptr;
 
         GLuint m_SWFramebufferTexture = 0;
         GLuint m_GLFramebufferTexture = 0;
