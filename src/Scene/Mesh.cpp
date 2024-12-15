@@ -6,6 +6,8 @@ namespace RetroRenderer
     {
         m_Vertices = vertices;
         m_Indices = indices;
+        m_numVertices = vertices.size();
+        m_numFaces = indices.size() / 3;
         Init();
     }
 

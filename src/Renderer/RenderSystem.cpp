@@ -77,8 +77,7 @@ namespace RetroRenderer
 
     std::queue<Model *> &RenderSystem::BuildRenderQueue(Scene &scene, const Camera &camera)
     {
-        auto &activeRenderer = p_SWRenderer; // TODO: get from config
-        activeRenderer->SetActiveCamera(camera);
+        p_activeRenderer->SetActiveCamera(camera);
         return scene.GetVisibleModels(); // TODO: split into meshes?
     }
 
@@ -107,9 +106,13 @@ namespace RetroRenderer
         //LOGD("Render queue size: %d", renderQueue.size());
         while (!renderQueue.empty())
         {
-            const Model *model = renderQueue.front();
+            // const Model *model = renderQueue.front();
+            Model *model = renderQueue.front();
             assert(model != nullptr && "Model is null");
-            activeRenderer->DrawTriangularMesh(model);
+            if (model->GetMeshes().size() > 0)
+            {
+                activeRenderer->DrawTriangularMesh(model);
+            }
             renderQueue.pop();
         }
         return activeRenderer->EndFrame();

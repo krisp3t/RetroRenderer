@@ -64,19 +64,18 @@ namespace RetroRenderer
 		LOGD("Normal matrix: %s", glm::to_string(n).c_str()); 
         */
 
-
-        for (const Mesh *mesh: model->GetMeshes())
+        for (const Mesh &mesh: model->m_Meshes)
         {
-            assert(mesh->m_Indices.size() % 3 == 0 &&
-                   mesh->m_Indices.size() == mesh->m_numFaces * 3 &&
+            assert(mesh.m_Indices.size() % 3 == 0 &&
+                   mesh.m_Indices.size() == mesh.m_numFaces * 3 &&
                    "Mesh is not triangulated");
 
-            for (int i = 0; i < mesh->m_numFaces; i++)
+            for (int i = 0; i < mesh.m_numFaces; i++)
             {
                 // Input Assembler
-                auto &v0 = mesh->m_Vertices[mesh->m_Indices[i]];
-                auto &v1 = mesh->m_Vertices[mesh->m_Indices[i + 1]];
-                auto &v2 = mesh->m_Vertices[mesh->m_Indices[i + 2]];
+                auto &v0 = mesh.m_Vertices[mesh.m_Indices[i]];
+                auto &v1 = mesh.m_Vertices[mesh.m_Indices[i + 1]];
+                auto &v2 = mesh.m_Vertices[mesh.m_Indices[i + 2]];
                 std::array<Vertex, 3> vertices = {v0, v1, v2};
 
                 // TODO: backface cull

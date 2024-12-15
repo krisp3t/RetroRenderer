@@ -46,8 +46,8 @@ namespace RetroRenderer
         }
 
         // TODO: remove
-        auto shaderProgram = CreateShaderProgram();
-        glUseProgram(shaderProgram);
+        m_ShaderProgram = CreateShaderProgram();
+        glUseProgram(m_ShaderProgram);
 
         // TODO: add depth buffer
         glViewport(0, 0, w, h);
@@ -101,7 +101,17 @@ namespace RetroRenderer
     void GLRenderer::DrawTriangularMesh(const Model *model)
     {
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
-        //SDL_GL_MakeCurrent(m_Window, m_glContext);
+
+        auto &meshes = model->GetMeshes();
+        /*
+        for (Mesh mesh.get(): meshes)
+        {
+            glBindVertexArray(mesh->VAO);
+            glDrawElements(GL_TRIANGLES, mesh->m_Indices.size(), GL_UNSIGNED_INT, nullptr);
+            glBindVertexArray(0);
+        } */
+
+        /*
         float vertices[] = {
                 -0.5f, -0.5f, 0.0f,
                 0.5f, -0.5f, 0.0f,
@@ -124,6 +134,7 @@ namespace RetroRenderer
 
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
+         */
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
@@ -148,24 +159,27 @@ namespace RetroRenderer
     }
 
     /**
-     * Default shader program (if no shader program is provided)
+     * Default shader program (if no shader program is provided). Used for debugging purposes.
      */
     GLuint GLRenderer::CreateShaderProgram()
     {
         const char *vertexShaderSource = "#version 330 core\n"
                                          "layout (location = 0) in vec3 aPos;\n"
+                                         "out vec4 vertexColor;\n"
                                          "void main()\n"
                                          "{\n"
                                          "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+                                         "   vertexColor = vec4(0.5, 0.0, 0.0, 1.0);\n"
                                          "}\0";
         GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
         glCompileShader(vertexShader);
         const char *fragmentShaderSource = "#version 330 core\n"
                                            "out vec4 FragColor;\n"
+                                           "in vec4 vertexColor;\n"
                                            "void main()\n"
                                            "{\n"
-                                           "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+                                           "   FragColor = vertexColor;\n"
                                            "}\n\0";
         GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);

@@ -9,81 +9,86 @@
 
 namespace RetroRenderer
 {
-	bool Scene::Load(const std::string& path)
-	{
-		Assimp::Importer importer;
-		const aiScene *scene = importer.ReadFile(path.c_str(),
+    bool Scene::Load(const std::string &path)
+    {
+        Assimp::Importer importer;
+        const aiScene *scene = importer.ReadFile(path.c_str(),
                                                  aiProcess_Triangulate |
                                                  aiProcess_FlipUVs);
-		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-		{
-			LOGE("assimp: Failed to load scene: %s", importer.GetErrorString());
+        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+        {
+            LOGE("assimp: Failed to load scene: %s", importer.GetErrorString());
             return false;
-		}
+        }
 
         if (ProcessNode(scene->mRootNode, scene))
         {
             // LOGI("Successfully processed scene: %s (%d meshes)", scene->mRootNode->mName.C_Str(), m_Meshes.size());
-			LOGI("Successfully processed scene: %s", scene->mRootNode->mName.C_Str());
+            LOGI("Successfully processed scene: %s", scene->mRootNode->mName.C_Str());
         }
         return true;
-	}
+    }
 
     /**
-     * Recursively process each node in the scene
+     * Recursively process each node in the scene. One node will map to one model, which can have multiple meshes.
      * @param node
      * @param scene
      * @return true if successful
      */
-    bool Scene::ProcessNode(aiNode *node, const aiScene *scene, const Model* parent)
+    bool Scene::ProcessNode(aiNode *node, const aiScene *scene, int parentIndex)
     {
         if (!node)
         {
             LOGE("assimp: Node is null");
             return false;
         }
-		if (parent) {
-			auto& parentName = parent->GetName();
-			LOGD("Processing node: %s (%d meshes), parent: %s",
-				node->mName.C_Str(),
-				node->mNumMeshes,
-				parentName.c_str());
-		}
-		else 
+        LOGD("Processing node: %s (%d meshes), parent index: %d",
+             node->mName.C_Str(),
+             node->mNumMeshes,
+             parentIndex);
+        /*
+        if (parent)
         {
-			LOGD("Processing node: %s (%d meshes), parent: none",
-				node->mName.C_Str(),
-				node->mNumMeshes);
-		}
-        Model* model = nullptr;
-		std::vector<Mesh*> modelMeshes;
+            auto &parentName = parent->GetName();
+            LOGD("Processing node: %s (%d meshes), parent: %s",
+                 node->mName.C_Str(),
+                 node->mNumMeshes,
+                 parentName.c_str());
+        } else
+        {
+            LOGD("Processing node: %s (%d meshes), parent: none",
+                 node->mName.C_Str(),
+                 node->mNumMeshes);
+        }
+         */
 
-        // Process meshes
+        // Create a model for this aiNode
+        Model newModel{};
+        newModel.SetName(node->mName);
+        newModel.m_Parent = parentIndex;
+        newModel.SetTransform(node->mTransformation);
+
+        // Process all meshes for this model
         for (size_t i = 0; i < node->mNumMeshes; i++)
         {
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-			if (mesh->mNumVertices == 0 || mesh->mNumFaces == 0)
-			{
-				continue;
-			}
-            auto* processedMesh = ProcessMesh(mesh, scene);
-            // m_Meshes.push_back(processedMesh); // add to all scene meshes
-			modelMeshes.push_back(processedMesh); // add to current model
+            if (mesh->mNumVertices > 0 && mesh->mNumFaces > 0)
+            {
+                ProcessMesh(mesh, scene, newModel.m_Meshes);
+            }
         }
-
-		model = new Model(std::move(modelMeshes)); // TODO: memory leak
-		model->SetName(node->mName);
-        if (parent)
+        int currentNodeIndex = m_Models.size();
+        if (parentIndex != -1)
         {
-			model->SetParentTransform(parent->GetTransform());
+            newModel.SetParentTransform(m_Models[parentIndex].GetTransform());
+            m_Models[parentIndex].m_Children.push_back(currentNodeIndex);
         }
-        model->SetTransform(node->mTransformation);
-		m_Models.push_back(model);
+        m_Models.push_back(std::move(newModel));
 
         // Recursively process children
-        for (size_t i = 0; i < node->mNumChildren; i++)
+        for (unsigned int i = 0; i < node->mNumChildren; i++)
         {
-            ProcessNode(node->mChildren[i], scene, model);
+            ProcessNode(node->mChildren[i], scene, currentNodeIndex);
         }
 
         return true;
@@ -95,17 +100,19 @@ namespace RetroRenderer
 	 * @param scene
 	 * @return true if successful
 	 */
-    bool Scene::ProcessNode(aiNode* node, const aiScene* scene)
+    bool Scene::ProcessNode(aiNode *node, const aiScene *scene)
     {
-		return ProcessNode(node, scene, nullptr);
+        return ProcessNode(node, scene, -1);
     }
 
-    Mesh* Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene)
+    void Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene, std::vector<Mesh> &meshes)
     {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
+        // TODO: add textures
+        // std::vector<Texture> textures;
 
-        for (size_t i = 0; i < mesh->mNumVertices; i++)
+        for (unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
             Vertex vertex;
 
@@ -114,7 +121,7 @@ namespace RetroRenderer
                 vertex.position.x = mesh->mVertices[i].x;
                 vertex.position.y = mesh->mVertices[i].y;
                 vertex.position.z = mesh->mVertices[i].z;
-				vertex.position.w = 1.0f;
+                vertex.position.w = 1.0f;
             }
             if (mesh->HasNormals())
             {
@@ -129,19 +136,18 @@ namespace RetroRenderer
                 vec.x = mesh->mTextureCoords[0][i].x;
                 vec.y = mesh->mTextureCoords[0][i].y;
                 vertex.texCoords = vec;
-            }
-            else
+            } else
             {
                 vertex.texCoords = glm::vec2(0.0f, 0.0f);
             }
             vertices.push_back(vertex);
         }
 
-        for (size_t i = 0; i < mesh->mNumFaces; i++)
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
         {
             aiFace face = mesh->mFaces[i];
             assert (face.mNumIndices == 3 && "Face must have 3 indices");
-            for (size_t j = 0; j < 3; j++)
+            for (unsigned int j = 0; j < 3; j++)
             {
                 indices.push_back(face.mIndices[j]);
             }
@@ -153,26 +159,22 @@ namespace RetroRenderer
             // TODO: process material
         }
 
-        auto *meshObj = new Mesh(std::move(vertices), std::move(indices));
-        meshObj->m_numVertices = mesh->mNumVertices;
-        meshObj->m_numFaces = mesh->mNumFaces;
-        return meshObj;
+        meshes.emplace_back(std::move(vertices), std::move(indices));
     }
 
-    std::queue<Model*>& Scene::GetVisibleModels()
+    std::queue<Model *> &Scene::GetVisibleModels()
     {
         return m_VisibleModels;
     }
 
     void Scene::FrustumCull(const Camera &camera)
     {
-        for (auto &model : m_Models)
+        // TODO: actually implement frustum culling
+
+        int i = 0;
+        for (int i = 0; i < m_Models.size(); i++)
         {
-            bool visible = true; // TODO: add visibility check
-            if (visible)
-            {
-                m_VisibleModels.push(model);
-            }
+            m_VisibleModels.push(&m_Models[i]);
         }
     }
 }

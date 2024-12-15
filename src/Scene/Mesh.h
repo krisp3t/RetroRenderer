@@ -1,6 +1,8 @@
 #pragma once
+
 #include <vector>
 #include "../Renderer/Vertex.h"
+#include "glad/glad.h"
 
 namespace RetroRenderer
 {
@@ -22,10 +24,12 @@ namespace RetroRenderer
         // Per-face
         unsigned int m_numFaces = 0;
         // std::vector<Texture>
-    private:
-        unsigned int VAO, VBO, EBO;
-    };
 
+        // OpenGL specific
+        GLuint VAO = 0;
+        GLuint VBO = 0;
+        GLuint EBO = 0;
+    };
 
 
 }

@@ -33,10 +33,7 @@ namespace RetroRenderer
         GLuint CreateShaderProgram();
 
     private:
-        SDL_Window *m_Window = nullptr;
         Camera *p_Camera = nullptr;
-        SDL_GLContext m_glContext = nullptr;
-
 
         GLuint m_VAO = 0;
         GLuint m_VBO = 0;
@@ -45,6 +42,8 @@ namespace RetroRenderer
         GLuint p_FrameBufferTexture = 0;
         GLuint m_FrameBuffer = 0;
         GLuint m_DepthBuffer = 0;
+
+        GLuint m_ShaderProgram = 0;
 
         static void
         DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message,
