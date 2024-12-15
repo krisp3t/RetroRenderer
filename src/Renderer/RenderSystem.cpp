@@ -46,7 +46,7 @@ namespace RetroRenderer
             LOGE("Failed to initialize SWRenderer");
             return false;
         }
-        if (!p_GLRenderer->Init(window, m_GLFramebufferTexture, fbResolution.x, fbResolution.y))
+        if (!p_GLRenderer->Init(m_GLFramebufferTexture, fbResolution.x, fbResolution.y))
         {
             LOGE("Failed to initialize GLRenderer");
             return false;

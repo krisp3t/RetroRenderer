@@ -3,6 +3,9 @@
 
 namespace RetroRenderer
 {
+    /**
+     * @brief Debug callback for OpenGL errors. Set breakpoint to catch errors.
+     */
     void APIENTRY GLRenderer::DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                                             GLsizei length, const GLchar *message, const void *userParam)
     {
@@ -25,17 +28,8 @@ namespace RetroRenderer
         }
     }
 
-    bool GLRenderer::Init(SDL_Window *window, GLuint fbTex, int w, int h)
+    bool GLRenderer::Init(GLuint fbTex, int w, int h)
     {
-        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1); // enable resource sharing with main context
-        m_glContext = SDL_GL_CreateContext(window);
-        if (!m_glContext)
-        {
-            LOGE("Failed to create GL context: %s", SDL_GetError());
-            return false;
-        }
-        m_Window = window;
-
         // Enable Debug Output
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -62,6 +56,10 @@ namespace RetroRenderer
             return false;
         }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        // TODO: remove
+        auto shaderProgram = CreateShaderProgram();
+        glUseProgram(shaderProgram);
 
         // TODO: add depth buffer
         glViewport(0, 0, w, h);
@@ -109,34 +107,6 @@ namespace RetroRenderer
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *) 0);
         glEnableVertexAttribArray(0);
 
-
-        const char *vertexShaderSource = "#version 330 core\n"
-                                         "layout (location = 0) in vec3 aPos;\n"
-                                         "void main()\n"
-                                         "{\n"
-                                         "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-                                         "}\0";
-        unsigned int vertexShader;
-        vertexShader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-        glCompileShader(vertexShader);
-        const char *fragmentShaderSource = "#version 330 core\n"
-                                           "out vec4 FragColor;\n"
-                                           "void main()\n"
-                                           "{\n"
-                                           "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-                                           "}\n\0";
-        unsigned int fragmentShader;
-        fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-        glCompileShader(fragmentShader);
-        unsigned int shaderProgram;
-        shaderProgram = glCreateProgram();
-        glAttachShader(shaderProgram, vertexShader);
-        glAttachShader(shaderProgram, fragmentShader);
-        glLinkProgram(shaderProgram);
-        glUseProgram(shaderProgram);
-
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -155,6 +125,45 @@ namespace RetroRenderer
     GLuint GLRenderer::EndFrame()
     {
         return p_FrameBufferTexture;
+    }
+
+    GLuint GLRenderer::CreateShaderProgram(const char *vertexShaderSource, const char *fragmentShaderSource)
+    {
+        return 0;
+    }
+
+    /**
+     * Default shader program (if no shader program is provided)
+     */
+    GLuint GLRenderer::CreateShaderProgram()
+    {
+        const char *vertexShaderSource = "#version 330 core\n"
+                                         "layout (location = 0) in vec3 aPos;\n"
+                                         "void main()\n"
+                                         "{\n"
+                                         "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+                                         "}\0";
+        GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+        glCompileShader(vertexShader);
+        const char *fragmentShaderSource = "#version 330 core\n"
+                                           "out vec4 FragColor;\n"
+                                           "void main()\n"
+                                           "{\n"
+                                           "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+                                           "}\n\0";
+        GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+        glCompileShader(fragmentShader);
+        GLuint shaderProgram;
+        shaderProgram = glCreateProgram();
+        glAttachShader(shaderProgram, vertexShader);
+        glAttachShader(shaderProgram, fragmentShader);
+        glLinkProgram(shaderProgram);
+        glUseProgram(shaderProgram);
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        return shaderProgram;
     }
 
 }

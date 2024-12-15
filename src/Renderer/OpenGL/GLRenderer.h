@@ -15,7 +15,7 @@ namespace RetroRenderer
 
         ~GLRenderer() = default;
 
-        bool Init(SDL_Window *window, GLuint fbTex, int w, int h);
+        bool Init(GLuint fbTex, int w, int h);
 
         void Resize(int w, int h);
 
@@ -28,6 +28,9 @@ namespace RetroRenderer
         void BeforeFrame(const Color &clearColor) override;
 
         GLuint EndFrame() override;
+
+        GLuint CreateShaderProgram(const char *vertexShaderSource, const char *fragmentShaderSource);
+        GLuint CreateShaderProgram();
 
     private:
         SDL_Window *m_Window = nullptr;
