@@ -33,7 +33,7 @@ namespace RetroRenderer
             SOFTWARE,
             GL
         };
-        struct RendererSettings
+        struct BaseRendererSettings
         {
             glm::ivec2 resolution = {1280,
                                      720}; // Resolution of the render target (can have different size than window, stretching will occur)
@@ -41,9 +41,17 @@ namespace RetroRenderer
             bool resolutionAutoResize = false;
             RendererType selectedRenderer = RendererType::SOFTWARE;
             AAType aaType = AAType::NONE;
-            bool showWireframe = false;
             bool enablePerspectiveCorrect = true;
             ImVec4 clearColor = Color::DefaultBackground().ToImVec4();
+        };
+        struct SoftwareRendererSettings
+        {
+            bool showNormals = false;
+            bool showTangents = false;
+            bool showBitangents = false;
+            bool showBoundingBox = false;
+            bool showOctree = false;
+            bool showBVH = false;
         };
 
         // Environment
@@ -82,7 +90,7 @@ namespace RetroRenderer
             BARYCENTRIC,
             PINEDA
         };
-        struct RasterizerSettings
+        struct SoftwareRasterizerSettings
         {
             float pointSize = 1.0f;
             float lineWidth = 1.0f;
@@ -92,12 +100,29 @@ namespace RetroRenderer
             RasterizationPolygonMode polygonMode = RasterizationPolygonMode::FILL;
             RasterizationFillMode fillMode = RasterizationFillMode::SCANLINE;
         };
+        struct GLRasterizerSettings
+        {
+            RasterizationPolygonMode polygonMode = RasterizationPolygonMode::FILL;
+        };
 
+        struct SoftwareSpecifics
+        {
+            SoftwareRendererSettings renderer;
+            SoftwareRasterizerSettings rasterizer;
+        };
+        struct GLSpecifics
+        {
+            GLRasterizerSettings rasterizer;
+        };
+
+        // Shared between rendering modes
         WindowSettings window;
         EnvironmentSettings environment;
         CullSettings cull;
-        RendererSettings renderer;
-        RasterizerSettings rasterizer;
+        BaseRendererSettings renderer;
+        // Specific to software / GL
+        SoftwareSpecifics software;
+        GLSpecifics gl;
     };
 
 }

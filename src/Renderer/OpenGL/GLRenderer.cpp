@@ -1,6 +1,7 @@
 #include "GLRenderer.h"
 #include "../../Base/Logger.h"
 #include "glm/gtc/type_ptr.hpp"
+#include "../../Engine.h"
 
 namespace RetroRenderer
 {
@@ -138,7 +139,6 @@ void main() {
         const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
 
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // TODO: get from config
 
         // Per-mesh uniforms
         GLint modelLoc = glGetUniformLocation(m_ShaderProgram, "u_ModelMatrix");
@@ -154,7 +154,6 @@ void main() {
             glBindVertexArray(0);
         }
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         // glUseProgram(0);
     }
@@ -167,10 +166,25 @@ void main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         //glEnable(GL_DEPTH_TEST);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        auto &config = Engine::Get().GetConfig();
+        switch (config->gl.rasterizer.polygonMode)
+        {
+            case Config::RasterizationPolygonMode::POINT:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+                break;
+            case Config::RasterizationPolygonMode::LINE:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                break;
+            case Config::RasterizationPolygonMode::FILL:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                break;
+        }
     }
 
     GLuint GLRenderer::EndFrame()
     {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         return p_FrameBufferTexture;
     }
 

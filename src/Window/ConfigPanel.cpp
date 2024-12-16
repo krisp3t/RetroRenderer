@@ -630,31 +630,39 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayRasterizerSettings()
     {
-        auto &r = p_Config->rasterizer;
         ImGui::SeparatorText("Rasterizer settings");
 
-        const char *lineItems[] = {"DDA (slower)", "Bresenham (faster)"};
-        const char *polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
-        const char *fillItems[] = {"Scanline", "Barycentric", "Pineda (parallel)"};
-        ImGui::Combo("Polygon mode", reinterpret_cast<int *>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
-
-        switch (r.polygonMode)
+        if (p_Config->renderer.selectedRenderer == Config::RendererType::SOFTWARE)
         {
-            case Config::RasterizationPolygonMode::POINT:
-                ImGui::SeparatorText("Point");
-                ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
-                ImGui::ColorEdit4("Point color", reinterpret_cast<float *>(&r.lineColor));
-                break;
-            case Config::RasterizationPolygonMode::LINE:
-                ImGui::SeparatorText("Wireframe");
-                ImGui::Combo("Line mode", reinterpret_cast<int *>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
-                ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
-                ImGui::ColorEdit4("Line color", reinterpret_cast<float *>(&r.lineColor));
-                ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
-                break;
-            case Config::RasterizationPolygonMode::FILL:
-                ImGui::SeparatorText("Fill");
-                ImGui::Combo("Fill mode", reinterpret_cast<int *>(&r.fillMode), fillItems, IM_ARRAYSIZE(lineItems));
+            auto &r = p_Config->software.rasterizer;
+            const char *lineItems[] = {"DDA (slower)", "Bresenham (faster)"};
+            const char *polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
+            const char *fillItems[] = {"Scanline", "Barycentric", "Pineda (parallel)"};
+            ImGui::Combo("Polygon mode", reinterpret_cast<int *>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
+
+            switch (r.polygonMode)
+            {
+                case Config::RasterizationPolygonMode::POINT:
+                    ImGui::SeparatorText("Point");
+                    ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
+                    ImGui::ColorEdit4("Point color", reinterpret_cast<float *>(&r.lineColor));
+                    break;
+                case Config::RasterizationPolygonMode::LINE:
+                    ImGui::SeparatorText("Wireframe");
+                    ImGui::Combo("Line mode", reinterpret_cast<int *>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
+                    ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
+                    ImGui::ColorEdit4("Line color", reinterpret_cast<float *>(&r.lineColor));
+                    ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
+                    break;
+                case Config::RasterizationPolygonMode::FILL:
+                    ImGui::SeparatorText("Fill");
+                    ImGui::Combo("Fill mode", reinterpret_cast<int *>(&r.fillMode), fillItems, IM_ARRAYSIZE(lineItems));
+            }
+        } else if (p_Config->renderer.selectedRenderer == Config::RendererType::GL)
+        {
+            auto &r = p_Config->gl.rasterizer;
+            const char *polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
+            ImGui::Combo("Polygon mode", reinterpret_cast<int *>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
         }
     }
 

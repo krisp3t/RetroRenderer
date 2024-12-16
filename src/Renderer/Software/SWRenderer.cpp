@@ -70,7 +70,7 @@ namespace RetroRenderer
                    mesh.m_Indices.size() == mesh.m_numFaces * 3 &&
                    "Mesh is not triangulated");
 
-            for (int i = 0; i < mesh.m_numFaces; i++)
+            for (unsigned int i = 0; i < mesh.m_numFaces; i++)
             {
                 // Input Assembler
                 auto &v0 = mesh.m_Vertices[mesh.m_Indices[i]];
@@ -94,7 +94,7 @@ namespace RetroRenderer
                 }
 
                 // Rasterizer
-                const auto &cfg = Engine::Get().GetConfig()->rasterizer;
+                const auto &cfg = Engine::Get().GetConfig()->software.rasterizer;
                 m_Rasterizer->DrawTriangle(*m_FrameBuffer, vertices, cfg);
 
                 // Stats
