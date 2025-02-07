@@ -11,7 +11,17 @@
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
                 "CMAKE_MAKE_PROGRAM": "ninja",
                 "CMAKE_C_COMPILER": "clang-cl",
-                "CMAKE_CXX_COMPILER": "clang-cl"
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "USING_ANDROID": false
+            }
+        },
+        {
+            "name": "vcpkg-system-android",
+            "inherits": "vcpkg-system",
+            "cacheVariables": {
+                "USING_ANDROID": true,
+                "CONFIG_ANDROID_TRIPLET": "arm64-android",
+                "ANDROID_NDK_HOME": "$env{ANDROID_NDK_HOME}"
             }
         }
     ]

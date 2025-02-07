@@ -1,5 +1,22 @@
 ﻿cmake_minimum_required (VERSION 3.8)
 
+if (USING_ANDROID)
+	if(NOT DEFINED ENV{ANDROID_NDK_HOME})
+		message(FATAL_ERROR "ANDROID_NDK_HOME is not defined. Please set the environment variable or configure it in CMakePresets.")
+	elseif("$ENV{ANDROID_NDK_HOME}" STREQUAL "")
+		message(FATAL_ERROR "ANDROID_NDK_HOME is set to an empty value. "
+			"Please provide a valid Android NDK path.")
+	else()
+		message(STATUS "Using ANDROID_NDK_HOME in: $ENV{ANDROID_NDK_HOME}")
+	endif()
+
+	#unset(CMAKE_C_COMPILER)
+	#unset(CMAKE_CXX_COMPILER)
+	set(VCPKG_TARGET_TRIPLET "${CONFIG_ANDROID_TRIPLET}" CACHE STRING "vcpkg target triplet")
+	set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_TOOLCHAIN_FILE}")
+	set(CMAKE_TOOLCHAIN_FILE "ENV{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake")
+endif()
+
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
 	cmake_policy(SET CMP0141 NEW)

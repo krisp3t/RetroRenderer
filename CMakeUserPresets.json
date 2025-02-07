@@ -7,6 +7,15 @@
       "environment": {
         "VCPKG_ROOT": "${sourceDir}/extern/vcpkg"
       }
+    },
+    {
+      "name": "vcpkg-submodule-android",
+      "inherits": "vcpkg-submodule",
+      "cacheVariables": {
+        "USING_ANDROID": true,
+        "CONFIG_ANDROID_TRIPLET": "arm64-android",
+        "ANDROID_NDK_HOME": "$env{ANDROID_NDK_HOME}"
+      }
     }
   ]
 }
