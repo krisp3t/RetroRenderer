@@ -2,21 +2,17 @@
 project("RetroRenderer" VERSION 1.0 LANGUAGES CXX)
 
 if (ANDROID)
-	if(NOT DEFINED ENV{ANDROID_NDK_HOME})
-		message(FATAL_ERROR "ANDROID_NDK_HOME is not defined. Please set the environment variable or configure it in CMakePresets.")
-	elseif("$ENV{ANDROID_NDK_HOME}" STREQUAL "")
-		message(FATAL_ERROR "ANDROID_NDK_HOME is set to an empty value. "
-			"Please provide a valid Android NDK path.")
-	else()
-		message(STATUS "Using ANDROID_NDK_HOME in: $ENV{ANDROID_NDK_HOME}")
-	endif()
+    if(NOT DEFINED ENV{ANDROID_NDK_HOME})
+        message(FATAL_ERROR "ANDROID_NDK_HOME is not defined. Please set the environment variable or configure it in CMakePresets.")
+    endif()
 
 	#unset(CMAKE_C_COMPILER)
 	#unset(CMAKE_CXX_COMPILER)
 	# TODO: add api requirement?
 	set(VCPKG_TARGET_TRIPLET "${CONFIG_ANDROID_TRIPLET}" CACHE STRING "vcpkg target triplet")
 	set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_TOOLCHAIN_FILE}")
-	set(CMAKE_TOOLCHAIN_FILE "$ENV{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake")
+    set(CMAKE_ANDROID_NDK $ENV{ANDROID_NDK_HOME})
+    set(CMAKE_TOOLCHAIN_FILE ${CMAKE_ANDROID_NDK}/build/cmake/android.toolchain.cmake)
 endif()
 
 # Enable Hot Reload for MSVC compilers if supported.
