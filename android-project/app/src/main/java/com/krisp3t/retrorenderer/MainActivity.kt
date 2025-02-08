@@ -1,9 +1,8 @@
 package com.krisp3t.retrorenderer
-
+import org.libsdl.app.SDLActivity
 import android.view.View
-import com.google.androidgamesdk.GameActivity
 
-class MainActivity : GameActivity() {
+class MainActivity : SDLActivity() {
     companion object {
         init {
             System.loadLibrary("retrorenderer")
