@@ -1,5 +1,5 @@
+#include <KrisLogger/Logger.h>
 #include "SWRenderer.h"
-#include "../../Base/Logger.h"
 #include "../../Engine.h"
 #include <glm/gtx/string_cast.hpp>
 

@@ -1,6 +1,6 @@
 ﻿cmake_minimum_required (VERSION 3.8)
 
-if (USING_ANDROID)
+if (ANDROID)
 	if(NOT DEFINED ENV{ANDROID_NDK_HOME})
 		message(FATAL_ERROR "ANDROID_NDK_HOME is not defined. Please set the environment variable or configure it in CMakePresets.")
 	elseif("$ENV{ANDROID_NDK_HOME}" STREQUAL "")
@@ -14,7 +14,7 @@ if (USING_ANDROID)
 	#unset(CMAKE_CXX_COMPILER)
 	set(VCPKG_TARGET_TRIPLET "${CONFIG_ANDROID_TRIPLET}" CACHE STRING "vcpkg target triplet")
 	set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_TOOLCHAIN_FILE}")
-	set(CMAKE_TOOLCHAIN_FILE "ENV{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake")
+	set(CMAKE_TOOLCHAIN_FILE "$ENV{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake")
 endif()
 
 # Enable Hot Reload for MSVC compilers if supported.
@@ -24,17 +24,6 @@ if (POLICY CMP0141)
 endif()
 
 project("RetroRenderer")
-if(NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE Release)
-endif()
-
-file(GLOB IMGUI_FILE_DIALOG lib/ImGuiFileDialog/ImGuiFileDialog.cpp)
-file(GLOB LIB ${IMGUI_FILE_DIALOG})
-file(GLOB_RECURSE SOURCES
-		src/*.h
-		src/*.cpp
-)
-list(APPEND SOURCES ${LIB})
 
 find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
@@ -43,35 +32,36 @@ find_package(OpenGL REQUIRED)
 find_package(assimp REQUIRED)
 find_package(glad REQUIRED)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+file(GLOB_RECURSE SOURCES src/*.h src/*.cpp)
+add_subdirectory(lib/KrisLogger)
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-	set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
-	set(CMAKE_CXX_STANDARD 20)
-	set(CMAKE_CXX_STANDARD_REQUIRED ON)
-endif()
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
-	target_compile_definitions(${PROJECT_NAME} PRIVATE NDEBUG)
-endif()
+add_executable(${PROJECT_NAME})
+target_sources(${PROJECT_NAME} 
+				PRIVATE 
+				${SOURCES} 
+				${CMAKE_CURRENT_SOURCE_DIR}/lib/ImGuiFileDialog/ImGuiFileDialog.cpp
+)
+target_include_directories(${PROJECT_NAME} 
+							PRIVATE 
+							${CMAKE_CURRENT_SOURCE_DIR}/src
+							${CMAKE_CURRENT_SOURCE_DIR}/lib/ImGuiFileDialog
+)
 
-if (MSVC)
-	if (CMAKE_BUILD_TYPE STREQUAL "Release")
-		# target_compile_options(${PROJECT_NAME} PRIVATE /arch:AVX /Ot /fp:fast)
-	endif()
-else()
-	# target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Werror)
-endif()
+# target_compile_options(${PROJECT_NAME} PRIVATE
+#    $<$<CXX_COMPILER_ID:MSVC>:/arch:AVX /Ot /fp:fast>
+#    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -pedantic -Werror>
+#)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
-    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+	SDL2::SDL2main
+	SDL2::SDL2
+    imgui::imgui
+    glm::glm
+    OpenGL::GL
+    assimp::assimp
+    glad::glad
+	KrisLogger
 )
-target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
-target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
-target_link_libraries(${PROJECT_NAME} PRIVATE assimp::assimp)
-target_link_libraries(${PROJECT_NAME} PRIVATE glad::glad)
-

@@ -1,6 +1,6 @@
 #include <imgui_impl_sdl2.h>
+#include <KrisLogger/Logger.h>
 #include "InputSystem.h"
-#include "../Base/Logger.h"
 #include "../Engine.h"
 
 namespace RetroRenderer

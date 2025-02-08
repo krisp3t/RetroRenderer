@@ -1,6 +1,6 @@
-#include <array>
+#include <KrisLogger/Logger.h>
 #include "SceneManager.h"
-#include "../Base/Logger.h"
+
 
 namespace RetroRenderer
 {

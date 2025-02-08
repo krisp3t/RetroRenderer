@@ -1,7 +1,5 @@
 #pragma once
 
-#include <algorithm>
-#include <cstdint>
 #include <imgui.h>
 
 namespace RetroRenderer
@@ -27,19 +25,19 @@ namespace RetroRenderer
                 : r(red), g(green), b(blue), a(alpha)
         {}
         explicit Color(FloatTag, float red, float green, float blue, float alpha = 1.0f)
-                : r(static_cast<uint8_t>(std::clamp(red, 0.0f, 1.0f) * 255.0f)),
-                  g(static_cast<uint8_t>(std::clamp(green, 0.0f, 1.0f) * 255.0f)),
-                  b(static_cast<uint8_t>(std::clamp(blue, 0.0f, 1.0f) * 255.0f)),
-                  a(static_cast<uint8_t>(std::clamp(alpha, 0.0f, 1.0f) * 255.0f))
+                : r(static_cast<uint8_t>(glm::clamp(red, 0.0f, 1.0f) * 255.0f)),
+                  g(static_cast<uint8_t>(glm::clamp(green, 0.0f, 1.0f) * 255.0f)),
+                  b(static_cast<uint8_t>(glm::clamp(blue, 0.0f, 1.0f) * 255.0f)),
+                  a(static_cast<uint8_t>(glm::clamp(alpha, 0.0f, 1.0f) * 255.0f))
         {}
         explicit Color(uint8_t gray, uint8_t alpha = 255)
                 : r(gray), g(gray), b(gray), a(alpha)
         {}
         explicit Color(const ImVec4 &c)
-                : r(static_cast<uint8_t>(std::clamp(c.x, 0.0f, 1.0f) * 255.0f)),
-                  g(static_cast<uint8_t>(std::clamp(c.y, 0.0f, 1.0f) * 255.0f)),
-                  b(static_cast<uint8_t>(std::clamp(c.z, 0.0f, 1.0f) * 255.0f)),
-                  a(static_cast<uint8_t>(std::clamp(c.w, 0.0f, 1.0f) * 255.0f))
+                : r(static_cast<uint8_t>(glm::clamp(c.x, 0.0f, 1.0f) * 255.0f)),
+                  g(static_cast<uint8_t>(glm::clamp(c.y, 0.0f, 1.0f) * 255.0f)),
+                  b(static_cast<uint8_t>(glm::clamp(c.z, 0.0f, 1.0f) * 255.0f)),
+                  a(static_cast<uint8_t>(glm::clamp(c.w, 0.0f, 1.0f) * 255.0f))
         {}
 
         // Comparison operators

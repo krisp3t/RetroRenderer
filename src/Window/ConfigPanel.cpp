@@ -11,10 +11,11 @@
 #include <SDL.h>
 #include <utility>
 #include <glm/gtc/type_ptr.hpp>
+#include <KrisLogger/Logger.h>
+
 
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "ConfigPanel.h"
-#include "../Base/Logger.h"
 #include "../Base/InputActions.h"
 #include "../Base/Event.h"
 #include "../Engine.h"

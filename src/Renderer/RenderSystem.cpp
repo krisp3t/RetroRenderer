@@ -1,7 +1,7 @@
 #include <cassert>
 #include <iostream>
+#include <KrisLogger/Logger.h>
 #include "RenderSystem.h"
-#include "../Base/Logger.h"
 #include "../Engine.h"
 
 namespace RetroRenderer

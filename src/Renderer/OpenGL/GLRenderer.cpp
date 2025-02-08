@@ -1,5 +1,5 @@
+#include <KrisLogger/Logger.h>
 #include "GLRenderer.h"
-#include "../../Base/Logger.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "../../Engine.h"
 

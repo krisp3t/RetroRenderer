@@ -1,7 +1,8 @@
 #include <algorithm>
+#include <KrisLogger/Logger.h>
 #include "../../Engine.h"
 #include "Rasterizer.h"
-#include "../../Base/Logger.h"
+
 
 // TODO: possible parallel rasterizing?
 

@@ -1,5 +1,5 @@
+#include <KrisLogger/Logger.h>
 #include "Engine.h"
-#include "Base/Logger.h"
 
 namespace RetroRenderer
 {

@@ -6,7 +6,7 @@
  */
 
 #include "Engine.h"
-#include "Base/Logger.h"
+#include <KrisLogger/Logger.h>
 
 int main(int argc, char* args[])
 {

@@ -1,9 +1,8 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-
+#include <KrisLogger/Logger.h>
 #include "Scene.h"
-#include "../Base/Logger.h"
 #include "../Renderer/Vertex.h"
 
 

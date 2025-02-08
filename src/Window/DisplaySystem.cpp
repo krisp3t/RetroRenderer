@@ -1,7 +1,7 @@
 #include <imgui.h>
 #include <glad/glad.h>
+#include <KrisLogger/Logger.h>
 #include "DisplaySystem.h"
-#include "../Base/Logger.h"
 #include "../Renderer/Buffer.h"
 
 namespace RetroRenderer
