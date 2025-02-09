@@ -365,6 +365,7 @@ FodyWeavers.xsd
 # Vcpkg
 vcpkg_installed/
 build/
+build-android/
 /imgui.ini
 
 # Cmake

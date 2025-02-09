@@ -23,7 +23,12 @@ android {
                 arguments += listOf(
                     "-DANDROID_APP_PLATFORM=android-21", 
                     "-DANDROID_STL=c++_shared",
-                    "--preset=vcpkg-system-android"
+                    "-DVCPKG_TRACE_FIND_PACKAGE=ON",
+                    "-DCMAKE_PREFIX_PATH=D:/Programming/RetroRenderer/build-android/vcpkg_installed/arm64-android",
+                    "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=C:/Users/krisp3t/AppData/Local/Android/Sdk/ndk/28.0.13004108/build/cmake/android.toolchain.cmake",
+                    "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                    "-DVCPKG_CMAKE_SYSTEM_NAME=Android",
+                    "-DVCPKG_TARGET_TRIPLET=arm64-android",
                     )
                 abiFilters += listOf("arm64-v8a")
             }
@@ -32,6 +37,7 @@ android {
     externalNativeBuild {
         cmake {
             path = file("../../CMakeLists.txt")
+            buildStagingDirectory = file("../../build-android")
         }
     }
 
