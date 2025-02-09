@@ -9,18 +9,17 @@
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
-                "CMAKE_MAKE_PROGRAM": "ninja",
-                "CMAKE_C_COMPILER": "clang-cl",
-                "CMAKE_CXX_COMPILER": "clang-cl",
-                "USING_ANDROID": false
+                "CMAKE_MAKE_PROGRAM": "ninja"
             }
         },
         {
             "name": "vcpkg-system-android",
             "inherits": "vcpkg-system",
             "cacheVariables": {
-                "USING_ANDROID": true,
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "",
+                "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
                 "CONFIG_ANDROID_TRIPLET": "arm64-android",
+                "VCPKG_TARGET_TRIPLET": "arm64-android",
                 "ANDROID_NDK_HOME": "$env{ANDROID_NDK_HOME}"
             }
         }

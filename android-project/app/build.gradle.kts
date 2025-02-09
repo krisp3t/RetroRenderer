@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.krisp3t.retrorenderer"
     compileSdk = 35
+    ndkVersion = "28.0.12916984"
     defaultConfig {
         applicationId = "com.krisp3t.retrorenderer"
         minSdk = 26
@@ -19,14 +20,18 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments += listOf("-DANDROID_APP_PLATFORM=android-21", "-DANDROID_STL=c++_shared")
+                arguments += listOf(
+                    "-DANDROID_APP_PLATFORM=android-21", 
+                    "-DANDROID_STL=c++_shared",
+                    "--preset=vcpkg-system-android"
+                    )
                 abiFilters += listOf("arm64-v8a")
             }
         }
     }
     externalNativeBuild {
         cmake {
-            path = file("./CMakeLists.txt")
+            path = file("../../CMakeLists.txt")
         }
     }
 

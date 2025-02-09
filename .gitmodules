@@ -6,7 +6,7 @@
 	url = https://github.com/aiekick/ImGuiFileDialog
 [submodule "tests-visual"]
 	path = tests-visual
-	url = git@github.com:krisp3t/shader-examples.git
+	url = https://github.com/krisp3t/shader-examples.git
 [submodule "lib/KrisLogger"]
 	path = lib/KrisLogger
-	url = git@github.com:krisp3t/KrisLogger.git
+	url = https://github.com/krisp3t/KrisLogger.git
