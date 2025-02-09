@@ -1,4 +1,4 @@
-﻿cmake_minimum_required (VERSION 3.8)
+﻿cmake_minimum_required (VERSION 3.12)
 project("RetroRenderer" VERSION 1.0 LANGUAGES CXX)
 
 # Enable Hot Reload for MSVC compilers if supported.
@@ -7,12 +7,17 @@ if (POLICY CMP0141)
 	set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-# list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+# list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/arm64_android/share/sdl2/SDL2Config.cmake)
+
+set(VCPKG_TARGET_ARCHITECTURE arm64)
+set(VCPKG_CRT_LINKAGE dynamic)
+set(VCPKG_LIBRARY_LINKAGE dynamic)
+set(VCPKG_CMAKE_SYSTEM_NAME Android)
+
 
 find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
-find_package(OpenGL REQUIRED)
 find_package(assimp REQUIRED)
 find_package(glad REQUIRED)
 
@@ -63,9 +68,19 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
     imgui::imgui
     glm::glm
-    OpenGL::GL
     assimp::assimp
     glad::glad
 	KrisLogger
+
+		# The game activity
+
+		# EGL and other dependent libraries required for drawing
+		# and interacting with Android system
+		native_app_glue
+		EGL
+		GLESv3
+		jnigraphics
+		android
+		log
 )
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")

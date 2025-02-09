@@ -6,7 +6,7 @@
             "binaryDir": "${sourceDir}/build",
             "generator": "Ninja",
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_TOOLCHAIN_FILE": "/home/krisp3t/vcpkg/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
                 "CMAKE_MAKE_PROGRAM": "ninja"
@@ -14,13 +14,16 @@
         },
         {
             "name": "vcpkg-system-android",
+            "binaryDir": "${sourceDir}/build-android",
             "inherits": "vcpkg-system",
             "cacheVariables": {
-                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "",
-                "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+                "CMAKE_TOOLCHAIN_FILE": "/home/krisp3t/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
                 "CONFIG_ANDROID_TRIPLET": "arm64-android",
                 "VCPKG_TARGET_TRIPLET": "arm64-android",
-                "ANDROID_NDK_HOME": "$env{ANDROID_NDK_HOME}"
+                "ANDROID_NDK_HOME": "$env{ANDROID_NDK_HOME}",
+                "ANDROID_ABI": "arm64-v8a",
+                "ANDROID_PLATFORM": "android-26"
             }
         }
     ]
