@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.krisp3t.retrorenderer"
     compileSdk = 35
-    ndkVersion = "28.0.12916984"
+    ndkVersion = "28.0.13004108"
     defaultConfig {
         applicationId = "com.krisp3t.retrorenderer"
         minSdk = 26
@@ -79,7 +79,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    implementation(libs.androidx.games.activity)
+    implementation(libs.androidx.constraintlayout)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

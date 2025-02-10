@@ -1,6 +1,6 @@
 #pragma once
-
-#include <glad/glad.h>
+#include <GLES3/gl3.h>
+//#include <glad/glad.h>
 #include "../../Scene/Camera.h"
 #include "../../Scene/Scene.h"
 #include "../IRenderer.h"

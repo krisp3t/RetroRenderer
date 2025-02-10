@@ -1,5 +1,7 @@
 ﻿cmake_minimum_required(VERSION 3.12)
-project("RetroRenderer" VERSION 1.0 LANGUAGES C CXX)
+set(BUILD_SHARED_LIBS ON)
+set(VCPKG_LIBRARY_LINKAGE dynamic)
+project(retrorenderer VERSION 1.0 LANGUAGES C CXX)
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -8,21 +10,19 @@ if (POLICY CMP0141)
 endif ()
 
 # list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/arm64_android/share/sdl2/SDL2Config.cmake)
-
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${CMAKE_SOURCE_DIR}/vcpkg_installed/arm64-android")
-
-
-set(VCPKG_TARGET_ARCHITECTURE arm64)
-set(VCPKG_CRT_LINKAGE dynamic)
+set(BUILD_SHARED_LIBS ON)
 set(VCPKG_LIBRARY_LINKAGE dynamic)
-set(VCPKG_CMAKE_SYSTEM_NAME Android)
-
-
 find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(assimp REQUIRED)
 find_package(glad REQUIRED)
+
+# Only build the shared library for SDL2
+
+set(SDL2_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
+set(SDL_TEST_ENABLED_BY_DEFAULT OFF)
+set(SDL_CMAKE_DEBUG_POSTFIX "" CACHE STRING "" FORCE)
 
 set(SOURCE_ROOT_DIRS
         src/
@@ -42,6 +42,7 @@ foreach (dir ${SOURCE_ROOT_DIRS})
     list(APPEND SOURCES ${CURR_SOURCES})
 endforeach ()
 
+
 add_subdirectory(lib/KrisLogger)
 add_library(native_app_glue STATIC
         ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
@@ -50,6 +51,7 @@ target_include_directories(native_app_glue PUBLIC
 
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
+
 target_sources(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/lib/ImGuiFileDialog/ImGuiFileDialog.cpp
 )
@@ -70,18 +72,12 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL=0)
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
-        $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
-        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
-)
-target_link_libraries(${PROJECT_NAME}
-        PRIVATE
+        SDL2::SDL2
         imgui::imgui
         glm::glm
         assimp::assimp
         glad::glad
         KrisLogger
-
-        # The game activity
 
         # EGL and other dependent libraries required for drawing
         # and interacting with Android system

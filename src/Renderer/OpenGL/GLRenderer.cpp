@@ -8,6 +8,7 @@ namespace RetroRenderer
     /**
      * @brief Debug callback for OpenGL errors. Set breakpoint to catch errors.
      */
+     /*
     void APIENTRY GLRenderer::DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                                             GLsizei length, const GLchar *message, const void *userParam)
     {
@@ -28,11 +29,12 @@ namespace RetroRenderer
                  (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
                  type, severity, message);
         }
-    }
+    }*/
 
     bool GLRenderer::Init(GLuint fbTex, int w, int h)
     {
         // Enable Debug Output
+        /*
         if (glDebugMessageCallback == nullptr)
         {
             LOGW("glDebugMessageCallback not supported on this platform");
@@ -46,8 +48,9 @@ namespace RetroRenderer
             glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
             glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, nullptr, GL_TRUE);
             glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
-        }
 
+        }
+  */
         if (!CreateFramebuffer(fbTex, w, h))
         {
             return false;
@@ -177,20 +180,20 @@ void main() {
         switch (config->gl.rasterizer.polygonMode)
         {
             case Config::RasterizationPolygonMode::POINT:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+                //glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
                 break;
             case Config::RasterizationPolygonMode::LINE:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
                 break;
             case Config::RasterizationPolygonMode::FILL:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
                 break;
         }
     }
 
     GLuint GLRenderer::EndFrame()
     {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         return p_FrameBufferTexture;
     }
 
