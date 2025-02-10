@@ -1,7 +1,7 @@
 #pragma once
-
+#include <GLES3/gl3.h>
 #include <memory>
-#include <GLAD/glad.h>
+//#include <GLAD/glad.h>
 #include "../Window/DisplaySystem.h"
 #include "../Base/Event.h"
 #include "../Base/Stats.h"

@@ -1,8 +1,8 @@
 #pragma once
-
+#include <GLES3/gl3.h>
 #include <vector>
 #include "../Renderer/Vertex.h"
-#include "glad/glad.h"
+//#include "glad/glad.h"
 
 namespace RetroRenderer
 {

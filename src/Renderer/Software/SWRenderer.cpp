@@ -122,7 +122,8 @@ namespace RetroRenderer
                 m_FrameBuffer->width,
                 m_FrameBuffer->height,
                 GL_RGBA,
-                GL_UNSIGNED_INT_8_8_8_8,
+
+                GL_RGBA,
                 m_FrameBuffer->data
         );
         glBindTexture(GL_TEXTURE_2D, 0);
