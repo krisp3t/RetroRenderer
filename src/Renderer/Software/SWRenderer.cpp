@@ -106,9 +106,12 @@ namespace RetroRenderer
 
     void SWRenderer::BeforeFrame(const Color &clearColor)
     {
-        uint32_t c = clearColor.ToRGBA();
-        m_FrameBuffer->Clear(c);
-        // TODO: clear opengl texture?
+        auto c = clearColor.ToImVec4();
+        glBindFramebuffer(GL_FRAMEBUFFER, p_FrameBufferTexture);
+		glClearColor(c.x, c.y, c.z, c.w);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        m_FrameBuffer->Clear(clearColor.ToRGBA());
     }
 
     GLuint SWRenderer::EndFrame()

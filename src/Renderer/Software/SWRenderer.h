@@ -21,11 +21,11 @@ namespace RetroRenderer
 
         void Resize(GLuint newFbTex, int w, int h);
 
-        void Destroy();
+        void Destroy() override;
 
-        void SetActiveCamera(const Camera &camera);
+        void SetActiveCamera(const Camera &camera) override;
 
-        void DrawTriangularMesh(const Model *model);
+        void DrawTriangularMesh(const Model *model) override;
 
         void BeforeFrame(const Color &clearColor) override;
 

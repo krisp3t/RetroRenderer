@@ -20,9 +20,9 @@ namespace RetroRenderer
 
         void Destroy();
 
-        void SetActiveCamera(const Camera &camera);
+        void SetActiveCamera(const Camera &camera) override;
 
-        void DrawTriangularMesh(const Model *model);
+        void DrawTriangularMesh(const Model *model) override;
 
         void BeforeFrame(const Color &clearColor) override;
 
