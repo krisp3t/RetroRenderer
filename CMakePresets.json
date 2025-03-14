@@ -1,27 +1,97 @@
 ﻿{
-  "version": 2,
-  "configurePresets": [
-    {
-      "name": "vcpkg-system",
-      "generator": "Ninja",
-      "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_MAKE_PROGRAM": "ninja"
-      }
-    },
-    {
-      "name": "vcpkg-system-android",
-      "inherits": "vcpkg-system",
-      "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
-        "CONFIG_ANDROID_TRIPLET": "arm64-android",
-        "VCPKG_TARGET_TRIPLET": "arm64-android",
-        "ANDROID_NDK_HOME": "$env{ANDROID_NDK_HOME}",
-        "ANDROID_ABI": "arm64-v8a",
-        "ANDROID_PLATFORM": "android-26"
-      }
-    }
-  ]
+    "version": 9,
+    "configurePresets": [
+        {
+            "name": "debug",
+            "hidden": true,
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_MAKE_PROGRAM": "ninja"
+            },
+            "environment": {
+                "VCPKG_ROOT": "${sourceDir}/extern/vcpkg"
+            }
+        },
+        {
+            "name": "release",
+            "hidden": true,
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_MAKE_PROGRAM": "ninja"
+            },
+            "environment": {
+                "VCPKG_ROOT": "${sourceDir}/extern/vcpkg"
+            }
+        },
+        {
+            "name": "debug-x64-windows",
+            "inherits": "debug",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x64-windows"
+            }
+        },
+        {
+            "name": "debug-x86-windows",
+            "inherits": "debug",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x86-windows"
+            }
+        },
+        {
+            "name": "debug-arm64-macos",
+            "inherits": "debug",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "arm64-macos"
+            }
+        },
+        {
+            "name": "debug-arm64-android",
+            "inherits": "debug",
+            "cacheVariables": {
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+                "CONFIG_ANDROID_TRIPLET": "arm64-android",
+                "VCPKG_TARGET_TRIPLET": "arm64-android",
+                "ANDROID_NDK_HOME": "$env{ANDROID_NDK_HOME}",
+                "ANDROID_ABI": "arm64-v8a",
+                "ANDROID_PLATFORM": "android-26"
+            }
+        },
+        {
+            "name": "release-x64-windows",
+            "inherits": "release",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x64-windows"
+            }
+        },
+        {
+            "name": "release-x86-windows",
+            "inherits": "release",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x86-windows"
+            }
+        },
+        {
+            "name": "release-arm64-macos",
+            "inherits": "release",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "arm64-macos"
+            }
+        },
+        {
+            "name": "release-arm64-android",
+            "inherits": "release",
+            "cacheVariables": {
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+                "CONFIG_ANDROID_TRIPLET": "arm64-android",
+                "VCPKG_TARGET_TRIPLET": "arm64-android",
+                "ANDROID_NDK_HOME": "$env{ANDROID_NDK_HOME}",
+                "ANDROID_ABI": "arm64-v8a",
+                "ANDROID_PLATFORM": "android-26"
+            }
+        }
+    ]
 }
