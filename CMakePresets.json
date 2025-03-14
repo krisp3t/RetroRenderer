@@ -1,35 +1,47 @@
 ﻿{
-    "version": 9,
+    "version": 3,
     "configurePresets": [
         {
-            "name": "debug",
+            "name": "common",
             "hidden": true,
             "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_MAKE_PROGRAM": "ninja"
+                "CMAKE_MAKE_PROGRAM": "ninja",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
             },
             "environment": {
                 "VCPKG_ROOT": "${sourceDir}/extern/vcpkg"
             }
         },
         {
-            "name": "release",
+            "name": "debug",
+            "inherits": "common",
             "hidden": true,
-            "generator": "Ninja",
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_MAKE_PROGRAM": "ninja"
-            },
-            "environment": {
-                "VCPKG_ROOT": "${sourceDir}/extern/vcpkg"
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "release",
+            "inherits": "common",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
             }
         },
         {
             "name": "debug-x64-windows",
             "inherits": "debug",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x64-windows"
+            }
+        },
+        {
+            "name": "release-x64-windows",
+            "inherits": "release",
             "cacheVariables": {
                 "VCPKG_TARGET_TRIPLET": "x64-windows"
             }
@@ -60,13 +72,7 @@
                 "ANDROID_PLATFORM": "android-26"
             }
         },
-        {
-            "name": "release-x64-windows",
-            "inherits": "release",
-            "cacheVariables": {
-                "VCPKG_TARGET_TRIPLET": "x64-windows"
-            }
-        },
+
         {
             "name": "release-x86-windows",
             "inherits": "release",

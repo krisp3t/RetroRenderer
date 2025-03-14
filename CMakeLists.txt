@@ -51,14 +51,14 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
         CXX_EXTENSIONS OFF
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL=0)
-target_compile_options(${PROJECT_NAME} PRIVATE
-    $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -pedantic -Werror>
-)
-set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+#target_compile_options(${PROJECT_NAME} PRIVATE
+#    $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -pedantic -Werror>
+#)
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
-        SDL2::SDL2
+        $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
+        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
         imgui::imgui
         glm::glm
         assimp::assimp
