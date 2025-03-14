@@ -1,9 +1,7 @@
 #pragma once
-#include <GLES3/gl3.h>
 #include <vector>
 #include "../Renderer/Vertex.h"
-//#include "glad/glad.h"
-
+#include <glad/glad.h>
 namespace RetroRenderer
 {
 
@@ -24,7 +22,7 @@ namespace RetroRenderer
         unsigned int m_numFaces = 0;
         // std::vector<Texture>
 
-        // OpenGL specific
+        // TODO: get rid of OpenGL specifics!!
         GLuint VAO = 0;
         GLuint VBO = 0;
         GLuint EBO = 0;

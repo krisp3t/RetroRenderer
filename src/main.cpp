@@ -5,26 +5,13 @@
  * @return
  */
 
-#include "Engine.h"
 #include <KrisLogger/Logger.h>
+#include "Engine.h"
+#ifdef __ANDROID__
 #include <SDL.h>
-#include <GLES3/gl3.h>
+#endif
 
-/*
-int main(int argc, char *args[])
-{
-    auto &retro = RetroRenderer::Engine::Get();
-    if (!retro.Init())
-    {
-        LOGE("Failed to initialize RetroRenderer");
-        return 1;
-    }
-    retro.Run();
-    retro.Destroy();
-    return 0;
-}*/
-
-// Android-compatible main function
+#ifdef __ANDROID__
 int SDL_main(int argc, char *argv[])
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
@@ -70,8 +57,8 @@ int SDL_main(int argc, char *argv[])
             }
         }
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        //glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        //glClear(GL_COLOR_BUFFER_BIT);
         SDL_GL_SwapWindow(window);
         SDL_Delay(1000 / 60);
     }
@@ -89,3 +76,18 @@ extern "C" void android_main(struct android_app* app)
 {
     SDL_main(0, nullptr);
 }
+
+#else
+int main(int argc, char* args[])
+{
+	auto& retro = RetroRenderer::Engine::Get();
+	if (!retro.Init())
+	{
+		LOGE("Failed to initialize RetroRenderer");
+		return 1;
+	}
+	retro.Run();
+	retro.Destroy();
+	return 0;
+}
+#endif

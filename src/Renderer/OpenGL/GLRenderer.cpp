@@ -1,6 +1,6 @@
+#include <glm/gtc/type_ptr.hpp>
 #include <KrisLogger/Logger.h>
 #include "GLRenderer.h"
-#include "glm/gtc/type_ptr.hpp"
 #include "../../Engine.h"
 
 namespace RetroRenderer

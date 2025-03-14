@@ -1,6 +1,4 @@
 #include <imgui.h>
-#include <GLES3/gl3.h>
-//#include <glad/glad.h>
 #include <KrisLogger/Logger.h>
 #include "DisplaySystem.h"
 #include "../Renderer/Buffer.h"
@@ -74,12 +72,11 @@ namespace RetroRenderer
         }
         SDL_GL_MakeCurrent(m_Window, m_glContext);
 
-        /*
         if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
         {
             LOGE("Error initializing GLAD\n");
             return false;
-        }*/
+        }
         LOGI("OpenGL loaded");
         LOGI("OpenGL Vendor:    %s", glGetString(GL_VENDOR));
         LOGI("OpenGL Renderer:  %s", glGetString(GL_RENDERER));

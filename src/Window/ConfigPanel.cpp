@@ -3,11 +3,9 @@
  * Also displays rendered image in an ImGui window.
  */
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include <GLES3/gl3.h>
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
-//#include <glad/glad.h>
 #include <SDL.h>
 #include <utility>
 #include <glm/gtc/type_ptr.hpp>
