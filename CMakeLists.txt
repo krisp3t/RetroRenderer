@@ -54,6 +54,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL=0)
 #target_compile_options(${PROJECT_NAME} PRIVATE
 #    $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -pedantic -Werror>
 #)
+set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE

@@ -11,7 +11,6 @@ namespace RetroRenderer
     void APIENTRY GLRenderer::DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                                             GLsizei length, const GLchar *message, const void *userParam)
     {
-        // TODO: add line where error occurred
         if (severity == GL_DEBUG_SEVERITY_MEDIUM)
         {
             LOGW("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
@@ -28,6 +27,9 @@ namespace RetroRenderer
                  (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
                  type, severity, message);
         }
+#ifndef NDEBUG
+        __debugbreak(); // Traverse across callstack to find error
+#endif
     }
 
     bool GLRenderer::Init(GLuint fbTex, int w, int h)
@@ -46,6 +48,7 @@ namespace RetroRenderer
             glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
             glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, nullptr, GL_TRUE);
             glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
+            LOGD("OpenGL debug context initialized");
         }
 
         if (!CreateFramebuffer(fbTex, w, h))

@@ -309,23 +309,19 @@ namespace RetroRenderer
         switch (p_Config->renderer.selectedRenderer)
         {
             case Config::RendererType::SOFTWARE:
-                /*
                 ImGui::Image(
-                        (void *) (intptr_t) p_framebufferTexture,
+                        p_framebufferTexture,
                         contentRegion
                 );
-                 */
                 break;
             case Config::RendererType::GL:
                 // OpenGL textures are flipped vertically
-                /*
                 ImGui::Image(
-                        (void *) (intptr_t) p_framebufferTexture,
+                        p_framebufferTexture,
                         contentRegion,
                         ImVec2(0.0f, 1.0f),
                         ImVec2(1.0f, 0.0f)
                 );
-                 */
                 break;
             default:
                 ImGui::Text("Renderer type %d not implemented!", p_Config->renderer.selectedRenderer);
@@ -773,8 +769,8 @@ namespace RetroRenderer
                             p_Camera->position.z);
             }
             assert(p_Stats != nullptr && "Stats not initialized!");
-            ImGui::PlotLines("", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
-            if (ImGui::BeginPopupContextWindow())
+            ImGui::PlotLines("frameTimes", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
+            if (ImGui::BeginPopupContextWindow("popupCtx"))
             {
                 if (ImGui::MenuItem("Top-left", nullptr, location == 0)) location = 0;
                 if (ImGui::MenuItem("Top-right", nullptr, location == 1)) location = 1;

@@ -42,11 +42,16 @@ namespace RetroRenderer
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #else
         // GL 3.0 + GLSL 130
-        const char *glslVersion = "#version 130";
+        const char* glslVersion = "#version 130";
+        /*
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+		*/
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 #endif
 
         // From 2.0.18: Enable native IME.
@@ -54,6 +59,7 @@ namespace RetroRenderer
         SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
 #endif
 
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
@@ -82,7 +88,15 @@ namespace RetroRenderer
         LOGI("OpenGL Renderer:  %s", glGetString(GL_RENDERER));
         LOGI("OpenGL Version:   %s", glGetString(GL_VERSION));
         LOGI("GLSL Version:     %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
-        //LOGI("OpenGL extensions:     %s", glGetString(GL_EXTENSIONS));
+        LOGI("OpenGL extensions:     %s", glGetString(GL_EXTENSIONS));
+        int contextFlags;
+        glGetIntegerv(GL_CONTEXT_FLAGS, &contextFlags);
+        if (contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+            LOGI("Debug context is active!");
+        }
+        else {
+            LOGW("Debug context not available!");
+        }
 
         glViewport(0, 0, screenWidth, screenHeight);
         // glEnable(GL_DEPTH_TEST);
