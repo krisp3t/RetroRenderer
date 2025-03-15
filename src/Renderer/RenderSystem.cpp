@@ -55,8 +55,8 @@ namespace RetroRenderer
 
     void RenderSystem::BeforeFrame(const Color &clearColor)
     {
-        auto &p_Config = Engine::Get().GetConfig();
-        switch (p_Config->renderer.selectedRenderer)
+        auto &p_config = Engine::Get().GetConfig();
+        switch (p_config->renderer.selectedRenderer)
         {
             case Config::RendererType::SOFTWARE:
                 p_activeRenderer_ = p_SWRenderer_.get();
@@ -65,11 +65,11 @@ namespace RetroRenderer
                 p_activeRenderer_ = p_GLRenderer_.get();
                 break;
             default:
-                LOGE("Renderer type %d not implemented!", p_Config->renderer.selectedRenderer);
+                LOGE("Renderer type %d not implemented!", p_config->renderer.selectedRenderer);
                 return;
         }
         assert(p_activeRenderer_ != nullptr && "Active renderer is null");
-        glViewport(0, 0, p_Config->renderer.resolution.x, p_Config->renderer.resolution.y);
+        glViewport(0, 0, p_config->renderer.resolution.x, p_config->renderer.resolution.y);
         p_activeRenderer_->BeforeFrame(clearColor);
     }
 

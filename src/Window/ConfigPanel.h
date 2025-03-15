@@ -10,13 +10,7 @@ namespace RetroRenderer
 class ConfigPanel
 {
 public:
-    ConfigPanel(SDL_Window *window,
-                SDL_GLContext glContext,
-                std::shared_ptr<Config> config,
-                std::shared_ptr<Camera> camera,
-                const char* glslVersion,
-                std::shared_ptr<Stats> stats
-                );
+    ConfigPanel() = default;
     ~ConfigPanel();
     bool Init(SDL_Window *window,
               SDL_GLContext glContext,

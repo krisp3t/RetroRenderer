@@ -11,7 +11,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <KrisLogger/Logger.h>
 
-
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "ConfigPanel.h"
 #include "../Base/InputActions.h"
@@ -20,17 +19,6 @@
 
 namespace RetroRenderer
 {
-    ConfigPanel::ConfigPanel(SDL_Window *window,
-                             SDL_GLContext glContext,
-                             std::shared_ptr<Config> config,
-                             std::shared_ptr<Camera> camera,
-                             const char *glslVersion,
-                             std::shared_ptr<Stats> stats
-    )
-    {
-        Init(window, glContext, config, camera, glslVersion, stats);
-    }
-
     ConfigPanel::~ConfigPanel()
     {
         Destroy();
@@ -784,16 +772,22 @@ namespace RetroRenderer
 
     void ConfigPanel::BeforeFrame()
     {
+        auto const& io = ImGui::GetIO();
+        glViewport(0, 0, (int)io.DisplaySize.x > 0 ? (int)io.DisplaySize.x : 0, (int)io.DisplaySize.y > 0 ? (int)io.DisplaySize.y : 0);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
+
         DisplayGUI();
     }
 
     void ConfigPanel::OnDraw()
     {
         ImGui::Render();
-        auto io = ImGui::GetIO();
+        auto const& io = ImGui::GetIO();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         // Multi-viewport support
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

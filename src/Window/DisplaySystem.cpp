@@ -104,17 +104,15 @@ namespace RetroRenderer
 
         SDL_GL_SetSwapInterval(p_config->window.enableVsync ? 1 : 0);
 
-        m_configPanel_ = std::make_unique<ConfigPanel>(m_window_, m_glContext_, p_config, p_camera_, glslVersion, p_stats);
+        m_configPanel_ = std::make_unique<ConfigPanel>();
+        m_configPanel_->Init(m_window_, m_glContext_, p_config, p_camera_, glslVersion, p_stats);
         return true;
     }
 
     void DisplaySystem::BeforeFrame()
     {
-		auto const& p_config_ = Engine::Get().GetConfig();
         ResetGlContext();
-        glViewport(0, 0, p_config_->window.size.x, p_config_->window.size.y);
-        // color is cleared in imgui loop
-        m_configPanel_.get()->BeforeFrame();
+        m_configPanel_->BeforeFrame();
     }
 
     void DisplaySystem::DrawFrame()

@@ -59,10 +59,10 @@ namespace RetroRenderer
             auto camera = m_SceneManager.GetCamera();
             if (scene && camera)
             {
+                m_DisplaySystem.BeforeFrame();
                 m_RenderSystem.BeforeFrame(clearColor);
                 auto &queue = m_RenderSystem.BuildRenderQueue(*scene, *camera);
                 GLuint fbTex = m_RenderSystem.Render(queue, scene->m_Models);
-                m_DisplaySystem.BeforeFrame();
                 m_DisplaySystem.DrawFrame(fbTex);
             } else
             {
