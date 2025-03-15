@@ -256,7 +256,28 @@ namespace RetroRenderer
             p_camera_->eulerRotation.x -= deltaY * 0.05f;
         };
 
-        if (ImGui::IsWindowHovered())
+        ImGuiIO& io = ImGui::GetIO();
+
+        // Get mouse position relative to the window's content area
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 contentMin = ImVec2(windowPos.x + ImGui::GetWindowContentRegionMin().x,
+            windowPos.y + ImGui::GetWindowContentRegionMin().y);
+        ImVec2 contentMax = ImVec2(windowPos.x + ImGui::GetWindowContentRegionMax().x,
+            windowPos.y + ImGui::GetWindowContentRegionMax().y);
+        ImVec2 mousePos = io.MousePos;
+
+        // Is the mouse INSIDE the content area (not title bar/borders)?
+        bool isMouseInContent = (mousePos.x >= contentMin.x && mousePos.x <= contentMax.x &&
+            mousePos.y >= contentMin.y && mousePos.y <= contentMax.y);
+
+        // Only activate camera if:
+        // 1. Mouse is in content area
+        // 2. "Output" window is hovered
+        // 3. ImGui isn't using the mouse for other UI
+        bool isViewportActive = isMouseInContent &&
+            ImGui::IsWindowHovered();
+
+        if (isViewportActive)
         {
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
             // TODO: emit event instead?
