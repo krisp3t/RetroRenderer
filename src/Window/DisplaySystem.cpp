@@ -7,17 +7,16 @@ namespace RetroRenderer
 {
     SDL_Window *DisplaySystem::GetWindow() const
     {
-        return m_Window;
+        return m_window_;
     }
 
-    bool
-    DisplaySystem::Init(std::shared_ptr<Config> config, std::shared_ptr<Camera> camera, std::shared_ptr<Stats> stats)
+    bool DisplaySystem::Init(std::shared_ptr<Config> config, std::shared_ptr<Camera> camera, std::shared_ptr<Stats> stats)
     {
-        p_Config = config;
-        p_Camera = camera;
+        p_config_ = config;
+        p_camera_ = camera;
 
-        int screenWidth = p_Config->window.size.x;
-        int screenHeight = p_Config->window.size.y;
+        int screenWidth = p_config_->window.size.x;
+        int screenHeight = p_config_->window.size.y;
 
         if (SDL_Init(SDL_INIT_VIDEO) < 0)
         {
@@ -42,7 +41,7 @@ namespace RetroRenderer
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #else
         // GL 3.0 + GLSL 130
-        const char* glslVersion = "#version 130";
+        const char* glslVersion = "#version 430";
         /*
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -63,20 +62,20 @@ namespace RetroRenderer
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-        m_Window = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth,
+        m_window_ = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth,
                                     screenHeight, kWindowFlags);
-        if (m_Window == nullptr)
+        if (m_window_ == nullptr)
         {
             LOGE("Unable to create window: %s", SDL_GetError());
             return false;
         }
-        m_glContext = SDL_GL_CreateContext(m_Window);
-        if (!m_glContext)
+        m_glContext_ = SDL_GL_CreateContext(m_window_);
+        if (!m_glContext_)
         {
             LOGE("Error creating OpenGL context: %s\n", SDL_GetError());
             return false;
         }
-        SDL_GL_MakeCurrent(m_Window, m_glContext);
+        SDL_GL_MakeCurrent(m_window_, m_glContext_);
 
         if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
         {
@@ -101,48 +100,48 @@ namespace RetroRenderer
         glViewport(0, 0, screenWidth, screenHeight);
         // glEnable(GL_DEPTH_TEST);
 
-        SDL_GL_SetSwapInterval(p_Config->window.enableVsync ? 1 : 0);
+        SDL_GL_SetSwapInterval(p_config_->window.enableVsync ? 1 : 0);
 
-        m_ConfigPanel = std::make_unique<ConfigPanel>(m_Window, m_glContext, p_Config, p_Camera, glslVersion, stats);
+        m_configPanel_ = std::make_unique<ConfigPanel>(m_window_, m_glContext_, p_config_, p_camera_, glslVersion, stats);
         return true;
     }
 
     void DisplaySystem::BeforeFrame()
     {
         ResetGlContext();
-        glViewport(0, 0, p_Config->window.size.x, p_Config->window.size.y);
+        glViewport(0, 0, p_config_->window.size.x, p_config_->window.size.y);
         // color is cleared in imgui loop
-        m_ConfigPanel.get()->BeforeFrame();
+        m_configPanel_.get()->BeforeFrame();
     }
 
     void DisplaySystem::DrawFrame()
     {
-        m_ConfigPanel->DisplayRenderedImage();
-        m_ConfigPanel->OnDraw();
+        m_configPanel_->DisplayRenderedImage();
+        m_configPanel_->OnDraw();
     }
 
     void DisplaySystem::DrawFrame(GLuint p_framebufferTexture)
     {
         ResetGlContext();
-        m_ConfigPanel->DisplayRenderedImage(p_framebufferTexture);
-        m_ConfigPanel->OnDraw();
+        m_configPanel_->DisplayRenderedImage(p_framebufferTexture);
+        m_configPanel_->OnDraw();
     }
 
     void DisplaySystem::SwapBuffers()
     {
-        SDL_GL_MakeCurrent(m_Window, m_glContext);
-        SDL_GL_SwapWindow(m_Window);
+        SDL_GL_MakeCurrent(m_window_, m_glContext_);
+        SDL_GL_SwapWindow(m_window_);
     }
 
     void DisplaySystem::Destroy()
     {
-        SDL_GL_DeleteContext(m_glContext);
-        SDL_DestroyWindow(m_Window);
+        SDL_GL_DeleteContext(m_glContext_);
+        SDL_DestroyWindow(m_window_);
         SDL_Quit();
     }
 
     void DisplaySystem::ResetGlContext()
     {
-        SDL_GL_MakeCurrent(m_Window, m_glContext);
+        SDL_GL_MakeCurrent(m_window_, m_glContext_);
     }
 }

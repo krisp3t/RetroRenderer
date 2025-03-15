@@ -14,10 +14,6 @@ namespace RetroRenderer
 
     const std::string &Model::GetName() const
     {
-        if (m_Name.empty())
-        {
-            return "";
-        }
         return m_Name;
     }
 

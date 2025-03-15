@@ -18,7 +18,7 @@ namespace RetroRenderer
 
         void Resize(GLuint newFbTex, int w, int h);
 
-        void Destroy();
+        void Destroy() override;
 
         void SetActiveCamera(const Camera &camera) override;
 

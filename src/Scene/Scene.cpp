@@ -113,7 +113,7 @@ namespace RetroRenderer
 
         for (unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
-            Vertex vertex;
+            Vertex vertex{};
 
             if (mesh->HasPositions())
             {
@@ -131,7 +131,7 @@ namespace RetroRenderer
             }
             if (mesh->mTextureCoords[0])
             {
-                glm::vec2 vec;
+                glm::vec2 vec{};
                 vec.x = mesh->mTextureCoords[0][i].x;
                 vec.y = mesh->mTextureCoords[0][i].y;
                 vertex.texCoords = vec;
@@ -154,7 +154,7 @@ namespace RetroRenderer
 
         if (mesh->mMaterialIndex >= 0)
         {
-            aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+            //aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
             // TODO: process material
         }
 
@@ -171,8 +171,7 @@ namespace RetroRenderer
         // TODO: actually implement frustum culling
         m_VisibleModels.clear();
         m_VisibleModels.reserve(m_Models.size());
-        int i = 0;
-        for (int i = 0; i < m_Models.size(); i++)
+        for (size_t i = 0; i < m_Models.size(); i++)
         {
             m_VisibleModels.push_back(i);
         }

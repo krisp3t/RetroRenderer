@@ -18,16 +18,18 @@ namespace RetroRenderer
 
     void Rasterizer::DrawHLine(Buffer<Uint32> &framebuffer, int x0, int x1, int y, Uint32 color)
     {
-        assert(framebuffer.height > y && "Y out of bounds");
+        assert(y >= 0 && x0 >= 0 && x1 >= 0);
+        assert(framebuffer.height > static_cast<size_t>(y) && "Y out of bounds");
 
         if (x0 > x1) std::swap(x0, x1);
         int startIndex = y * framebuffer.width + x0;
         int length = x1 - x0 + 1;
 
-        assert(x0 >= 0 && x0 < framebuffer.width && "X0 out of bounds");
-        assert(x1 >= 0 && x1 < framebuffer.width && "X1 out of bounds");
-        assert(startIndex >= 0 && startIndex < framebuffer.GetSize() && "Start index out of bounds");
-        assert(startIndex + length <= framebuffer.GetSize() && "End index out of bounds");
+        assert(static_cast<size_t>(x0) < framebuffer.width && "X0 out of bounds");
+        assert(static_cast<size_t>(x1) < framebuffer.width && "X1 out of bounds");
+        assert(startIndex >= 0 && 
+            static_cast<size_t>(startIndex) < framebuffer.GetSize() && "Start index out of bounds");
+        assert(static_cast<size_t>(startIndex + length) <= framebuffer.GetSize() && "End index out of bounds");
 
         std::fill_n(&framebuffer.data[startIndex], length, color);
     }
@@ -110,7 +112,7 @@ namespace RetroRenderer
     {
 
         // Convert vertices to viewport space
-        std::array<glm::vec2, 3> viewportVertices;
+        std::array<glm::vec2, 3> viewportVertices{};
         for (int i = 0; i < 3; i++)
         {
             viewportVertices[i] = NDCToViewport(vertices[i].position, framebuffer.width, framebuffer.height);

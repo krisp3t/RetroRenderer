@@ -335,19 +335,19 @@ namespace RetroRenderer
     // Pan camera (sideways and up/down relative to direction)
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Right))
     {
-        glm::vec3& forward = p_Camera->direction;
-        glm::vec3 right = glm::normalize(glm::cross(forward, p_Camera->up));
+        glm::vec3& forward = p_camera_->direction;
+        glm::vec3 right = glm::normalize(glm::cross(forward, p_camera_->up));
         glm::vec3 up = glm::normalize(glm::cross(right, forward));
 
-        p_Camera->position += right * -ImGui::GetMouseDragDelta(ImGuiMouseButton_Right).x * 0.005f;
-        p_Camera->position += up * ImGui::GetMouseDragDelta(ImGuiMouseButton_Right).y * 0.005f;
+        p_camera_->position += right * -ImGui::GetMouseDragDelta(ImGuiMouseButton_Right).x * 0.005f;
+        p_camera_->position += up * ImGui::GetMouseDragDelta(ImGuiMouseButton_Right).y * 0.005f;
         ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
     }
     // Dolly camera
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
     {
-        glm::vec3& forward = p_Camera->direction;
-        p_Camera->position += forward * ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle).y * 0.01f;
+        glm::vec3& forward = p_camera_->direction;
+        p_camera_->position += forward * ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle).y * 0.01f;
         ImGui::ResetMouseDragDelta(ImGuiMouseButton_Middle);
     }
     */

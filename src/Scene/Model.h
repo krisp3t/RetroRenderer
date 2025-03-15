@@ -31,7 +31,7 @@ namespace RetroRenderer
     private:
         glm::mat4 AssimpToGlmMatrix(const aiMatrix4x4 &mat);
 
-        std::string m_Name;
+        std::string m_Name = "";
         glm::mat4 m_parentTransform = glm::mat4(1.0f);
         glm::mat4 m_nodeTransform = glm::mat4(1.0f);
         glm::mat4 m_worldMatrix = glm::mat4(1.0f);

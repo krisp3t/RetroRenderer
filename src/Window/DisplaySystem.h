@@ -13,6 +13,14 @@ namespace RetroRenderer
     class DisplaySystem
     {
     public:
+        static constexpr SDL_WindowFlags kWindowFlags =
+            static_cast<const SDL_WindowFlags>(
+                SDL_WINDOW_OPENGL |
+                SDL_WINDOW_MAXIMIZED |
+                SDL_WINDOW_RESIZABLE |
+                SDL_WINDOW_ALLOW_HIGHDPI);
+        static constexpr char kWindowTitle[] = "RetroRenderer";
+
         DisplaySystem() = default;
 
         ~DisplaySystem() = default;
@@ -22,14 +30,6 @@ namespace RetroRenderer
         bool Init(std::shared_ptr<Config> config, std::shared_ptr<Camera> camera, std::shared_ptr<Stats> stats);
 
         void Destroy();
-
-        static constexpr SDL_WindowFlags kWindowFlags =
-                static_cast<const SDL_WindowFlags>(
-                        SDL_WINDOW_OPENGL |
-                        SDL_WINDOW_MAXIMIZED |
-                        SDL_WINDOW_RESIZABLE |
-                        SDL_WINDOW_ALLOW_HIGHDPI);
-        static constexpr char kWindowTitle[] = "RetroRenderer";
 
         void SwapBuffers();
 
@@ -41,11 +41,11 @@ namespace RetroRenderer
 
         void ResetGlContext();
     private:
-        SDL_Window *m_Window = nullptr;
-        SDL_GLContext m_glContext = nullptr;
-        std::shared_ptr<Config> p_Config = nullptr;
-        std::unique_ptr<ConfigPanel> m_ConfigPanel = nullptr;
-        std::shared_ptr<Camera> p_Camera;
+        SDL_Window *m_window_ = nullptr;
+        SDL_GLContext m_glContext_ = nullptr;
+        std::shared_ptr<Config> p_config_ = nullptr;
+        std::unique_ptr<ConfigPanel> m_configPanel_ = nullptr;
+        std::shared_ptr<Camera> p_camera_;
     };
 
 }

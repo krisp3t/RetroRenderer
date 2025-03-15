@@ -15,9 +15,7 @@ namespace RetroRenderer
 	public:
 		Camera();
 
-		// Matrices
-		glm::mat4 viewMat = glm::lookAt(position, position + direction, up);
-		glm::mat4 projMat = glm::perspective(glm::radians(fov), aspectRatio, near, far);
+		void UpdateViewMatrix();
 
 		// Vectors
 		glm::vec3 position = { 0.0f, 0.0f, 3.0f };
@@ -31,10 +29,13 @@ namespace RetroRenderer
 		float near = 0.1f;
 		float far = 100.0f;
 		float orthoSize = 10.0f;
+		float aspectRatio = 800.0f / 600.0f; // TODO: replace!!
 
-		void UpdateViewMatrix();
+		// Matrices
+		glm::mat4 viewMat = glm::lookAt(position, position + direction, up);
+		glm::mat4 projMat = glm::perspective(glm::radians(fov), aspectRatio, near, far);
+
 	private:
-		const float aspectRatio = 800.0f / 600.0f; // TODO: replace!!
 	};
 
 }
