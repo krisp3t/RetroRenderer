@@ -7,19 +7,19 @@ namespace RetroRenderer
     {
         LOGD("Starting RetroRenderer in directory: %s", SDL_GetBasePath());
         auto camera = m_SceneManager.GetCamera();
-        if (!m_DisplaySystem.Init(p_Config, camera, p_Stats))
+        if (!m_DisplaySystem.Init(camera))
         {
             return false;
         }
-        if (!m_InputSystem.Init(p_Config))
+        if (!m_InputSystem.Init())
         {
             return false;
         }
-        if (!m_RenderSystem.Init(m_DisplaySystem.GetWindow(), p_Stats))
+        if (!m_RenderSystem.Init(m_DisplaySystem.GetWindow()))
         {
             return false;
         }
-        LOGD("p_Config_ ref count: %d", p_Config.use_count());
+        LOGD("p_Config_ ref count: %d", p_config_.use_count());
 
         // Default scene (optional)
         m_SceneManager.LoadScene("tests-visual/basic-tests/01-2d-triangle/model.obj");
@@ -54,7 +54,7 @@ namespace RetroRenderer
             m_SceneManager.Update(delta);
             m_SceneManager.NewFrame();
 
-            Color clearColor = Color{p_Config->renderer.clearColor};
+            Color clearColor = Color{p_config_->renderer.clearColor};
             auto scene = m_SceneManager.GetScene();
             auto camera = m_SceneManager.GetCamera();
             if (scene && camera)
@@ -66,7 +66,7 @@ namespace RetroRenderer
                 m_DisplaySystem.DrawFrame(fbTex);
             } else
             {
-                p_Stats->Reset();
+                p_stats_->Reset();
                 m_DisplaySystem.BeforeFrame();
                 m_DisplaySystem.DrawFrame();
             }
@@ -123,6 +123,11 @@ namespace RetroRenderer
 
     const std::shared_ptr<Config> Engine::GetConfig() const
     {
-        return p_Config;
+        return p_config_;
     }
+
+	const std::shared_ptr<Stats> Engine::GetStats() const
+	{
+		return p_stats_;
+	}
 }

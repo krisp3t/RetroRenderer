@@ -5,15 +5,15 @@
 
 namespace RetroRenderer
 {
-    bool InputSystem::Init(std::shared_ptr<Config> config)
+    bool InputSystem::Init()
     {
-        p_Config = config;
         return true;
     }
 
     InputActionMask InputSystem::HandleInput()
     {
-        m_InputState = static_cast<InputActionMask>(0);
+		auto const& p_config = Engine::Get().GetConfig();
+        m_inputState_ = static_cast<InputActionMask>(0);
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
@@ -21,73 +21,73 @@ namespace RetroRenderer
             switch (event.type)
             {
                 case SDL_QUIT:
-                    m_InputState |= static_cast<InputActionMask>(InputAction::QUIT);
-                    return m_InputState;
+                    m_inputState_ |= static_cast<InputActionMask>(InputAction::QUIT);
+                    return m_inputState_;
                 case SDL_KEYDOWN:
                     if (event.key.keysym.sym == SDLK_ESCAPE)
                     {
-                        m_InputState |= static_cast<InputActionMask>(InputAction::QUIT);
-                        return m_InputState;
+                        m_inputState_ |= static_cast<InputActionMask>(InputAction::QUIT);
+                        return m_inputState_;
                     }
-                    HandleKeyDown(event.key.keysym.sym);
+                    HandleKeyDown(event.key.keysym.sym, *p_config);
                     break;
                 case SDL_WINDOWEVENT:
                     if (event.window.event == SDL_WINDOWEVENT_RESIZED)
                     {
                         LOGD("Window resized to %d x %d", event.window.data1, event.window.data2);
-                        p_Config->window.size.x = event.window.data1;
-                        p_Config->window.size.y = event.window.data2;
-						if (p_Config->renderer.resolutionAutoResize)
+                        p_config->window.size.x = event.window.data1;
+                        p_config->window.size.y = event.window.data2;
+						if (p_config->renderer.resolutionAutoResize)
 						{
-							Engine::Get().DispatchImmediate(OutputImageResizeEvent{ p_Config->window.outputWindowSize });
+							Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_config->window.outputWindowSize });
 						}
                     }
 					break;
             }
         }
-        return m_InputState;
+        return m_inputState_;
     }
 
-    void InputSystem::HandleKeyDown(SDL_Keycode key)
+    void InputSystem::HandleKeyDown(SDL_Keycode key, Config& config)
     {
         switch (key)
         {
         case SDLK_w:
-            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_FORWARD);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_FORWARD);
             break;
         case SDLK_s:
-            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_BACKWARD);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_BACKWARD);
             break;
         case SDLK_a:
-            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_LEFT);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_LEFT);
             break;
         case SDLK_d:
-            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_RIGHT);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_RIGHT);
             break;
         case SDLK_LSHIFT:
-            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_UP);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_UP);
             break;
         case SDLK_LCTRL:
-            m_InputState |= static_cast<InputActionMask>(InputAction::MOVE_DOWN);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_DOWN);
             break;
         case SDLK_LEFT:
-            m_InputState |= static_cast<InputActionMask>(InputAction::ROTATE_LEFT);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_LEFT);
             break;
         case SDLK_RIGHT:
-            m_InputState |= static_cast<InputActionMask>(InputAction::ROTATE_RIGHT);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_RIGHT);
             break;
         case SDLK_UP:
-            m_InputState |= static_cast<InputActionMask>(InputAction::ROTATE_UP);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_UP);
             break;
         case SDLK_DOWN:
-            m_InputState |= static_cast<InputActionMask>(InputAction::ROTATE_DOWN);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_DOWN);
             break;
         case SDLK_h:
-			p_Config->window.showConfigPanel = !p_Config->window.showConfigPanel;
-            // m_InputState |= static_cast<InputActionMask>(InputAction::TOGGLE_CONFIG_PANEL);
+			config.window.showConfigPanel = !config.window.showConfigPanel;
+            // m_inputState_ |= static_cast<InputActionMask>(InputAction::TOGGLE_CONFIG_PANEL);
             break;
         case SDLK_1:
-            m_InputState |= static_cast<InputActionMask>(InputAction::TOGGLE_WIREFRAME);
+            m_inputState_ |= static_cast<InputActionMask>(InputAction::TOGGLE_WIREFRAME);
             break;
         }
     }
@@ -96,7 +96,7 @@ namespace RetroRenderer
 	{
         // Currently handled in imgui
         /*
-		if (!m_isDragging)
+		if (!m_isDragging_)
 		{
 			return;
 		}

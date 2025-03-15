@@ -20,7 +20,7 @@ namespace RetroRenderer
 
         static void CreateFramebufferTexture(GLuint &texId, int width, int height);
 
-        bool Init(SDL_Window *window, std::shared_ptr<Stats> stats);
+        bool Init(SDL_Window *window);
 
         void BeforeFrame(const Color &clearColor);
 
@@ -35,11 +35,10 @@ namespace RetroRenderer
         void OnLoadScene(const SceneLoadEvent &e);
 
     private:
-        std::unique_ptr<Scene> p_Scene = nullptr;
-        std::unique_ptr<SWRenderer> p_SWRenderer = nullptr;
-        std::unique_ptr<GLRenderer> p_GLRenderer = nullptr;
-        std::shared_ptr<Stats> p_Stats = nullptr;
-        IRenderer *p_ActiveRenderer = nullptr;
+        std::unique_ptr<Scene> p_scene_ = nullptr;
+        std::unique_ptr<SWRenderer> p_SWRenderer_ = nullptr;
+        std::unique_ptr<GLRenderer> p_GLRenderer_ = nullptr;
+        IRenderer *p_activeRenderer_ = nullptr;
 
         GLuint m_SWFramebufferTexture = 0;
         GLuint m_GLFramebufferTexture = 0;

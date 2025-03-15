@@ -13,7 +13,8 @@ namespace RetroRenderer
 	class Camera
 	{
 	public:
-		Camera();
+		Camera() = default;
+		~Camera() = default;
 
 		void UpdateViewMatrix();
 

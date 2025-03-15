@@ -27,7 +27,7 @@ namespace RetroRenderer
 
         SDL_Window *GetWindow() const;
 
-        bool Init(std::shared_ptr<Config> config, std::shared_ptr<Camera> camera, std::shared_ptr<Stats> stats);
+        bool Init(std::shared_ptr<Camera> camera);
 
         void Destroy();
 
@@ -43,9 +43,8 @@ namespace RetroRenderer
     private:
         SDL_Window *m_window_ = nullptr;
         SDL_GLContext m_glContext_ = nullptr;
-        std::shared_ptr<Config> p_config_ = nullptr;
         std::unique_ptr<ConfigPanel> m_configPanel_ = nullptr;
-        std::shared_ptr<Camera> p_camera_;
+        std::shared_ptr<Camera> p_camera_ = nullptr;
     };
 
 }

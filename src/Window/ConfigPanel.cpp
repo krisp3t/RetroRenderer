@@ -58,10 +58,10 @@ namespace RetroRenderer
         ImGui_ImplSDL2_InitForOpenGL(window, glContext);
         ImGui_ImplOpenGL3_Init(glslVersion);
 
-        m_Window = window;
-        p_Config = config;
-        p_Camera = camera;
-        p_Stats = stats;
+        p_Window_ = window;
+        p_config_ = config;
+        p_camera_ = camera;
+        p_stats_ = stats;
 
         return true;
     }
@@ -79,7 +79,6 @@ namespace RetroRenderer
         style.GrabRounding = 1;
         style.GrabMinSize = 20;
         style.FrameRounding = 3;
-
 
         style.Colors[ImGuiCol_Text] = ImVec4(0.00f, 1.00f, 1.00f, 1.00f);
         style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.00f, 0.40f, 0.41f, 1.00f);
@@ -128,8 +127,8 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayGUI()
     {
-        assert(p_Config != nullptr || "Config not initialized!");
-        if (!p_Config->window.showConfigPanel)
+        assert(p_config_ != nullptr || "Config not initialized!");
+        if (!p_config_->window.showConfigPanel)
         {
             return;
         }
@@ -150,7 +149,7 @@ namespace RetroRenderer
         // TODO: add examples file browser
         DisplaySceneGraph();
         DisplayInspectorWindow();
-        DisplayConfigWindow(*p_Config);
+        DisplayConfigWindow(*p_config_);
         DisplayControlsOverlay();
         DisplayMetricsOverlay();
         DisplayExamplesDialog();
@@ -176,7 +175,7 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayWindowSettings()
     {
-        auto &w = p_Config->window;
+        auto &w = p_config_->window;
         ImGui::SeparatorText("Window settings");
         // ImGui::Checkbox("Show configuration panel", &w.showConfigPanel);
         ImGui::Checkbox("Show FPS", &w.showFPS);
@@ -230,7 +229,7 @@ namespace RetroRenderer
     {
         ImGui::Begin("Output");
         ImVec2 contentSize = ImGui::GetContentRegionAvail();
-        p_Config->window.outputWindowSize = {contentSize.x, contentSize.y};
+        p_config_->window.outputWindowSize = {contentSize.x, contentSize.y};
         ImGui::Text("Please load a scene to start rendering!");
         ImGui::End();
     }
@@ -240,14 +239,14 @@ namespace RetroRenderer
         ImGui::Begin("Output");
         ImVec2 contentRegion = ImGui::GetContentRegionAvail();
         glm::ivec2 contentSize(contentRegion.x, contentRegion.y);
-        if (p_Config->renderer.resolutionAutoResize)
+        if (p_config_->renderer.resolutionAutoResize)
         {
-            if (p_Config->window.outputWindowSize != contentSize)
+            if (p_config_->window.outputWindowSize != contentSize)
             {
                 Engine::Get().DispatchImmediate(OutputImageResizeEvent{contentSize});
             }
         }
-        p_Config->window.outputWindowSize = contentSize;
+        p_config_->window.outputWindowSize = contentSize;
 
 
         auto ReleaseMouse = [&]()
@@ -256,17 +255,17 @@ namespace RetroRenderer
             ImVec2 windowSize = ImGui::GetWindowSize();
             ImVec2 resetPos = ImVec2(windowPos.x + windowSize.x / 2, windowPos.y + windowSize.y / 2);
             LOGD("Stop camera drag, resetting mouse to (%.0f, %.0f)", resetPos.x, resetPos.y);
-            m_isDragging = false;
+            m_isDragging_ = false;
             SDL_SetRelativeMouseMode(SDL_FALSE);
-            SDL_WarpMouseInWindow(m_Window, resetPos.x, resetPos.y); // reset to center
+            SDL_WarpMouseInWindow(p_Window_, resetPos.x, resetPos.y); // reset to center
         };
 
         auto HandleCameraDrag = [&]()
         {
             int deltaX, deltaY;
             SDL_GetRelativeMouseState(&deltaX, &deltaY);
-            p_Camera->eulerRotation.y += deltaX * 0.05f;
-            p_Camera->eulerRotation.x -= deltaY * 0.05f;
+            p_camera_->eulerRotation.y += deltaX * 0.05f;
+            p_camera_->eulerRotation.x -= deltaY * 0.05f;
         };
 
         if (ImGui::IsWindowHovered())
@@ -276,16 +275,16 @@ namespace RetroRenderer
 
             if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
-                if (!m_isDragging)
+                if (!m_isDragging_)
                 {
                     LOGD("Start camera drag");
-                    m_isDragging = true;
+                    m_isDragging_ = true;
                     SDL_SetRelativeMouseMode(SDL_TRUE); // Capture mouse
                 }
                 HandleCameraDrag();
             }
                 // Mouse released when hovering, stop dragging
-            else if (m_isDragging)
+            else if (m_isDragging_)
             {
                 ReleaseMouse();
             }
@@ -293,10 +292,10 @@ namespace RetroRenderer
             // Zoom camera (forward/backward along forward vector)
             if (ImGui::GetIO().MouseWheel != 0.0f)
             {
-                glm::vec3 &forward = p_Camera->direction;
-                p_Camera->position += forward * ImGui::GetIO().MouseWheel * 0.1f;
+                glm::vec3 &forward = p_camera_->direction;
+                p_camera_->position += forward * ImGui::GetIO().MouseWheel * 0.1f;
             }
-        } else if (m_isDragging)
+        } else if (m_isDragging_)
         {
             if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
@@ -306,7 +305,7 @@ namespace RetroRenderer
                 ReleaseMouse();
             }
         }
-        switch (p_Config->renderer.selectedRenderer)
+        switch (p_config_->renderer.selectedRenderer)
         {
             case Config::RendererType::SOFTWARE:
                 ImGui::Image(
@@ -324,7 +323,7 @@ namespace RetroRenderer
                 );
                 break;
             default:
-                ImGui::Text("Renderer type %d not implemented!", p_Config->renderer.selectedRenderer);
+                ImGui::Text("Renderer type %d not implemented!", p_config_->renderer.selectedRenderer);
                 break;
         }
 
@@ -530,22 +529,22 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayCameraSettings()
     {
-        if (p_Camera)
+        if (p_camera_)
         {
             ImGui::SeparatorText("Camera settings");
-            ImGui::DragFloat3("Position", glm::value_ptr(p_Camera->position), 0.1f, 0.0f, 0.0f, "%.3f",
+            ImGui::DragFloat3("Position", glm::value_ptr(p_camera_->position), 0.1f, 0.0f, 0.0f, "%.3f",
                               ImGuiSliderFlags_Logarithmic);
-            ImGui::DragFloat3("Rotation", glm::value_ptr(p_Camera->eulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
-            ImGui::Combo("Camera type", reinterpret_cast<int *>(&p_Camera->type), "Perspective\0Orthographic\0");
-            switch (p_Camera->type)
+            ImGui::DragFloat3("Rotation", glm::value_ptr(p_camera_->eulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
+            ImGui::Combo("Camera type", reinterpret_cast<int *>(&p_camera_->type), "Perspective\0Orthographic\0");
+            switch (p_camera_->type)
             {
                 case CameraType::PERSPECTIVE:
-                    ImGui::SliderFloat("Field of view", &p_Camera->fov, 1.0f, 179.0f);
-                    ImGui::SliderFloat("Near plane", &p_Camera->near, 0.1f, 10.0f);
-                    ImGui::SliderFloat("Far plane", &p_Camera->far, 1.0f, 100.0f);
+                    ImGui::SliderFloat("Field of view", &p_camera_->fov, 1.0f, 179.0f);
+                    ImGui::SliderFloat("Near plane", &p_camera_->near, 0.1f, 10.0f);
+                    ImGui::SliderFloat("Far plane", &p_camera_->far, 1.0f, 100.0f);
                     break;
                 case CameraType::ORTHOGRAPHIC:
-                    ImGui::SliderFloat("Orthographic size", &p_Camera->orthoSize, 1.0f, 100.0f);
+                    ImGui::SliderFloat("Orthographic size", &p_camera_->orthoSize, 1.0f, 100.0f);
                     break;
             }
         } else
@@ -557,7 +556,7 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayRendererSettings()
     {
-        auto &r = p_Config->renderer;
+        auto &r = p_config_->renderer;
         ImGui::SeparatorText("Renderer settings");
         if (ImGui::Button("Take screenshot"))
         {
@@ -580,8 +579,8 @@ namespace RetroRenderer
         ImGui::SeparatorText("Resolution");
         ImGui::Text("Render resolution: %d x %d (@ %.1f scale)", static_cast<int>(r.resolution.x),
                     static_cast<int>(r.resolution.y), r.resolutionScale);
-        ImGui::Text("Output window size: %d x %d (@ 1.0 scale)", p_Config->window.outputWindowSize.x,
-                    p_Config->window.outputWindowSize.y);
+        ImGui::Text("Output window size: %d x %d (@ 1.0 scale)", p_config_->window.outputWindowSize.x,
+                    p_config_->window.outputWindowSize.y);
         if (!r.resolutionAutoResize)
         {
             if (ImGui::InputFloat("Render resolution scale",
@@ -593,8 +592,8 @@ namespace RetroRenderer
                 r.resolutionScale = glm::clamp(r.resolutionScale, 0.1f, 4.0f);
                 LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
                 glm::ivec2 newResolution = {
-                        static_cast<int>(floor(p_Config->window.outputWindowSize.x * r.resolutionScale)),
-                        static_cast<int>(floor(p_Config->window.outputWindowSize.y * r.resolutionScale))
+                        static_cast<int>(floor(p_config_->window.outputWindowSize.x * r.resolutionScale)),
+                        static_cast<int>(floor(p_config_->window.outputWindowSize.y * r.resolutionScale))
                 };
                 Engine::Get().DispatchImmediate(OutputImageResizeEvent{newResolution});
             }
@@ -603,14 +602,14 @@ namespace RetroRenderer
         {
             if (r.resolutionAutoResize)
             {
-                Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_Config->window.outputWindowSize});
+                Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_config_->window.outputWindowSize});
             } else
             {
                 r.resolutionScale = glm::clamp(r.resolutionScale, 0.1f, 4.0f);
                 LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
                 glm::ivec2 newResolution = {
-                        static_cast<int>(floor(p_Config->window.outputWindowSize.x * r.resolutionScale)),
-                        static_cast<int>(floor(p_Config->window.outputWindowSize.y * r.resolutionScale))
+                        static_cast<int>(floor(p_config_->window.outputWindowSize.x * r.resolutionScale)),
+                        static_cast<int>(floor(p_config_->window.outputWindowSize.y * r.resolutionScale))
                 };
                 Engine::Get().DispatchImmediate(OutputImageResizeEvent{newResolution});
             }
@@ -631,9 +630,9 @@ namespace RetroRenderer
     {
         ImGui::SeparatorText("Rasterizer settings");
 
-        if (p_Config->renderer.selectedRenderer == Config::RendererType::SOFTWARE)
+        if (p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE)
         {
-            auto &r = p_Config->software.rasterizer;
+            auto &r = p_config_->software.rasterizer;
             const char *lineItems[] = {"DDA (slower)", "Bresenham (faster)"};
             const char *polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
             const char *fillItems[] = {"Scanline", "Barycentric", "Pineda (parallel)"};
@@ -657,9 +656,9 @@ namespace RetroRenderer
                     ImGui::SeparatorText("Fill");
                     ImGui::Combo("Fill mode", reinterpret_cast<int *>(&r.fillMode), fillItems, IM_ARRAYSIZE(lineItems));
             }
-        } else if (p_Config->renderer.selectedRenderer == Config::RendererType::GL)
+        } else if (p_config_->renderer.selectedRenderer == Config::RendererType::GL)
         {
-            auto &r = p_Config->gl.rasterizer;
+            auto &r = p_config_->gl.rasterizer;
             const char *polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
             ImGui::Combo("Polygon mode", reinterpret_cast<int *>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
         }
@@ -667,7 +666,7 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayCullSettings()
     {
-        auto &c = p_Config->cull;
+        auto &c = p_config_->cull;
         ImGui::SeparatorText("Cull settings");
         ImGui::Checkbox("Backface culling", &c.backfaceCulling);
         ImGui::Checkbox("Depth testing", &c.depthTest);
@@ -681,7 +680,7 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayEnvironmentSettings()
     {
-        auto &e = p_Config->environment;
+        auto &e = p_config_->environment;
         ImGui::SeparatorText("Environment settings");
         ImGui::Checkbox("Show skybox", &e.showSkybox);
         ImGui::Checkbox("Show grid", &e.showGrid);
@@ -722,7 +721,7 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayMetricsOverlay()
     {
-        if (!p_Config->window.showFPS) return;
+        if (!p_config_->window.showFPS) return;
 
         static int location = 2;
         ImGuiIO &io = ImGui::GetIO();
@@ -749,26 +748,26 @@ namespace RetroRenderer
         windowFlags |= ImGuiWindowFlags_NoMove;
 
         ImGui::SetNextWindowBgAlpha(0.35f);
-        if (ImGui::Begin("Metrics", &p_Config->window.showFPS, windowFlags))
+        if (ImGui::Begin("Metrics", &p_config_->window.showFPS, windowFlags))
         {
             ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
             ImGui::Text(
                     "%d x %d (%s)",
-                    p_Config->renderer.resolution.x,
-                    p_Config->renderer.resolution.y,
-                    p_Config->renderer.selectedRenderer == Config::RendererType::SOFTWARE ? "software" : "OpenGL"
+                    p_config_->renderer.resolution.x,
+                    p_config_->renderer.resolution.y,
+                    p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE ? "software" : "OpenGL"
             );
             ImGui::Text(
                     "%d verts, %d tris",
-                    p_Stats->renderedVerts,
-                    p_Stats->renderedTris
+                    p_stats_->renderedVerts,
+                    p_stats_->renderedTris
             );
-            if (p_Camera)
+            if (p_camera_)
             {
-                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", p_Camera->position.x, p_Camera->position.y,
-                            p_Camera->position.z);
+                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", p_camera_->position.x, p_camera_->position.y,
+                            p_camera_->position.z);
             }
-            assert(p_Stats != nullptr && "Stats not initialized!");
+            assert(p_stats_ != nullptr && "Stats not initialized!");
             ImGui::PlotLines("frameTimes", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
             if (ImGui::BeginPopupContextWindow("popupCtx"))
             {
@@ -776,7 +775,7 @@ namespace RetroRenderer
                 if (ImGui::MenuItem("Top-right", nullptr, location == 1)) location = 1;
                 if (ImGui::MenuItem("Bottom-left", nullptr, location == 2)) location = 2;
                 if (ImGui::MenuItem("Bottom-right", nullptr, location == 3)) location = 3;
-                if (ImGui::MenuItem("Close")) p_Config->window.showFPS = false;
+                if (ImGui::MenuItem("Close")) p_config_->window.showFPS = false;
                 ImGui::EndPopup();
             }
         }

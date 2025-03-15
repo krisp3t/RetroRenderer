@@ -98,8 +98,8 @@ namespace RetroRenderer
                 m_Rasterizer->DrawTriangle(*m_FrameBuffer, vertices, cfg);
 
                 // Stats
-                // p_Stats->renderedVerts += mesh->m_numVertices;
-                // p_Stats->renderedTris += mesh->m_numFaces;
+                // p_stats_->renderedVerts += mesh->m_numVertices;
+                // p_stats_->renderedTris += mesh->m_numFaces;
             }
         }
     }

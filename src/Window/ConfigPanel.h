@@ -32,11 +32,11 @@ public:
     void OnDraw();
     void OnDraw(GLuint framebufferTexture);
 private:
-	SDL_Window* m_Window = nullptr;
-    std::shared_ptr<Config> p_Config = nullptr;
-    std::shared_ptr<Camera> p_Camera;
-    std::shared_ptr<Stats> p_Stats = nullptr;
-	bool m_isDragging = false;
+	SDL_Window* p_Window_ = nullptr;
+    std::shared_ptr<Config> p_config_ = nullptr;
+    std::shared_ptr<Camera> p_camera_ = nullptr;
+    std::shared_ptr<Stats> p_stats_ = nullptr;
+	bool m_isDragging_ = false;
 
     void StyleColorsEnemymouse();
     void DisplayGUI();

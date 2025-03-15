@@ -2,6 +2,7 @@
 #include <KrisLogger/Logger.h>
 #include "DisplaySystem.h"
 #include "../Renderer/Buffer.h"
+#include "../Engine.h"
 
 namespace RetroRenderer
 {
@@ -10,13 +11,14 @@ namespace RetroRenderer
         return m_window_;
     }
 
-    bool DisplaySystem::Init(std::shared_ptr<Config> config, std::shared_ptr<Camera> camera, std::shared_ptr<Stats> stats)
+    bool DisplaySystem::Init(std::shared_ptr<Camera> camera)
     {
-        p_config_ = config;
         p_camera_ = camera;
+		auto const& p_config = Engine::Get().GetConfig();
+		auto const& p_stats = Engine::Get().GetStats();
 
-        int screenWidth = p_config_->window.size.x;
-        int screenHeight = p_config_->window.size.y;
+        int screenWidth = p_config->window.size.x;
+        int screenHeight = p_config->window.size.y;
 
         if (SDL_Init(SDL_INIT_VIDEO) < 0)
         {
@@ -100,14 +102,15 @@ namespace RetroRenderer
         glViewport(0, 0, screenWidth, screenHeight);
         // glEnable(GL_DEPTH_TEST);
 
-        SDL_GL_SetSwapInterval(p_config_->window.enableVsync ? 1 : 0);
+        SDL_GL_SetSwapInterval(p_config->window.enableVsync ? 1 : 0);
 
-        m_configPanel_ = std::make_unique<ConfigPanel>(m_window_, m_glContext_, p_config_, p_camera_, glslVersion, stats);
+        m_configPanel_ = std::make_unique<ConfigPanel>(m_window_, m_glContext_, p_config, p_camera_, glslVersion, p_stats);
         return true;
     }
 
     void DisplaySystem::BeforeFrame()
     {
+		auto const& p_config_ = Engine::Get().GetConfig();
         ResetGlContext();
         glViewport(0, 0, p_config_->window.size.x, p_config_->window.size.y);
         // color is cleared in imgui loop

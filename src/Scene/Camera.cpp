@@ -1,14 +1,13 @@
 #include "Camera.h"
+#include "../Engine.h"
 
 namespace RetroRenderer
 {
-    Camera::Camera()
-    {
-        UpdateViewMatrix();
-    }
-
     void Camera::UpdateViewMatrix()
     {
+		auto const& p_config = Engine::Get().GetConfig();
+		aspectRatio = p_config->window.size.x / p_config->window.size.y;
+
         eulerRotation.x = glm::clamp(eulerRotation.x, -89.0f, 89.0f);
         eulerRotation.y = glm::mod(eulerRotation.y, 360.0f);
         eulerRotation.z = glm::mod(eulerRotation.z, 360.0f);
