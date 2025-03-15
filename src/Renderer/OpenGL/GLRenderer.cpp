@@ -1,6 +1,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <KrisLogger/Logger.h>
 #include "GLRenderer.h"
+#include "../../Base/Debug.h"
 #include "../../Engine.h"
 
 namespace RetroRenderer
@@ -28,7 +29,7 @@ namespace RetroRenderer
                  type, severity, message);
         }
 #ifndef NDEBUG
-        __debugbreak(); // Traverse across callstack to find error
+		DEBUG_BREAK(); // Traverse across callstack to find error
 #endif
     }
 
