@@ -25,12 +25,6 @@
         },
         "assimp"
     ],
-    "overrides": [
-        {
-            "name": "sdl2",
-            "version": "2.0.16"
-        }
-    ],
   "version": "1.0",
   "name": "retrorenderer"
 }

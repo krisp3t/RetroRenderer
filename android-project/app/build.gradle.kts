@@ -11,7 +11,7 @@ android {
     ndkVersion = "19.2.5345600"
     defaultConfig {
         applicationId = "com.krisp3t.retrorenderer"
-        minSdk = 29
+        minSdk = 28
         targetSdk = 35
         versionCode = 1
         versionName = "0.0.1"
@@ -28,7 +28,8 @@ android {
 
                 arguments += listOf(
                     "--preset=debug-arm64-android",
-                    "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain"
+                    "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain",
+                    "-DANDROID_STL=c++_shared"
                 )
                 abiFilters += listOf("arm64-v8a")
             }
