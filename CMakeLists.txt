@@ -29,9 +29,9 @@ add_subdirectory(lib/KrisLogger)
 
 if (ANDROID)
     add_library(native_app_glue STATIC
-            ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
+            ${ANDROID_NDK_HOME}/sources/android/native_app_glue/android_native_app_glue.c)
     target_include_directories(native_app_glue PUBLIC
-            ${ANDROID_NDK}/sources/android/native_app_glue)
+            ${ANDROID_NDK_HOME}/sources/android/native_app_glue)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
     add_library(${PROJECT_NAME} SHARED ${SOURCES})
 else()
@@ -46,6 +46,7 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/lib/ImGuiFileDialog.h
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES
+        C_STANDARD 11
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
@@ -68,7 +69,8 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 if (ANDROID)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
+    target_link_libraries(${PROJECT_NAME} 
+            PRIVATE
             android
             log
             EGL

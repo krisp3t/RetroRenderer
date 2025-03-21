@@ -10,7 +10,11 @@ namespace RetroRenderer
     {
         auto const &p_config = Engine::Get().GetConfig();
         p_SWRenderer_ = std::make_unique<SWRenderer>();
-        p_GLRenderer_ = std::make_unique<GLRenderer>();
+#ifdef __ANDROID_API__
+        p_GLRenderer_ = std::make_unique<GLESRenderer>();
+#else
+		p_GLRenderer_ = std::make_unique<GLRenderer>();
+#endif
         p_activeRenderer_ = p_SWRenderer_.get();
         auto &fbResolution = p_config->renderer.resolution;
         assert(fbResolution.x > 0 && fbResolution.y > 0 && "Tried to initialize renderers with invalid resolution");

@@ -1,5 +1,4 @@
 #pragma once
-#include <GLES/gl.h>
 #include "../../Scene/Camera.h"
 #include "../../Scene/Scene.h"
 #include "../IRenderer.h"

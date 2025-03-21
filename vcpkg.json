@@ -1,27 +1,36 @@
 {
-  "dependencies": [
-    {
-      "name": "sdl2",
-      "version>=": "2.30.12"
-    },
-    {
-      "name": "glad",
-      "features": [
-        "extensions"
-      ]
-    },
-    "glm",
-    "opengl",
-    {
-      "name": "imgui",
-      "features": [
-        "sdl2-binding",
-        "opengl3-binding",
-        "docking-experimental"
-      ]
-    },
-    "assimp"
-  ],
+    "dependencies": [
+        {
+            "name": "sdl2",
+            "version>=": "2.0.16"
+        },
+        {
+            "name": "glad",
+            "features": [
+                "extensions"
+            ]
+        },
+        "glm",
+        {
+            "name": "opengl",
+            "platform": "!android"
+        },
+        {
+            "name": "imgui",
+            "features": [
+                "sdl2-binding",
+                "opengl3-binding",
+                "docking-experimental"
+            ]
+        },
+        "assimp"
+    ],
+    "overrides": [
+        {
+            "name": "sdl2",
+            "version": "2.0.16"
+        }
+    ],
   "version": "1.0",
   "name": "retrorenderer"
 }

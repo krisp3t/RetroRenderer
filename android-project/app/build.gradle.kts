@@ -8,10 +8,10 @@ plugins {
 android {
     namespace = "com.krisp3t.retrorenderer"
     compileSdk = 35
-    ndkVersion = "28.0.13004108"
+    ndkVersion = "19.2.5345600"
     defaultConfig {
         applicationId = "com.krisp3t.retrorenderer"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 35
         versionCode = 1
         versionName = "0.0.1"
@@ -20,19 +20,20 @@ android {
 
         externalNativeBuild {
             cmake {
+                // TODO: use vcpkg set in cmake
+                val vcpkgRoot = requireNotNull(System.getenv("VCPKG_ROOT")) {
+                    "VCPKG_ROOT environment variable is not set. Install vcpkg or set the variable."
+                }
+                val vcpkgToolchain = "$vcpkgRoot/scripts/buildsystems/vcpkg.cmake"
+
                 arguments += listOf(
-                    "-DANDROID_APP_PLATFORM=android-21", 
-                    "-DANDROID_STL=c++_shared",
-                    "-DVCPKG_TRACE_FIND_PACKAGE=ON",
-                    "-DCMAKE_PREFIX_PATH=D:/Programming/RetroRenderer/build-android/vcpkg_installed/arm64-android",
-                    "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=C:/Users/krisp3t/AppData/Local/Android/Sdk/ndk/28.0.13004108/build/cmake/android.toolchain.cmake",
-                    "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
-                    "-DVCPKG_CMAKE_SYSTEM_NAME=Android",
-                    "-DVCPKG_TARGET_TRIPLET=arm64-android",
-                    )
+                    "--preset=debug-arm64-android",
+                    "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain"
+                )
                 abiFilters += listOf("arm64-v8a")
             }
         }
+
     }
     externalNativeBuild {
         cmake {
