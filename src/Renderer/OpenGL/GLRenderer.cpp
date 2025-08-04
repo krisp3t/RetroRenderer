@@ -9,6 +9,7 @@ namespace RetroRenderer
     /**
      * @brief Debug callback for OpenGL errors. Set breakpoint to catch errors.
      */
+     /*
     void APIENTRY GLRenderer::DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                                             GLsizei length, const GLchar *message, const void *userParam)
     {
@@ -32,9 +33,10 @@ namespace RetroRenderer
 		DEBUG_BREAK(); // Traverse across callstack to find error
 #endif
     }
-
+*/
     bool GLRenderer::Init(GLuint fbTex, int w, int h)
     {
+        /*
         // Enable Debug Output
         if (glDebugMessageCallback == nullptr)
         {
@@ -51,7 +53,7 @@ namespace RetroRenderer
             glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
             LOGD("OpenGL debug context initialized");
         }
-
+*/
         if (!CreateFramebuffer(fbTex, w, h))
         {
             return false;
@@ -178,6 +180,7 @@ void main() {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         auto &config = Engine::Get().GetConfig();
+        /*
         switch (config->gl.rasterizer.polygonMode)
         {
             case Config::RasterizationPolygonMode::POINT:
@@ -190,11 +193,12 @@ void main() {
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
                 break;
         }
+         */
     }
 
     GLuint GLRenderer::EndFrame()
     {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         return p_FrameBufferTexture;
     }
 

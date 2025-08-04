@@ -4,6 +4,7 @@
 #else
 #include <glad/glad.h>
 #endif
+#include "Engine.h"
 
 int SDL_main(int argc, char** argv) {
     // Initialize SDL

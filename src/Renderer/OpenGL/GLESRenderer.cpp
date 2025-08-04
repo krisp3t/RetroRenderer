@@ -6,54 +6,8 @@
 
 namespace RetroRenderer
 {
-    /**
-     * @brief Debug callback for OpenGL errors. Set breakpoint to catch errors.
-     */
-    void APIENTRY GLESRenderer::DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
-        GLsizei length, const GLchar* message, const void* userParam)
-    {
-        if (severity == GL_DEBUG_SEVERITY_MEDIUM)
-        {
-            LOGW("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
-                (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
-                type, severity, message);
-        }
-        else if (severity == GL_DEBUG_SEVERITY_HIGH)
-        {
-            LOGE("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
-                (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
-                type, severity, message);
-        }
-        else
-        {
-            LOGD("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
-                (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
-                type, severity, message);
-        }
-#ifndef NDEBUG
-        DEBUG_BREAK(); // Traverse across callstack to find error
-#endif
-    }
-
     bool GLESRenderer::Init(GLuint fbTex, int w, int h)
     {
-        // Enable Debug Output
-        if (glDebugMessageCallback == nullptr)
-        {
-            LOGW("glDebugMessageCallback not supported on this platform");
-        }
-        else
-        {
-            glEnable(GL_DEBUG_OUTPUT);
-            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-            glDebugMessageCallback(DebugCallback, nullptr);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, nullptr, GL_FALSE);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, nullptr, GL_TRUE);
-            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
-            LOGD("OpenGL debug context initialized");
-        }
-
         if (!CreateFramebuffer(fbTex, w, h))
         {
             return false;
@@ -180,6 +134,7 @@ void main() {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         auto& config = Engine::Get().GetConfig();
+        /*
         switch (config->gl.rasterizer.polygonMode)
         {
         case Config::RasterizationPolygonMode::POINT:
@@ -192,11 +147,12 @@ void main() {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             break;
         }
+         */
     }
 
     GLuint GLESRenderer::EndFrame()
     {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         return p_FrameBufferTexture;
     }
 

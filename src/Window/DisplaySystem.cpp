@@ -79,18 +79,22 @@ namespace RetroRenderer
         }
         SDL_GL_MakeCurrent(m_window_, m_glContext_);
 
+        /*
         if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
         {
             LOGE("Error initializing GLAD\n");
             return false;
         }
+         */
         LOGI("OpenGL loaded");
         LOGI("OpenGL Vendor:    %s", glGetString(GL_VENDOR));
         LOGI("OpenGL Renderer:  %s", glGetString(GL_RENDERER));
         LOGI("OpenGL Version:   %s", glGetString(GL_VERSION));
         LOGI("GLSL Version:     %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
         LOGI("OpenGL extensions:     %s", glGetString(GL_EXTENSIONS));
+
         int contextFlags;
+        /*
         glGetIntegerv(GL_CONTEXT_FLAGS, &contextFlags);
         if (contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT) {
             LOGI("Debug context is active!");
@@ -98,7 +102,7 @@ namespace RetroRenderer
         else {
             LOGW("Debug context not available!");
         }
-
+        */
         glViewport(0, 0, screenWidth, screenHeight);
         // glEnable(GL_DEPTH_TEST);
 

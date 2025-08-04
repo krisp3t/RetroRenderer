@@ -1,7 +1,13 @@
 #pragma once
 #include <vector>
 #include "../Renderer/Vertex.h"
+
+#ifdef __ANDROID__
+#include <GLES3/gl3.h> // For OpenGL ES 3.0
+#else
 #include <glad/glad.h>
+#endif
+
 namespace RetroRenderer
 {
 
@@ -23,9 +29,9 @@ namespace RetroRenderer
         // std::vector<Texture>
 
         // TODO: get rid of OpenGL specifics!!
-        GLuint VAO = 0;
-        GLuint VBO = 0;
-        GLuint EBO = 0;
+        uint VAO = 0;
+        uint VBO = 0;
+        uint EBO = 0;
     };
 
 

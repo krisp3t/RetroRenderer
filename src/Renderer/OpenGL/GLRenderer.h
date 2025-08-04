@@ -1,5 +1,7 @@
 #pragma once
-#include <glad/glad.h>
+#ifndef __ANDROID__
+    #include <glad/glad.h>
+#endif
 #include "../../Scene/Camera.h"
 #include "../../Scene/Scene.h"
 #include "../IRenderer.h"
@@ -45,9 +47,11 @@ namespace RetroRenderer
 
         GLuint m_ShaderProgram = 0;
 
+        /*
         static void
         DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message,
                       const void *userParam);
+                      */
 
         bool CreateFramebuffer(GLuint fbTex, int w, int h);
         GLuint CompileShader(GLenum shaderType, const char *shaderSource);
