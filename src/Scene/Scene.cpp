@@ -1,6 +1,13 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+#ifdef __ANDROID__
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
+#include "../native/AndroidBridge.h"
+#endif
+
 #include <KrisLogger/Logger.h>
 #include "Scene.h"
 #include "../Renderer/Vertex.h"
@@ -10,10 +17,27 @@ namespace RetroRenderer
 {
     bool Scene::Load(const std::string &path)
     {
+
         Assimp::Importer importer;
-        const aiScene *scene = importer.ReadFile(path.c_str(),
-                                                 aiProcess_Triangulate |
-                                                 aiProcess_FlipUVs);
+        const aiScene *scene = nullptr;
+
+#ifdef __ANDROID__
+        AAsset* asset = AAssetManager_open(g_assetManager, path.c_str(), AASSET_MODE_BUFFER);
+        if (asset) {
+            size_t fileSize = AAsset_getLength(asset);
+            std::vector<uint8_t> buffer(fileSize);
+            AAsset_read(asset, buffer.data(), fileSize);
+            AAsset_close(asset);
+
+            scene = importer.ReadFileFromMemory(buffer.data(), fileSize,
+                                                aiProcess_Triangulate | aiProcess_FlipUVs);
+        }
+#else
+        // Original desktop implementation
+        scene = importer.ReadFile(path.c_str(),
+            aiProcess_Triangulate | aiProcess_FlipUVs);
+#endif
+
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             LOGE("assimp: Failed to load scene: %s", importer.GetErrorString());

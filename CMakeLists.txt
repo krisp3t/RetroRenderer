@@ -44,6 +44,7 @@ set(SOURCE_ROOT_DIRS
         src/Renderer/Software
         src/Scene
         src/Window
+        src/native
 )
 set(SOURCES "")
 foreach (dir ${SOURCE_ROOT_DIRS})

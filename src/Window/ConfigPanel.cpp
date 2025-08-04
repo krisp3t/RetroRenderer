@@ -42,7 +42,7 @@ namespace RetroRenderer
         // TODO: add ini
         //io.IniFilename = "config_panel.ini";
         StyleColorsEnemymouse();
-        io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
+        //io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
         ImGui_ImplSDL2_InitForOpenGL(window, glContext);
         ImGui_ImplOpenGL3_Init(glslVersion);
 
