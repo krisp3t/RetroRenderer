@@ -8,10 +8,9 @@ plugins {
 android {
     namespace = "com.krisp3t.retrorenderer"
     compileSdk = 35
-    ndkVersion = "19.2.5345600"
     defaultConfig {
         applicationId = "com.krisp3t.retrorenderer"
-        minSdk = 28
+        minSdk = 27
         targetSdk = 35
         versionCode = 1
         versionName = "0.0.1"
@@ -20,29 +19,14 @@ android {
 
         externalNativeBuild {
             cmake {
-                // TODO: use vcpkg set in cmake
-                val vcpkgRoot = requireNotNull(System.getenv("VCPKG_ROOT")) {
-                    "VCPKG_ROOT environment variable is not set. Install vcpkg or set the variable."
-                }
-                val vcpkgToolchain = "$vcpkgRoot/scripts/buildsystems/vcpkg.cmake"
-
-                arguments += listOf(
-                    "--preset=debug-arm64-android",
-                    "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain",
-                    "-DANDROID_STL=c++_shared"
-                )
                 abiFilters += listOf("arm64-v8a")
+                arguments += listOf(
+                    "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/../../extern/vcpkg/scripts/buildsystems/vcpkg.cmake"
+                )
             }
         }
 
     }
-    externalNativeBuild {
-        cmake {
-            path = file("../../CMakeLists.txt")
-            buildStagingDirectory = file("../../build-android")
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -50,6 +34,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            externalNativeBuild {
+                cmake {
+                    arguments += listOf("--preset=release-arm64-android")
+                }
+            }
         }
         debug {
             isDebuggable = true
@@ -59,9 +48,19 @@ android {
             packaging {
                 jniLibs.keepDebugSymbols += "**/*.so"
             }
+            externalNativeBuild {
+                cmake {
+                    arguments += listOf("--preset=debug-arm64-android")
+                }
+            }
         }
     }
-
+    externalNativeBuild {
+        cmake {
+            path = file("../../CMakeLists.txt")
+            buildStagingDirectory = file("../../out/android-cmake")
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

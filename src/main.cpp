@@ -1,5 +1,9 @@
 #include <SDL.h>
+#ifdef __ANDROID__
 #include <GLES3/gl3.h> // For OpenGL ES 3.0
+#else
+#include <glad/glad.h>
+#endif
 
 int SDL_main(int argc, char** argv) {
     // Initialize SDL
@@ -9,15 +13,17 @@ int SDL_main(int argc, char** argv) {
     }
 
     // Set OpenGL ES attributes
+#ifdef __ANDROID__
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+#endif
 
     // Create window
     SDL_Window* window = SDL_CreateWindow(
-        "GLES Demo",
+        "RetroRenderer",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         800, 600,
         SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
@@ -38,6 +44,16 @@ int SDL_main(int argc, char** argv) {
         return -1;
     }
 
+#ifndef __ANDROID__
+    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+        SDL_Log("Failed to initialize GLAD");
+        SDL_GL_DeleteContext(gl_context);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return -1;
+    }
+#endif
+
     // Main loop
     bool running = true;
     while (running) {
@@ -49,7 +65,7 @@ int SDL_main(int argc, char** argv) {
         }
 
         // Clear screen with dark blue color
-        glClearColor(0.1f, 0.1f, 0.4f, 1.0f);
+        glClearColor(0.3f, 0.1f, 0.4f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Swap buffers

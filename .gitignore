@@ -371,6 +371,7 @@ build-android/
 # Cmake
 cmake-build-debug/
 cmake-build-debug-visual-studio/
+CMakeFiles/
 
 # IDEs
 .idea/
