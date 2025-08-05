@@ -1,4 +1,0 @@
-Perspective-correct
-
-Affine (optional)
-

@@ -4,9 +4,9 @@
 [submodule "lib/ImGuiFileDialog"]
 	path = lib/ImGuiFileDialog
 	url = https://github.com/aiekick/ImGuiFileDialog
-[submodule "tests-visual"]
-	path = assets/tests-visual
-	url = https://github.com/krisp3t/shader-examples.git
 [submodule "lib/KrisLogger"]
 	path = lib/KrisLogger
 	url = https://github.com/krisp3t/KrisLogger.git
+[submodule "tests-visual"]
+	path = tests-visual
+	url = https://github.com/krisp3t/shader-examples.git
