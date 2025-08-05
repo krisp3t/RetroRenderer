@@ -25,8 +25,27 @@ android {
                 )
             }
         }
-
     }
+    applicationVariants.all {
+        val variantName = name
+        val linkAssetsTask = tasks.register("linkAssetsFor$variantName") {
+            doFirst {
+                val externalAssets = file("../../assets/")
+                val targetDir = file("src/main/assets/")
+                println("Syncing assets for $variantName...")
+                if (targetDir.exists()) {
+                    targetDir.deleteRecursively()
+                }
+                externalAssets.copyRecursively(targetDir, overwrite = true)
+            }
+        }
+
+        // Hook into preBuild
+        tasks.named("preBuild").configure {
+            dependsOn(linkAssetsTask)
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
