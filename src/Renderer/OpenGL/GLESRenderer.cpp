@@ -14,8 +14,8 @@ namespace RetroRenderer
         }
 
         // TODO: remove
-        const char* vertexShaderSource = R"glsl(
-#version 300 es
+        const char* vertexShaderSource = R"glsl(#version 300 es
+precision mediump float;
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
@@ -32,8 +32,8 @@ void main() {
     gl_Position = u_ViewProjectionMatrix * vec4(FragPos, 1.0);
 }
 )glsl";
-        const char* fragmentShaderSource = R"glsl(
-#version 300 es
+        const char* fragmentShaderSource = R"glsl(#version 300 es
+precision mediump float;
 in vec3 FragPos;
 in vec2 TexCoord;
 
