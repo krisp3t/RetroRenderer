@@ -11,6 +11,10 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <KrisLogger/Logger.h>
 
+#ifdef __ANDROID__
+#include "../native/AndroidBridge.h"
+#endif
+
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "ConfigPanel.h"
 #include "../Base/InputActions.h"
@@ -39,8 +43,11 @@ namespace RetroRenderer
         (void) io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard
                           | ImGuiConfigFlags_DockingEnable;
-        // TODO: add ini
-        //io.IniFilename = "config_panel.ini";
+#ifdef __ANDROID__
+        io.IniFilename = g_imguiIniPath.c_str();
+#else
+        io.IniFilename = "config_panel.ini";
+#endif
         StyleColorsEnemymouse();
         //io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
         ImGui_ImplSDL2_InitForOpenGL(window, glContext);
