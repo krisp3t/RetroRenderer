@@ -16,31 +16,60 @@ namespace RetroRenderer
         // TODO: remove
         const char* vertexShaderSource = R"glsl(#version 300 es
 precision mediump float;
+
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
 
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_ViewProjectionMatrix;
+uniform mat3 u_NormalMatrix; // derived from model matrix
 
 out vec3 FragPos;
+out vec3 Normal;
 out vec2 TexCoord;
 
 void main() {
     FragPos = vec3(u_ModelMatrix * vec4(aPos, 1.0));
+    Normal = normalize(u_NormalMatrix * aNormal);
     TexCoord = aTexCoord;
     gl_Position = u_ViewProjectionMatrix * vec4(FragPos, 1.0);
 }
 )glsl";
         const char* fragmentShaderSource = R"glsl(#version 300 es
 precision mediump float;
+
 in vec3 FragPos;
+in vec3 Normal;
 in vec2 TexCoord;
 
 out vec4 FragColor;
 
+uniform vec3 u_LightPos;
+uniform vec3 u_ViewPos;
+uniform vec3 u_LightColor;
+uniform vec3 u_ObjectColor;
+
 void main() {
-    FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    // Ambient
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * u_LightColor;
+
+    // Diffuse
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(u_LightPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * u_LightColor;
+
+    // Specular
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(u_ViewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, norm);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+    vec3 specular = specularStrength * spec * u_LightColor;
+
+    vec3 result = (ambient + diffuse + specular) * u_ObjectColor;
+    FragColor = vec4(result, 1.0);
 }
 )glsl";
         m_ShaderProgram = CreateShaderProgram(vertexShaderSource, fragmentShaderSource);
@@ -103,6 +132,9 @@ void main() {
         const glm::mat4 mv = viewMat * modelMat;
         const glm::mat4 mvp = projMat * mv;
         const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
+        glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMat)));
+        GLint normalMatLoc = glGetUniformLocation(m_ShaderProgram, "u_NormalMatrix");
+        glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
 
@@ -111,6 +143,11 @@ void main() {
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMat));
         GLint viewProjLoc = glGetUniformLocation(m_ShaderProgram, "u_ViewProjectionMatrix");
         glUniformMatrix4fv(viewProjLoc, 1, GL_FALSE, glm::value_ptr(mvp));
+
+        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_LightPos"), 5.0f, 5.0f, 5.0f);
+        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ViewPos"), p_Camera->position.x, p_Camera->position.y, p_Camera->position.z);
+        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_LightColor"), 1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ObjectColor"), 1.0f, 0.5f, 0.3f);
 
         auto& meshes = model->GetMeshes();
         for (const Mesh& mesh : meshes)
