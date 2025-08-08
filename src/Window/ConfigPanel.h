@@ -10,7 +10,12 @@
 
 namespace RetroRenderer
 {
-
+struct VirtualStickState {
+    bool active = false;
+    ImVec2 origin;   // where finger first touched
+    ImVec2 delta;    // normalized [-1, 1]
+    int pointerId = -1; // not needed for mouse, useful for multi-touch
+};
 class ConfigPanel
 {
 public:
@@ -51,9 +56,12 @@ private:
     void DisplayConfigWindow(Config& config);
     void DisplayControlsOverlay();
     void DisplayExamplesDialog();
+    void DisplayWindowSettings();
+    void DisplayJoysticks();
 
     const char* k_supportedModels = ".obj,.gltf,.glb,.fbx,.usd";
-    void DisplayWindowSettings();
+    VirtualStickState moveStickState;
+    VirtualStickState rotateStickState;
 };
 
 }

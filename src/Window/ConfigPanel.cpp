@@ -10,13 +10,17 @@
 #include <utility>
 #include <glm/gtc/type_ptr.hpp>
 #include <KrisLogger/Logger.h>
+#include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 
 #ifdef __ANDROID__
 #include "../native/AndroidBridge.h"
+#include "../../lib/ImGuiFileDialog/AndroidAssetFileSystem.cpp"
 #endif
 
-#include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "ConfigPanel.h"
+
+#include <imgui_internal.h>
+
 #include "../Base/InputActions.h"
 #include "../Base/Event.h"
 #include "../Engine.h"
@@ -50,6 +54,7 @@ namespace RetroRenderer
 #endif
         StyleColorsEnemymouse();
         //io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
+        io.FontGlobalScale = 2.0f;
         ImGui_ImplSDL2_InitForOpenGL(window, glContext);
         ImGui_ImplOpenGL3_Init(glslVersion);
 
@@ -138,7 +143,7 @@ namespace RetroRenderer
         //bool show = true;
         //ImGui::ShowDemoWindow(&show);
 
-
+        DisplayJoysticks();
         DisplayMainMenu();
         //DisplayPipelineWindow();
         // TODO: add examples file browser
@@ -154,7 +159,6 @@ namespace RetroRenderer
     {
         IGFD::FileDialogConfig examplesDialogConfig;
         examplesDialogConfig.countSelectionMax = 1;
-        examplesDialogConfig.filePathName = "tests-visual/basic-tests/";
         ImGuiFileDialog::Instance()->OpenDialog("OpenExampleFile", "Examples", k_supportedModels, examplesDialogConfig);
         if (ImGuiFileDialog::Instance()->Display("OpenExampleFile"))
         {
@@ -739,7 +743,7 @@ namespace RetroRenderer
     {
         if (!p_config_->window.showFPS) return;
 
-        static int location = 2;
+        static int location = 0;
         ImGuiIO &io = ImGui::GetIO();
         ImGuiWindowFlags windowFlags =
                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
@@ -797,6 +801,93 @@ namespace RetroRenderer
         }
         ImGui::End();
     }
+
+void ConfigPanel::DisplayJoysticks()
+{
+    ImGuiIO& io = ImGui::GetIO();
+    float moveSpeed = 0.005f;
+    float rotateSpeed = 0.1f;
+    float deltaTime = 5.0f; // TODO: actually pass
+
+    ImVec2 stickSize(200, 200);
+    ImVec2 leftPos(20, io.DisplaySize.y - stickSize.y - 20);
+    ImVec2 rightPos(io.DisplaySize.x - stickSize.x - 20, io.DisplaySize.y - stickSize.y - 20);
+
+    auto DrawJoystick = [&](const char* label, const ImVec2& pos, VirtualStickState& state) {
+        ImGui::SetNextWindowPos(pos);
+        ImGui::SetNextWindowSize(stickSize);
+        ImGui::Begin(label, nullptr,
+                     ImGuiWindowFlags_NoTitleBar |
+                     ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoMove |
+                     ImGuiWindowFlags_NoScrollbar |
+                     ImGuiWindowFlags_NoBackground);
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        ImVec2 center = ImVec2(pos.x + stickSize.x * 0.5f, pos.y + stickSize.y * 0.5f);
+        float radius = stickSize.x * 0.45f;
+
+        drawList->AddCircleFilled(center, radius, IM_COL32(80, 80, 80, 100));
+
+        bool hovered = ImGui::IsWindowHovered();
+
+        if (!state.active && hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            // Start drag
+            state.active = true;
+            state.origin = io.MousePos;
+        }
+
+        if (state.active)
+        {
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                // Still dragging, calculate relative movement from origin
+                ImVec2 diff = ImVec2(io.MousePos.x - state.origin.x, io.MousePos.y - state.origin.y);
+                state.delta.x = diff.x / radius;
+                state.delta.y = diff.y / radius;
+
+                float len = sqrtf(state.delta.x * state.delta.x + state.delta.y * state.delta.y);
+                if (len > 1.0f) {
+                    state.delta.x /= len;
+                    state.delta.y /= len;
+                }
+            }
+            else
+            {
+                // Finger lifted
+                state.active = false;
+                state.delta = ImVec2(0, 0);
+            }
+        }
+
+        // Draw knob (based on delta)
+        ImVec2 knobPos = ImVec2(center.x + state.delta.x * radius * 0.5f,
+                                center.y + state.delta.y * radius * 0.5f);
+        drawList->AddCircleFilled(knobPos, radius * 0.3f, IM_COL32(200, 200, 200, 180));
+
+        ImGui::End();
+    };
+
+    DrawJoystick("MoveStick", leftPos, moveStickState);
+    DrawJoystick("RotateStick", rightPos, rotateStickState);
+
+    // Apply camera movement
+    if (moveStickState.active)
+    {
+        glm::vec3 forward = p_camera_->direction;
+        glm::vec3 right = glm::normalize(glm::cross(forward, p_camera_->up));
+
+        p_camera_->position += forward * (-moveStickState.delta.y) * moveSpeed * deltaTime;
+        p_camera_->position += right * (moveStickState.delta.x) * moveSpeed * deltaTime;
+    }
+
+    if (rotateStickState.active)
+    {
+        p_camera_->eulerRotation.y += (-rotateStickState.delta.x) * rotateSpeed * deltaTime; // yaw
+        p_camera_->eulerRotation.x += (-rotateStickState.delta.y) * rotateSpeed * deltaTime; // pitch
+    }
+}
 
     void ConfigPanel::BeforeFrame()
     {
