@@ -15,7 +15,7 @@ namespace RetroRenderer
 
         // TODO: remove
         const char* vertexShaderSource = R"glsl(#version 300 es
-precision mediump float;
+precision highp float;
 
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
@@ -37,7 +37,7 @@ void main() {
 }
 )glsl";
         const char* fragmentShaderSource = R"glsl(#version 300 es
-precision mediump float;
+precision highp float;
 
 in vec3 FragPos;
 in vec3 Normal;
@@ -167,7 +167,7 @@ void main() {
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
         glClearColor(c.x, c.y, c.z, c.w);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        //glEnable(GL_DEPTH_TEST);
+        glEnable(GL_DEPTH_TEST);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         auto& config = Engine::Get().GetConfig();
