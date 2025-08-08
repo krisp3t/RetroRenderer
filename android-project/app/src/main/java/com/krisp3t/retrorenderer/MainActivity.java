@@ -16,7 +16,7 @@ public class MainActivity extends SDLActivity {
         super.onCreate(savedInstanceState);
 
         nativeSetAssetManager(getAssets());
-        copyAssetToInternalStorage("config_panel.ini", "config_panel.ini");
+        copyAllAssetsToInternalStorage("", getFilesDir());
         setImGuiIniPath(getFilesDir().getAbsolutePath() + "/config_panel.ini");
     }
     private static native void nativeSetAssetManager(AssetManager assetManager);
@@ -27,16 +27,40 @@ public class MainActivity extends SDLActivity {
         return new String[] { "retrorenderer" };
     }
 
-    private void copyAssetToInternalStorage(String assetName, String outputName) {
-        File outFile = new File(getFilesDir(), outputName);
-        if (outFile.exists()) return; // Don't overwrite if it already exists
+    private void copyAssetFile(String assetPath, File destFile) {
+        if (destFile.exists()) return; // Don't overwrite existing
 
-        try (InputStream in = getAssets().open(assetName);
-             OutputStream out = new FileOutputStream(outFile)) {
-            byte[] buffer = new byte[1024];
+        try (InputStream in = getAssets().open(assetPath);
+             OutputStream out = new FileOutputStream(destFile)) {
+            byte[] buffer = new byte[4096];
             int read;
             while ((read = in.read(buffer)) != -1) {
                 out.write(buffer, 0, read);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void copyAllAssetsToInternalStorage(String assetPath, File outputDir) {
+        AssetManager assetManager = getAssets();
+        try {
+            String[] assets = assetManager.list(assetPath);
+            if (assets == null || assets.length == 0) {
+                // File
+                copyAssetFile(assetPath, new File(outputDir, new File(assetPath).getName()));
+            } else {
+                // Directory
+                File dir = new File(outputDir, assetPath);
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+                for (String asset : assets) {
+                    copyAllAssetsToInternalStorage(
+                            assetPath.isEmpty() ? asset : assetPath + "/" + asset,
+                            outputDir
+                    );
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
