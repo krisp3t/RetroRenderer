@@ -53,8 +53,21 @@ namespace RetroRenderer
         io.IniFilename = "config_panel.ini";
 #endif
         StyleColorsEnemymouse();
-        //io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
-        io.FontGlobalScale = 2.0f;
+#ifdef __ANDROID__
+        AAsset* font_asset = AAssetManager_open(g_assetManager, "fonts/Tomorrow-Italic.ttf", AASSET_MODE_BUFFER);
+        if (font_asset) {
+            size_t fileSize = AAsset_getLength(font_asset);
+            m_fontData_.resize(fileSize);
+            AAsset_read(font_asset, m_fontData_.data(), fileSize);
+            AAsset_close(font_asset);
+            ImFontConfig cfg;
+            cfg.FontDataOwnedByAtlas = false; // we keep ownership in m_fontData_
+            io.Fonts->AddFontFromMemoryTTF(m_fontData_.data(), (int)m_fontData_.size(), 40.0f, &cfg);
+        }
+#else
+        io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
+#endif
+        //io.FontGlobalScale = 2.0f;
         ImGui_ImplSDL2_InitForOpenGL(window, glContext);
         ImGui_ImplOpenGL3_Init(glslVersion);
 

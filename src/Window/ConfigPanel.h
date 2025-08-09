@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "../Base/Config.h"
 #include "../Base/Stats.h"
 #include "../Scene/Camera.h"
@@ -14,7 +15,7 @@ struct VirtualStickState {
     bool active = false;
     ImVec2 origin;   // where finger first touched
     ImVec2 delta;    // normalized [-1, 1]
-    int pointerId = -1; // not needed for mouse, useful for multi-touch
+    SDL_FingerID fingerId = -1; // not needed for mouse, useful for multi-touch
 };
 class ConfigPanel
 {
@@ -39,6 +40,7 @@ private:
     std::shared_ptr<Config> p_config_ = nullptr;
     std::shared_ptr<Camera> p_camera_ = nullptr;
     std::shared_ptr<Stats> p_stats_ = nullptr;
+    std::vector<uint8_t> m_fontData_ = {}; // keep font bytes alive for the lifetime of imgui
 	bool m_isDragging_ = false;
 
     void StyleColorsEnemymouse();
