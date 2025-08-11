@@ -1,4 +1,3 @@
-#include <SDL_egl.h>
 #include "Mesh.h"
 
 namespace RetroRenderer

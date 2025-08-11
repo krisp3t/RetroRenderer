@@ -10,7 +10,7 @@
 
 #include <KrisLogger/Logger.h>
 #include "Scene.h"
-#include "../Renderer/Vertex.h"
+#include "Vertex.h"
 
 namespace RetroRenderer
 {
