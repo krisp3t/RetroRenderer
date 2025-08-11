@@ -10,7 +10,7 @@ namespace RetroRenderer
     {
         auto const &p_config = Engine::Get().GetConfig();
         p_SWRenderer_ = std::make_unique<SWRenderer>();
-#ifdef __ANDROID_API__
+#ifdef __ANDROID__
         p_GLRenderer_ = std::make_unique<GLESRenderer>();
 #else
 		p_GLRenderer_ = std::make_unique<GLRenderer>();

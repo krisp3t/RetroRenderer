@@ -17,8 +17,12 @@ if(ANDROID)
     set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "$ENV{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake")
 
     set(NATIVE_FILES
-            src/native/AndroidBridge.cpp
             src/native/AndroidBridge.h
+            src/native/AndroidBridge.cpp
+    )
+    set(RENDERER_BACKENDS
+            src/Renderer/GLES/GLESRenderer.h
+            src/Renderer/GLES/GLESRenderer.cpp
     )
 
     # Debug flags
@@ -26,8 +30,13 @@ if(ANDROID)
             $<$<CONFIG:Debug>:-g>
             $<$<CONFIG:Debug>:-O0>
     )
+else()
+    # TODO: desktop
+    set(RENDERER_BACKENDS
+            src/Renderer/OpenGL/GLRenderer.h
+            src/Renderer/OpenGL/GLRenderer.cpp
+    )
 endif()
-
 # -----------------------------------------------------------------------------
 # Dependencies (vcpkg)
 # -----------------------------------------------------------------------------
@@ -45,7 +54,6 @@ set(SOURCE_ROOT_DIRS
         src/
         src/Base
         src/Renderer
-        src/Renderer/OpenGL
         src/Renderer/Software
         src/Scene
         src/Window
@@ -75,9 +83,9 @@ endif()
 # Main target
 # -----------------------------------------------------------------------------
 if(ANDROID)
-    add_library(${PROJECT_NAME} SHARED ${SOURCES} ${NATIVE_FILES})
+    add_library(${PROJECT_NAME} SHARED ${SOURCES} ${RENDERER_BACKENDS} ${NATIVE_FILES})
 else()
-    add_executable(${PROJECT_NAME} ${SOURCES})
+    add_executable(${PROJECT_NAME} ${SOURCES} ${RENDERER_BACKENDS})
 endif()
 
 # -----------------------------------------------------------------------------
