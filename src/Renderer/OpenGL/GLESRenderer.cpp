@@ -126,6 +126,8 @@ void main() {
 
     void GLESRenderer::DrawTriangularMesh(const Model* model)
     {
+        glUseProgram(m_ShaderProgram);
+
         const glm::mat4& modelMat = model->GetTransform();
         const glm::mat4& viewMat = p_Camera->viewMat;
         const glm::mat4& projMat = p_Camera->projMat;
@@ -158,7 +160,7 @@ void main() {
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // glUseProgram(0);
+        glUseProgram(0);
     }
 
     void GLESRenderer::BeforeFrame(const Color& clearColor)
@@ -168,7 +170,7 @@ void main() {
         glClearColor(c.x, c.y, c.z, c.w);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        //glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         auto& config = Engine::Get().GetConfig();
         /*

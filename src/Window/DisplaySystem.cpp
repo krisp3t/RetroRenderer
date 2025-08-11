@@ -49,14 +49,8 @@ namespace RetroRenderer
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #else
-        // GL 3.0 + GLSL 130
+        // GL 4.3
         const char* glslVersion = "#version 430";
-        /*
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-		*/
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
@@ -87,13 +81,14 @@ namespace RetroRenderer
         }
         SDL_GL_MakeCurrent(m_window_, m_glContext_);
 
-        /*
+#ifndef __ANDROID__
         if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
         {
             LOGE("Error initializing GLAD\n");
             return false;
         }
-         */
+#endif
+
         LOGI("OpenGL loaded");
         LOGI("OpenGL Vendor:    %s", glGetString(GL_VENDOR));
         LOGI("OpenGL Renderer:  %s", glGetString(GL_RENDERER));

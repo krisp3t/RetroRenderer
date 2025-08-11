@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class MainActivity extends SDLActivity {
     // Permissions
@@ -20,8 +21,7 @@ public class MainActivity extends SDLActivity {
     // Native
     private static native void nativeSetAssetManager(AssetManager assetManager);
     public native void nativeSetImGuiIniPath(String path);
-    private static native void nativeOnFilePicked(ByteBuffer buffer, int length, String extension);
-    private ByteBuffer currentFileBuffer; // keep reference to prevent GC
+    private static native void nativeOnFilePicked(byte[] data);
 
     @Override
     protected String[] getLibraries() {
@@ -44,45 +44,23 @@ public class MainActivity extends SDLActivity {
         if (requestCode == PICK_FILE_REQUEST && resultCode == RESULT_OK) {
             Uri uri = data.getData();
             try {
-                assert uri != null;
                 InputStream is = getContentResolver().openInputStream(uri);
-                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
-                byte[] tmp = new byte[8192];
+                byte[] tmp = new byte[4096];
                 int read;
                 while ((read = is.read(tmp)) != -1) {
-                    bos.write(tmp, 0, read);
+                    buffer.write(tmp, 0, read);
                 }
                 is.close();
 
-                byte[] fileBytes = bos.toByteArray();
-
-                // Try to get extension from URI
-                String name = uri.getLastPathSegment();
-                String ext = "";
-                if (name != null) {
-                    int dot = name.lastIndexOf('.');
-                    if (dot != -1) {
-                        ext = name.substring(dot + 1);
-                    }
-                }
-
-                // Create direct buffer and keep reference
-                currentFileBuffer = ByteBuffer.allocateDirect(fileBytes.length);
-                currentFileBuffer.put(fileBytes);
-                currentFileBuffer.flip();
-
-                nativeOnFilePicked(currentFileBuffer, fileBytes.length, ext);
-                releaseFileBuffer();
+                byte[] fileBytes = buffer.toByteArray();
+                nativeOnFilePicked(fileBytes);
 
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-    }
-
-    public void releaseFileBuffer() {
-        currentFileBuffer = null; // Allow GC
     }
 
     private void copyAssetFile(String assetPath, File destFile) {

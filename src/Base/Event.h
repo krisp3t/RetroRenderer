@@ -48,6 +48,7 @@ namespace RetroRenderer
 	{
 		std::string scenePath;
 		const uint8_t* sceneData = nullptr;
+		std::vector<uint8_t> sceneDataBuffer;
 		size_t sceneDataSize = 0;
 		bool loadFromMemory = false;
 
@@ -56,6 +57,13 @@ namespace RetroRenderer
 			type = EventType::Scene_Load;
 			scenePath = std::move(path);
 			loadFromMemory = false;
+		}
+		SceneLoadEvent(std::vector<uint8_t> buffer, size_t size)
+		{
+			type = EventType::Scene_Load;
+			sceneDataBuffer = buffer;
+			sceneDataSize = size;
+			loadFromMemory = true;
 		}
 		SceneLoadEvent(const uint8_t* data, size_t size)
 		{

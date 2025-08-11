@@ -38,6 +38,8 @@ namespace RetroRenderer
         {
             start = SDL_GetTicks();
 
+            ProcessEventQueue();
+
             auto inputActions = m_InputSystem.HandleInput();
             if (inputActions & static_cast<InputActionMask>(InputAction::QUIT))
             {
@@ -83,6 +85,29 @@ namespace RetroRenderer
     {
     }
 
+    void Engine::EnqueueEvent(std::unique_ptr<Event> event)
+    {
+        std::lock_guard<std::mutex> lock(m_EventQueueMutex);
+        m_EventQueue.push(std::move(event));
+    }
+
+    void Engine::ProcessEventQueue()
+    {
+        std::queue<std::unique_ptr<Event>> tempQueue;
+        {
+            // Move all events out of the main queue in one lock
+            std::lock_guard<std::mutex> lock(m_EventQueueMutex);
+            std::swap(m_EventQueue, tempQueue);
+        }
+        // Process outside of lock to avoid holding it during event handling
+        while (!tempQueue.empty())
+        {
+            auto &event = *tempQueue.front();
+            Dispatch(event);
+            tempQueue.pop();
+        }
+    }
+
     /**
      * Handle synchronous event (immediately, without queue).
 	 * Used for events that need to be handled immediately, like window resizing and scene reloading.
@@ -109,7 +134,7 @@ namespace RetroRenderer
                 }
                 else
                 {
-                    m_SceneManager.LoadScene(e.sceneData, e.sceneDataSize);
+                    m_SceneManager.LoadScene(e.sceneDataBuffer.data(), e.sceneDataSize);
                 }
                 m_RenderSystem.OnLoadScene(e); // TODO: send to all subscribers
                 break;

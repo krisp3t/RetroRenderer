@@ -16,6 +16,11 @@ if(ANDROID)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/extern/vcpkg/scripts/buildsystems/vcpkg.cmake")
     set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "$ENV{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake")
 
+    set(NATIVE_FILES
+            src/native/AndroidBridge.cpp
+            src/native/AndroidBridge.h
+    )
+
     # Debug flags
     add_compile_options(
             $<$<CONFIG:Debug>:-g>
@@ -44,11 +49,10 @@ set(SOURCE_ROOT_DIRS
         src/Renderer/Software
         src/Scene
         src/Window
-        src/native
 )
 set(SOURCES "")
 foreach (dir ${SOURCE_ROOT_DIRS})
-    file(GLOB_RECURSE CURR_SOURCES CONFIGURE_DEPENDS
+    file(GLOB CURR_SOURCES CONFIGURE_DEPENDS
             "${dir}/*.cpp"
             "${dir}/*.h"
     )
@@ -71,7 +75,7 @@ endif()
 # Main target
 # -----------------------------------------------------------------------------
 if(ANDROID)
-    add_library(${PROJECT_NAME} SHARED ${SOURCES})
+    add_library(${PROJECT_NAME} SHARED ${SOURCES} ${NATIVE_FILES})
 else()
     add_executable(${PROJECT_NAME} ${SOURCES})
 endif()

@@ -1,3 +1,4 @@
+#include <SDL_egl.h>
 #include "Mesh.h"
 
 namespace RetroRenderer
@@ -13,6 +14,9 @@ namespace RetroRenderer
 
     void Mesh::Init()
     {
+        EGLContext ctx = eglGetCurrentContext();
+        assert(ctx != EGL_NO_CONTEXT);
+
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);

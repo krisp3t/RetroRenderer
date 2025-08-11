@@ -4,6 +4,7 @@
 #include <android/asset_manager_jni.h>
 #include <string>
 #include <vector>
+#include <KrisLogger/Logger.h>
 #include "../Engine.h"
 
 #ifdef __ANDROID__
@@ -31,22 +32,17 @@ Java_com_krisp3t_retrorenderer_MainActivity_nativeSetImGuiIniPath(JNIEnv* env, j
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_krisp3t_retrorenderer_MainActivity_nativeOnFilePicked(
-        JNIEnv* env,
-        jobject,
-        jobject directBuffer,
-        jint length,
-        jstring jext) {
-    uint8_t* fileData = static_cast<uint8_t*>(env->GetDirectBufferAddress(directBuffer));
-    if (!fileData) {
-        // Handle error: buffer address not available
-        return;
-    }
+JNIEnv* env, jobject /* this */, jbyteArray fileData, jstring extension) {
+    size_t length = env->GetArrayLength(fileData);
+    std::vector<uint8_t> buffer(length);
+    env->GetByteArrayRegion(fileData, 0, length, reinterpret_cast<jbyte*>(buffer.data()));
+    //const char* extStr = env->GetStringUTFChars(extension, nullptr);
 
-    // Get file extension
-    const char* extCStr = env->GetStringUTFChars(jext, nullptr);
-    std::string extension(extCStr ? extCStr : "");
-    env->ReleaseStringUTFChars(jext, extCStr);
+    auto event = std::make_unique<RetroRenderer::SceneLoadEvent>(
+        std::move(buffer),
+        length
+    );
+    RetroRenderer::Engine::Get().EnqueueEvent(std::move(event));
 
-    RetroRenderer::Engine::Get().DispatchImmediate(RetroRenderer::SceneLoadEvent{fileData, static_cast<size_t>(length)});
-
+    //env->ReleaseStringUTFChars(extension, extStr);
 }

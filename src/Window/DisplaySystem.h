@@ -18,12 +18,20 @@ namespace RetroRenderer
     class DisplaySystem
     {
     public:
+#ifdef __ANDROID__
         static constexpr SDL_WindowFlags kWindowFlags =
             static_cast<const SDL_WindowFlags>(
                 SDL_WINDOW_OPENGL |
                 SDL_WINDOW_FULLSCREEN |
                 SDL_WINDOW_RESIZABLE |
                 SDL_WINDOW_ALLOW_HIGHDPI);
+#else
+        static constexpr SDL_WindowFlags kWindowFlags =
+    static_cast<const SDL_WindowFlags>(
+        SDL_WINDOW_OPENGL |
+        SDL_WINDOW_RESIZABLE |
+        SDL_WINDOW_ALLOW_HIGHDPI);
+#endif
         static constexpr char kWindowTitle[] = "RetroRenderer";
 
         DisplaySystem() = default;

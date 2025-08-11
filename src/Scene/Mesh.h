@@ -29,9 +29,9 @@ namespace RetroRenderer
         // std::vector<Texture>
 
         // TODO: get rid of OpenGL specifics!!
-        uint VAO = 0;
-        uint VBO = 0;
-        uint EBO = 0;
+        GLuint VAO = 0;
+        GLuint VBO = 0;
+        GLuint EBO = 0;
     };
 
 

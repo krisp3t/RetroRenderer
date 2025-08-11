@@ -24,7 +24,7 @@ namespace RetroRenderer
             return false;
         }
 
-        p_Camera.reset(new Camera());
+        //p_Camera.reset(new Camera());
         return true;
     }
 
@@ -37,7 +37,7 @@ namespace RetroRenderer
             return false;
         }
 
-        p_Camera.reset(new Camera());
+        //p_Camera.reset(new Camera());
         return true;
     }
 
