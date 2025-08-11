@@ -25,6 +25,6 @@
         },
         "assimp"
     ],
-  "version": "1.0",
-  "name": "retrorenderer"
+    "version": "1.0",
+    "name": "retrorenderer"
 }

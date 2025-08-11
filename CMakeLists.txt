@@ -9,7 +9,7 @@ if(ANDROID)
     set(CMAKE_SYSTEM_NAME Android)
     set(CMAKE_ANDROID_NDK            $ENV{ANDROID_NDK_HOME})
     set(CMAKE_ANDROID_ARCH_ABI       arm64-v8a)
-    set(CMAKE_ANDROID_API            26)
+    set(CMAKE_ANDROID_API            26) # We're using SDL2.0.16, last to support Android SDK 26
     set(CMAKE_ANDROID_STL_TYPE       c++_shared)
 
     set(VCPKG_TARGET_TRIPLET arm64-android)
