@@ -12,15 +12,26 @@
 #include "Scene.h"
 #include "../Renderer/Vertex.h"
 
-
 namespace RetroRenderer
 {
-    bool Scene::Load(const std::string &path)
+    bool Scene::Load(const uint8_t* data, const size_t size)
     {
-
         Assimp::Importer importer;
         const aiScene *scene = nullptr;
+        scene = importer.ReadFileFromMemory(data, size,
+                                    aiProcess_Triangulate | aiProcess_FlipUVs);
+        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+        {
+            LOGE("assimp: Failed to load scene: %s", importer.GetErrorString());
+            return false;
+        }
+        return ProcessScene(scene);
+    }
 
+    bool Scene::Load(const std::string &path)
+    {
+        Assimp::Importer importer;
+        const aiScene *scene = nullptr;
 #ifdef __ANDROID__
         AAsset* asset = AAssetManager_open(g_assetManager, path.c_str(), AASSET_MODE_BUFFER);
         if (asset) {
@@ -33,17 +44,20 @@ namespace RetroRenderer
                                                 aiProcess_Triangulate | aiProcess_FlipUVs);
         }
 #else
-        // Original desktop implementation
         scene = importer.ReadFile(path.c_str(),
             aiProcess_Triangulate | aiProcess_FlipUVs);
 #endif
-
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
             LOGE("assimp: Failed to load scene: %s", importer.GetErrorString());
             return false;
         }
+        return ProcessScene(scene);
 
+    }
+
+    bool Scene::ProcessScene(const aiScene* scene)
+    {
         if (ProcessNode(scene->mRootNode, scene))
         {
             // LOGI("Successfully processed scene: %s (%d meshes)", scene->mRootNode->mName.C_Str(), m_Meshes.size());
@@ -51,6 +65,7 @@ namespace RetroRenderer
         }
         return true;
     }
+
 
     /**
      * Recursively process each node in the scene. One node will map to one model, which can have multiple meshes.

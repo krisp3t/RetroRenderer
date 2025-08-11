@@ -14,7 +14,6 @@
 
 #ifdef __ANDROID__
 #include "../native/AndroidBridge.h"
-#include "../../lib/ImGuiFileDialog/AndroidAssetFileSystem.cpp"
 #endif
 
 #include "ConfigPanel.h"
@@ -183,7 +182,7 @@ namespace RetroRenderer
             {
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 LOGD("Selected example file: %s", filePathName.c_str());
-                Engine::Get().DispatchImmediate(SceneLoadEvent{std::move(filePathName)});
+                Engine::Get().DispatchImmediate(SceneLoadEvent{filePathName});
                 // IGFD::FileManager::SetCurrentPath("tests-visual/basic-tests/");
             }
         }
@@ -428,7 +427,7 @@ namespace RetroRenderer
                 {
                     std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                     LOGD("Selected model file: %s", filePathName.c_str());
-                    Engine::Get().DispatchImmediate(SceneLoadEvent{std::move(filePathName)});
+                    Engine::Get().DispatchImmediate(SceneLoadEvent{filePathName});
                 }
                 ImGuiFileDialog::Instance()->Close();
             }

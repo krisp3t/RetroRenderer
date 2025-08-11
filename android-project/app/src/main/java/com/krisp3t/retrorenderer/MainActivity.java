@@ -21,6 +21,7 @@ public class MainActivity extends SDLActivity {
     private static native void nativeSetAssetManager(AssetManager assetManager);
     public native void nativeSetImGuiIniPath(String path);
     private static native void nativeOnFilePicked(ByteBuffer buffer, int length, String extension);
+    private ByteBuffer currentFileBuffer; // keep reference to prevent GC
 
     @Override
     protected String[] getLibraries() {
@@ -66,17 +67,22 @@ public class MainActivity extends SDLActivity {
                     }
                 }
 
-                // Direct buffer for zero-copy
-                ByteBuffer directBuffer = ByteBuffer.allocateDirect(fileBytes.length);
-                directBuffer.put(fileBytes);
-                directBuffer.flip();
+                // Create direct buffer and keep reference
+                currentFileBuffer = ByteBuffer.allocateDirect(fileBytes.length);
+                currentFileBuffer.put(fileBytes);
+                currentFileBuffer.flip();
 
-                nativeOnFilePicked(directBuffer, fileBytes.length, ext);
+                nativeOnFilePicked(currentFileBuffer, fileBytes.length, ext);
+                releaseFileBuffer();
 
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    public void releaseFileBuffer() {
+        currentFileBuffer = null; // Allow GC
     }
 
     private void copyAssetFile(String assetPath, File destFile) {

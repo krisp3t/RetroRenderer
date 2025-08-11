@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <glm/glm.hpp>
+#include <utility>
 
 namespace RetroRenderer
 {
@@ -46,11 +47,22 @@ namespace RetroRenderer
 	struct SceneLoadEvent : public Event
 	{
 		std::string scenePath;
+		const uint8_t* sceneData = nullptr;
+		size_t sceneDataSize = 0;
+		bool loadFromMemory = false;
 
 		SceneLoadEvent(std::string path)
 		{
 			type = EventType::Scene_Load;
-			scenePath = path;
+			scenePath = std::move(path);
+			loadFromMemory = false;
+		}
+		SceneLoadEvent(const uint8_t* data, size_t size)
+		{
+			type = EventType::Scene_Load;
+			sceneData = data;
+			sceneDataSize = size;
+			loadFromMemory = true;
 		}
 	};
 

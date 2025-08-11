@@ -13,6 +13,7 @@ namespace RetroRenderer
 #ifdef __ANDROID_API__
         p_GLRenderer_ = std::make_unique<GLESRenderer>();
 #else
+
 		p_GLRenderer_ = std::make_unique<GLRenderer>();
 #endif
         p_activeRenderer_ = p_SWRenderer_.get();
@@ -94,7 +95,7 @@ namespace RetroRenderer
         {
             const Model *model = &models[modelIx];
             assert(model != nullptr && "Model is null");
-            if (model->GetMeshes().size() > 0)
+            if (!model->GetMeshes().empty())
             {
                 p_activeRenderer_->DrawTriangularMesh(model);
             }

@@ -15,6 +15,19 @@ namespace RetroRenderer
         p_Camera = std::make_shared<Camera>();
     }
 
+    bool SceneManager::LoadScene(const uint8_t* data, const size_t size)
+    {
+        p_Scene = std::make_shared<Scene>();
+        if (!p_Scene->Load(data, size))
+        {
+            p_Scene = nullptr;
+            return false;
+        }
+
+        p_Camera.reset(new Camera());
+        return true;
+    }
+
     bool SceneManager::LoadScene(const std::string &path)
     {
         p_Scene = std::make_shared<Scene>();
@@ -24,7 +37,7 @@ namespace RetroRenderer
             return false;
         }
 
-        // p_Camera.reset(new Camera());
+        p_Camera.reset(new Camera());
         return true;
     }
 

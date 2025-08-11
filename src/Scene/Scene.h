@@ -20,6 +20,7 @@ namespace RetroRenderer
         Scene() = default;
         ~Scene() = default;
 
+        bool Load(const uint8_t* data, const size_t size);
         bool Load(const std::string &path);
         [[nodiscard]] std::vector<int> &GetVisibleModels();
         void FrustumCull(const Camera &camera);
@@ -27,6 +28,7 @@ namespace RetroRenderer
     private:
         std::vector<int> m_VisibleModels;
 
+        bool ProcessScene(const aiScene* scene);
         bool ProcessNode(aiNode *node, const aiScene *scene);
         bool ProcessNode(aiNode *node, const aiScene *scene, int parentIndex);
         void ProcessMesh(aiMesh *mesh, const aiScene *scene, std::vector<Mesh> &meshes);

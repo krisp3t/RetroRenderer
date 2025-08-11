@@ -22,7 +22,9 @@ namespace RetroRenderer
         LOGD("p_Config_ ref count: %d", p_config_.use_count());
 
         // Default scene (optional)
-        m_SceneManager.LoadScene("tests-visual/basic-tests/01-2d-triangle/model.obj");
+        m_SceneManager.LoadScene("frog/frog.obj");
+
+        //m_SceneManager.LoadScene("tests-visual/basic-tests/03-3d-cube/model-quad.obj");
         return true;
     }
 
@@ -100,8 +102,15 @@ namespace RetroRenderer
             case EventType::Scene_Load:
             {
                 const SceneLoadEvent &e = static_cast<const SceneLoadEvent &>(event);
-                LOGD("Attempting to load scene from path: %s", e.scenePath.c_str());
-                m_SceneManager.LoadScene(e.scenePath);
+                if (!e.loadFromMemory)
+                {
+                    LOGD("Attempting to load scene from path: %s", e.scenePath.c_str());
+                    m_SceneManager.LoadScene(e.scenePath);
+                }
+                else
+                {
+                    m_SceneManager.LoadScene(e.sceneData, e.sceneDataSize);
+                }
                 m_RenderSystem.OnLoadScene(e); // TODO: send to all subscribers
                 break;
             }
