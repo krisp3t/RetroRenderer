@@ -62,7 +62,7 @@ namespace RetroRenderer
             AAsset_close(font_asset);
             ImFontConfig cfg;
             cfg.FontDataOwnedByAtlas = false; // we keep ownership in m_fontData_
-            io.Fonts->AddFontFromMemoryTTF(m_fontData_.data(), (int)m_fontData_.size(), 40.0f, &cfg);
+            io.Fonts->AddFontFromMemoryTTF(m_fontData_.data(), (int)m_fontData_.size(), 32.0f, &cfg);
         }
 #else
         io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
@@ -170,6 +170,10 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayExamplesDialog()
     {
+#ifdef __ANDROID__
+        // We only support native file picker on Android.
+        return;
+#endif
         IGFD::FileDialogConfig examplesDialogConfig;
         examplesDialogConfig.countSelectionMax = 1;
         ImGuiFileDialog::Instance()->OpenDialog("OpenExampleFile", "Examples", k_supportedModels, examplesDialogConfig);
@@ -392,9 +396,13 @@ namespace RetroRenderer
             // ----------------
             if (ImGui::MenuItem("Open scene"))
             {
+#ifdef __ANDROID__
+                OpenAndroidFilePicker();
+#else
                 IGFD::FileDialogConfig sceneDialogConfig;
                 ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose scene", k_supportedModels,
                                                         sceneDialogConfig);
+#endif
             }
 
             if (ImGui::MenuItem("Scene Editor"))
@@ -937,5 +945,16 @@ void ConfigPanel::DisplayJoysticks()
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
+    }
+
+    void ConfigPanel::OpenAndroidFilePicker()
+    {
+#ifdef __ANDROID__
+    auto* env = static_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+    auto activity = static_cast<jobject>(SDL_AndroidGetActivity());
+    jclass cls = env->GetObjectClass(activity);
+    jmethodID mid = env->GetMethodID(cls, "openFilePicker", "()V");
+    env->CallVoidMethod(activity, mid);
+#endif
     }
 }

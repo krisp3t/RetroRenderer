@@ -60,6 +60,7 @@ private:
     void DisplayExamplesDialog();
     void DisplayWindowSettings();
     void DisplayJoysticks();
+    void OpenAndroidFilePicker();
 
     const char* k_supportedModels = ".obj,.gltf,.glb,.fbx,.usd";
     VirtualStickState moveStickState;
