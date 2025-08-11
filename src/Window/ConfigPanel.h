@@ -25,7 +25,6 @@ public:
     bool Init(SDL_Window *window,
               SDL_GLContext glContext,
               std::shared_ptr<Config> config,
-              std::shared_ptr<Camera> camera,
               const char* glslVersion,
               std::shared_ptr<Stats> stats
               );
@@ -38,7 +37,6 @@ public:
 private:
 	SDL_Window* p_Window_ = nullptr;
     std::shared_ptr<Config> p_config_ = nullptr;
-    std::shared_ptr<Camera> p_camera_ = nullptr;
     std::shared_ptr<Stats> p_stats_ = nullptr;
     std::vector<uint8_t> m_fontData_ = {}; // keep font bytes alive for the lifetime of imgui
 	bool m_isDragging_ = false;

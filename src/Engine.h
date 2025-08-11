@@ -32,6 +32,7 @@ public:
 
 	const std::shared_ptr<Config> GetConfig() const;
 	const std::shared_ptr<Stats> GetStats() const;
+	Camera* GetCamera() const;
 private:
 	Engine() = default;
 	~Engine() = default;
@@ -41,7 +42,7 @@ private:
 
     std::shared_ptr<Config> p_config_ = std::make_shared<Config>();
 	std::shared_ptr<Stats> p_stats_ = std::make_shared<Stats>();
-    std::queue<std::unique_ptr<Event>> m_EventQueue; // is thread-safe?
+    std::queue<std::unique_ptr<Event>> m_EventQueue;
     std::mutex m_EventQueueMutex;
 
     DisplaySystem m_DisplaySystem;

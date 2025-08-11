@@ -11,9 +11,8 @@ namespace RetroRenderer
         return m_window_;
     }
 
-    bool DisplaySystem::Init(std::shared_ptr<Camera> camera)
+    bool DisplaySystem::Init()
     {
-        p_camera_ = camera;
 		auto const& p_config = Engine::Get().GetConfig();
 		auto const& p_stats = Engine::Get().GetStats();
 
@@ -112,7 +111,7 @@ namespace RetroRenderer
         SDL_GL_SetSwapInterval(p_config->window.enableVsync ? 1 : 0);
 
         m_configPanel_ = std::make_unique<ConfigPanel>();
-        m_configPanel_->Init(m_window_, m_glContext_, p_config, p_camera_, glslVersion, p_stats);
+        m_configPanel_->Init(m_window_, m_glContext_, p_config, glslVersion, p_stats);
         return true;
     }
 

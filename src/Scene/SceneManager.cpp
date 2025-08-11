@@ -12,32 +12,32 @@ namespace RetroRenderer
     {
         LOGI("Unloading scene");
         p_Scene = nullptr;
-        p_Camera = std::make_shared<Camera>();
+        p_Camera = nullptr;
     }
 
     bool SceneManager::LoadScene(const uint8_t* data, const size_t size)
     {
+        ResetScene();
         p_Scene = std::make_shared<Scene>();
+        p_Camera = std::make_unique<Camera>();
         if (!p_Scene->Load(data, size))
         {
             p_Scene = nullptr;
             return false;
         }
-
-        //p_Camera.reset(new Camera());
         return true;
     }
 
     bool SceneManager::LoadScene(const std::string &path)
     {
+        ResetScene();
         p_Scene = std::make_shared<Scene>();
+        p_Camera = std::make_unique<Camera>();
         if (!p_Scene->Load(path))
         {
             p_Scene = nullptr;
             return false;
         }
-
-        //p_Camera.reset(new Camera());
         return true;
     }
 
@@ -47,7 +47,7 @@ namespace RetroRenderer
      */
     bool SceneManager::ProcessInput(InputActionMask actions, unsigned int deltaTime)
     {
-        if (actions == 0)
+        if (actions == 0 || !p_Camera)
         {
             return false;
         }
@@ -102,25 +102,26 @@ namespace RetroRenderer
 
     void SceneManager::Update(unsigned int deltaTime)
     {
-        if (!p_Scene)
+        if (!p_Scene || !p_Camera)
         {
             return;
         }
+        // TODO: nullable type?
         p_Camera->UpdateViewMatrix();
     }
 
     void SceneManager::NewFrame()
     {
-        if (!p_Scene)
+        if (!p_Scene || !p_Camera)
         {
             return;
         }
         p_Scene->FrustumCull(*p_Camera);
     }
 
-    std::shared_ptr<Camera> SceneManager::GetCamera() const
+    Camera* SceneManager::GetCamera() const
     {
-        return p_Camera;
+        return p_Camera.get();
     }
 
     std::shared_ptr<Scene> SceneManager::GetScene() const

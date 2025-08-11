@@ -67,6 +67,7 @@ namespace RetroRenderer
 		}
 		SceneLoadEvent(const uint8_t* data, size_t size)
 		{
+			// TODO: implement
 			type = EventType::Scene_Load;
 			sceneData = data;
 			sceneDataSize = size;

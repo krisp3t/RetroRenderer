@@ -20,10 +20,10 @@ namespace RetroRenderer
         void Update(unsigned int deltaTime);
         void NewFrame();
         [[nodiscard]] std::shared_ptr<Scene> GetScene() const;
-        [[nodiscard]] std::shared_ptr<Camera> GetCamera() const;
+        [[nodiscard]] Camera* GetCamera() const;
     private:
         std::shared_ptr<Scene> p_Scene = nullptr;
-        std::shared_ptr<Camera> p_Camera = std::make_shared<Camera>();
+        std::unique_ptr<Camera> p_Camera = nullptr;
         float m_MoveFactor = 0.02f;
         float m_RotateFactor = 0.10f;
     };

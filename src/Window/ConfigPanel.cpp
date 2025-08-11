@@ -34,7 +34,6 @@ namespace RetroRenderer
     bool ConfigPanel::Init(SDL_Window *window,
                            SDL_GLContext glContext,
                            std::shared_ptr<Config> config,
-                           std::shared_ptr<Camera> camera,
                            const char *glslVersion,
                            std::shared_ptr<Stats> stats
     )
@@ -72,7 +71,6 @@ namespace RetroRenderer
 
         p_Window_ = window;
         p_config_ = config;
-        p_camera_ = camera;
         p_stats_ = stats;
 
         return true;
@@ -251,14 +249,14 @@ namespace RetroRenderer
     {
         auto& r = p_config_->renderer;
         ImGui::Begin("Output");
-        ImVec2 contentSize = ImGui::GetContentRegionAvail() * r.resolutionScale;
-        if (contentSize.x != p_config_->renderer.resolution.x || contentSize.y != p_config_->renderer.resolution.y)
+        ImVec2 contentSize = ImGui::GetContentRegionAvail();
+        glm::ivec2 displaySize = {
+            contentSize.x * r.resolutionScale,
+            contentSize.y * r.resolutionScale
+        };
+        if (r.resolution != displaySize)
         {
-            glm::ivec2 newResolution = {
-                static_cast<int>(floor(contentSize.x * r.resolutionScale)),
-                static_cast<int>(floor(contentSize.y * r.resolutionScale))
-            };
-            Engine::Get().DispatchImmediate(OutputImageResizeEvent{newResolution});
+            Engine::Get().DispatchImmediate(OutputImageResizeEvent{displaySize});
         }
 
         auto ReleaseMouse = [&]()
@@ -276,8 +274,11 @@ namespace RetroRenderer
         {
             int deltaX, deltaY;
             SDL_GetRelativeMouseState(&deltaX, &deltaY);
-            p_camera_->m_EulerRotation.y += deltaX * 0.05f;
-            p_camera_->m_EulerRotation.x -= deltaY * 0.05f;
+            if (auto cam = Engine::Get().GetCamera())
+            {
+                cam->m_EulerRotation.y += deltaX * 0.05f;
+                cam->m_EulerRotation.x -= deltaY * 0.05f;
+            }
         };
 
         ImGuiIO& io = ImGui::GetIO();
@@ -301,41 +302,44 @@ namespace RetroRenderer
         bool isViewportActive = isMouseInContent &&
             ImGui::IsWindowHovered();
 
-        if (isViewportActive)
+        if (auto cam = Engine::Get().GetCamera())
         {
-            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-            // TODO: emit event instead?
-
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            if (isViewportActive)
             {
-                if (!m_isDragging_)
+                ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                // TODO: emit event instead?
+
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
                 {
-                    LOGD("Start camera drag");
-                    m_isDragging_ = true;
-                    SDL_SetRelativeMouseMode(SDL_TRUE); // Capture mouse
+                    if (!m_isDragging_)
+                    {
+                        LOGD("Start camera drag");
+                        m_isDragging_ = true;
+                        SDL_SetRelativeMouseMode(SDL_TRUE); // Capture mouse
+                    }
+                    HandleCameraDrag();
                 }
-                HandleCameraDrag();
-            }
                 // Mouse released when hovering, stop dragging
-            else if (m_isDragging_)
-            {
-                ReleaseMouse();
-            }
+                else if (m_isDragging_)
+                {
+                    ReleaseMouse();
+                }
 
-            // Zoom camera (forward/backward along forward vector)
-            if (ImGui::GetIO().MouseWheel != 0.0f)
+                // Zoom camera (forward/backward along forward vector)
+                if (ImGui::GetIO().MouseWheel != 0.0f)
+                {
+                    glm::vec3 &forward = cam->m_Direction;
+                    cam->m_Position += forward * ImGui::GetIO().MouseWheel * 0.1f;
+                }
+            } else if (m_isDragging_)
             {
-                glm::vec3 &forward = p_camera_->m_Direction;
-                p_camera_->m_Position += forward * ImGui::GetIO().MouseWheel * 0.1f;
-            }
-        } else if (m_isDragging_)
-        {
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-            {
-                HandleCameraDrag();
-            } else
-            {
-                ReleaseMouse();
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+                {
+                    HandleCameraDrag();
+                } else
+                {
+                    ReleaseMouse();
+                }
             }
         }
         switch (p_config_->renderer.selectedRenderer)
@@ -563,22 +567,22 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayCameraSettings()
     {
-        if (p_camera_)
+        if (auto cam = Engine::Get().GetCamera())
         {
             ImGui::SeparatorText("Camera settings");
-            ImGui::DragFloat3("Position", glm::value_ptr(p_camera_->m_Position), 0.1f, 0.0f, 0.0f, "%.3f",
+            ImGui::DragFloat3("Position", glm::value_ptr(cam->m_Position), 0.1f, 0.0f, 0.0f, "%.3f",
                               ImGuiSliderFlags_Logarithmic);
-            ImGui::DragFloat3("Rotation", glm::value_ptr(p_camera_->m_EulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
-            ImGui::Combo("Camera type", reinterpret_cast<int *>(&p_camera_->m_Type), "Perspective\0Orthographic\0");
-            switch (p_camera_->m_Type)
+            ImGui::DragFloat3("Rotation", glm::value_ptr(cam->m_EulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
+            ImGui::Combo("Camera type", reinterpret_cast<int *>(&cam->m_Type), "Perspective\0Orthographic\0");
+            switch (cam->m_Type)
             {
                 case CameraType::PERSPECTIVE:
-                    ImGui::SliderFloat("Field of view", &p_camera_->m_Fov, 1.0f, 179.0f);
-                    ImGui::SliderFloat("Near plane", &p_camera_->m_Near, 0.1f, 10.0f);
-                    ImGui::SliderFloat("Far plane", &p_camera_->m_Far, 1.0f, 100.0f);
+                    ImGui::SliderFloat("Field of view", &cam->m_Fov, 1.0f, 179.0f);
+                    ImGui::SliderFloat("Near plane", &cam->m_Near, 0.1f, 10.0f);
+                    ImGui::SliderFloat("Far plane", &cam->m_Far, 1.0f, 100.0f);
                     break;
                 case CameraType::ORTHOGRAPHIC:
-                    ImGui::SliderFloat("Orthographic size", &p_camera_->m_OrthoSize, 1.0f, 100.0f);
+                    ImGui::SliderFloat("Orthographic size", &cam->m_OrthoSize, 1.0f, 100.0f);
                     break;
             }
         } else
@@ -775,10 +779,10 @@ namespace RetroRenderer
                     p_stats_->renderedVerts,
                     p_stats_->renderedTris
             );
-            if (p_camera_)
+            if (auto cam = Engine::Get().GetCamera())
             {
-                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", p_camera_->m_Position.x, p_camera_->m_Position.y,
-                            p_camera_->m_Position.z);
+                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", cam->m_Position.x, cam->m_Position.y,
+                            cam->m_Position.z);
             }
             assert(p_stats_ != nullptr && "Stats not initialized!");
             ImGui::PlotLines("frameTimes", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
@@ -866,19 +870,22 @@ void ConfigPanel::DisplayJoysticks()
     DrawJoystick("RotateStick", rightPos, rotateStickState);
 
     // Apply camera movement
-    if (moveStickState.active)
+    if (auto cam = Engine::Get().GetCamera())
     {
-        glm::vec3 forward = p_camera_->m_Direction;
-        glm::vec3 right = glm::normalize(glm::cross(forward, p_camera_->m_Up));
+        if (moveStickState.active)
+        {
+            glm::vec3 forward = cam->m_Direction;
+            glm::vec3 right = glm::normalize(glm::cross(forward, cam->m_Up));
 
-        p_camera_->m_Position += forward * (-moveStickState.delta.y) * moveSpeed * deltaTime;
-        p_camera_->m_Position += right * (moveStickState.delta.x) * moveSpeed * deltaTime;
-    }
+            cam->m_Position += forward * (-moveStickState.delta.y) * moveSpeed * deltaTime;
+            cam->m_Position += right * (moveStickState.delta.x) * moveSpeed * deltaTime;
+        }
 
-    if (rotateStickState.active)
-    {
-        p_camera_->m_EulerRotation.y += (-rotateStickState.delta.x) * rotateSpeed * deltaTime; // yaw
-        p_camera_->m_EulerRotation.x += (-rotateStickState.delta.y) * rotateSpeed * deltaTime; // pitch
+        if (rotateStickState.active)
+        {
+            cam->m_EulerRotation.y += (-rotateStickState.delta.x) * rotateSpeed * deltaTime; // yaw
+            cam->m_EulerRotation.x += (-rotateStickState.delta.y) * rotateSpeed * deltaTime; // pitch
+        }
     }
 }
 

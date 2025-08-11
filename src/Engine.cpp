@@ -6,8 +6,7 @@ namespace RetroRenderer
     bool Engine::Init()
     {
         LOGD("Starting RetroRenderer in directory: %s", SDL_GetBasePath());
-        auto camera = m_SceneManager.GetCamera();
-        if (!m_DisplaySystem.Init(camera))
+        if (!m_DisplaySystem.Init())
         {
             return false;
         }
@@ -164,4 +163,9 @@ namespace RetroRenderer
 	{
 		return p_stats_;
 	}
+
+    Camera* Engine::GetCamera() const
+    {
+        return m_SceneManager.GetCamera();
+    }
 }
