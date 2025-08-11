@@ -129,11 +129,10 @@ void main() {
         glUseProgram(m_ShaderProgram);
 
         const glm::mat4& modelMat = model->GetTransform();
-        const glm::mat4& viewMat = p_Camera->viewMat;
-        const glm::mat4& projMat = p_Camera->projMat;
+        const glm::mat4& viewMat = p_Camera->m_ViewMat;
+        const glm::mat4& projMat = p_Camera->m_ProjMat;
         const glm::mat4 mv = viewMat * modelMat;
         const glm::mat4 mvp = projMat * mv;
-        const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMat)));
         GLint normalMatLoc = glGetUniformLocation(m_ShaderProgram, "u_NormalMatrix");
         glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
@@ -147,7 +146,7 @@ void main() {
         glUniformMatrix4fv(viewProjLoc, 1, GL_FALSE, glm::value_ptr(mvp));
 
         glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_LightPos"), 5.0f, 5.0f, 5.0f);
-        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ViewPos"), p_Camera->position.x, p_Camera->position.y, p_Camera->position.z);
+        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
         glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_LightColor"), 1.0f, 1.0f, 1.0f);
         glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ObjectColor"), 1.0f, 0.5f, 0.3f);
 

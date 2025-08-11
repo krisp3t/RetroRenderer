@@ -19,22 +19,22 @@ namespace RetroRenderer
 		void UpdateViewMatrix();
 
 		// Vectors
-		glm::vec3 position = { 0.0f, 0.0f, 3.0f };
-		const glm::vec3 up = { 0.0f, 1.0f, 0.0f };
-		glm::vec3 direction = { 0.0f, 0.0f, -1.0f };
-		glm::vec3 eulerRotation = { 0.0f, -90.0f, 0.0f };
+		glm::vec3 m_Position = { 0.0f, 0.0f, 3.0f };
+		const glm::vec3 m_Up = { 0.0f, 1.0f, 0.0f };
+		glm::vec3 m_Direction = { 0.0f, 0.0f, -1.0f };
+		glm::vec3 m_EulerRotation = { 0.0f, -90.0f, 0.0f };
 
 		// Settings
-		CameraType type = CameraType::PERSPECTIVE;
-		float fov = 90.0f;
-		float near = 0.1f;
-		float far = 100.0f;
-		float orthoSize = 10.0f;
-		float aspectRatio = 800.0f / 600.0f; // TODO: replace!!
+		CameraType m_Type = CameraType::PERSPECTIVE;
+		float m_Fov = 90.0f;
+		float m_Near = 0.1f;
+		float m_Far = 100.0f;
+		float m_OrthoSize = 10.0f;
+		float m_AspectRatio = 1.0f;
 
 		// Matrices
-		glm::mat4 viewMat = glm::lookAt(position, position + direction, up);
-		glm::mat4 projMat = glm::perspective(glm::radians(fov), aspectRatio, near, far);
+		glm::mat4 m_ViewMat = glm::lookAt(m_Position, m_Position + m_Direction, m_Up);
+		glm::mat4 m_ProjMat = glm::perspective(glm::radians(m_Fov), m_AspectRatio, m_Near, m_Far);
 
 	private:
 	};

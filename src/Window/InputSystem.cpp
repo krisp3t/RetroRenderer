@@ -37,10 +37,6 @@ namespace RetroRenderer
                         LOGD("Window resized to %d x %d", event.window.data1, event.window.data2);
                         p_config->window.size.x = event.window.data1;
                         p_config->window.size.y = event.window.data2;
-						if (p_config->renderer.resolutionAutoResize)
-						{
-							Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_config->window.outputWindowSize });
-						}
                     }
 					break;
             }

@@ -243,26 +243,23 @@ namespace RetroRenderer
     void ConfigPanel::DisplayRenderedImage()
     {
         ImGui::Begin("Output");
-        ImVec2 contentSize = ImGui::GetContentRegionAvail();
-        p_config_->window.outputWindowSize = {contentSize.x, contentSize.y};
         ImGui::Text("Please load a scene to start rendering!");
         ImGui::End();
     }
 
     void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture)
     {
+        auto& r = p_config_->renderer;
         ImGui::Begin("Output");
-        ImVec2 contentRegion = ImGui::GetContentRegionAvail();
-        glm::ivec2 contentSize(contentRegion.x, contentRegion.y);
-        if (p_config_->renderer.resolutionAutoResize)
+        ImVec2 contentSize = ImGui::GetContentRegionAvail() * r.resolutionScale;
+        if (contentSize.x != p_config_->renderer.resolution.x || contentSize.y != p_config_->renderer.resolution.y)
         {
-            if (p_config_->window.outputWindowSize != contentSize)
-            {
-                Engine::Get().DispatchImmediate(OutputImageResizeEvent{contentSize});
-            }
+            glm::ivec2 newResolution = {
+                static_cast<int>(floor(contentSize.x * r.resolutionScale)),
+                static_cast<int>(floor(contentSize.y * r.resolutionScale))
+            };
+            Engine::Get().DispatchImmediate(OutputImageResizeEvent{newResolution});
         }
-        p_config_->window.outputWindowSize = contentSize;
-
 
         auto ReleaseMouse = [&]()
         {
@@ -279,8 +276,8 @@ namespace RetroRenderer
         {
             int deltaX, deltaY;
             SDL_GetRelativeMouseState(&deltaX, &deltaY);
-            p_camera_->eulerRotation.y += deltaX * 0.05f;
-            p_camera_->eulerRotation.x -= deltaY * 0.05f;
+            p_camera_->m_EulerRotation.y += deltaX * 0.05f;
+            p_camera_->m_EulerRotation.x -= deltaY * 0.05f;
         };
 
         ImGuiIO& io = ImGui::GetIO();
@@ -328,8 +325,8 @@ namespace RetroRenderer
             // Zoom camera (forward/backward along forward vector)
             if (ImGui::GetIO().MouseWheel != 0.0f)
             {
-                glm::vec3 &forward = p_camera_->direction;
-                p_camera_->position += forward * ImGui::GetIO().MouseWheel * 0.1f;
+                glm::vec3 &forward = p_camera_->m_Direction;
+                p_camera_->m_Position += forward * ImGui::GetIO().MouseWheel * 0.1f;
             }
         } else if (m_isDragging_)
         {
@@ -346,14 +343,14 @@ namespace RetroRenderer
             case Config::RendererType::SOFTWARE:
                 ImGui::Image(
                         p_framebufferTexture,
-                        contentRegion
+                        contentSize
                 );
                 break;
             case Config::RendererType::GL:
                 // OpenGL textures are flipped vertically
                 ImGui::Image(
                         p_framebufferTexture,
-                        contentRegion,
+                        contentSize,
                         ImVec2(0.0f, 1.0f),
                         ImVec2(1.0f, 0.0f)
                 );
@@ -569,19 +566,19 @@ namespace RetroRenderer
         if (p_camera_)
         {
             ImGui::SeparatorText("Camera settings");
-            ImGui::DragFloat3("Position", glm::value_ptr(p_camera_->position), 0.1f, 0.0f, 0.0f, "%.3f",
+            ImGui::DragFloat3("Position", glm::value_ptr(p_camera_->m_Position), 0.1f, 0.0f, 0.0f, "%.3f",
                               ImGuiSliderFlags_Logarithmic);
-            ImGui::DragFloat3("Rotation", glm::value_ptr(p_camera_->eulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
-            ImGui::Combo("Camera type", reinterpret_cast<int *>(&p_camera_->type), "Perspective\0Orthographic\0");
-            switch (p_camera_->type)
+            ImGui::DragFloat3("Rotation", glm::value_ptr(p_camera_->m_EulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
+            ImGui::Combo("Camera type", reinterpret_cast<int *>(&p_camera_->m_Type), "Perspective\0Orthographic\0");
+            switch (p_camera_->m_Type)
             {
                 case CameraType::PERSPECTIVE:
-                    ImGui::SliderFloat("Field of view", &p_camera_->fov, 1.0f, 179.0f);
-                    ImGui::SliderFloat("Near plane", &p_camera_->near, 0.1f, 10.0f);
-                    ImGui::SliderFloat("Far plane", &p_camera_->far, 1.0f, 100.0f);
+                    ImGui::SliderFloat("Field of view", &p_camera_->m_Fov, 1.0f, 179.0f);
+                    ImGui::SliderFloat("Near plane", &p_camera_->m_Near, 0.1f, 10.0f);
+                    ImGui::SliderFloat("Far plane", &p_camera_->m_Far, 1.0f, 100.0f);
                     break;
                 case CameraType::ORTHOGRAPHIC:
-                    ImGui::SliderFloat("Orthographic size", &p_camera_->orthoSize, 1.0f, 100.0f);
+                    ImGui::SliderFloat("Orthographic size", &p_camera_->m_OrthoSize, 1.0f, 100.0f);
                     break;
             }
         } else
@@ -616,40 +613,19 @@ namespace RetroRenderer
         ImGui::SeparatorText("Resolution");
         ImGui::Text("Render resolution: %d x %d (@ %.1f scale)", static_cast<int>(r.resolution.x),
                     static_cast<int>(r.resolution.y), r.resolutionScale);
-        ImGui::Text("Output window size: %d x %d (@ 1.0 scale)", p_config_->window.outputWindowSize.x,
-                    p_config_->window.outputWindowSize.y);
-        if (!r.resolutionAutoResize)
+        if (ImGui::InputFloat("Render resolution scale",
+                              reinterpret_cast<float *>(&r.resolutionScale),
+                              0.1f,
+                              0.5f,
+                              "%.1f"))
         {
-            if (ImGui::InputFloat("Render resolution scale",
-                                  reinterpret_cast<float *>(&r.resolutionScale),
-                                  0.1f,
-                                  0.5f,
-                                  "%.1f"))
-            {
-                r.resolutionScale = glm::clamp(r.resolutionScale, 0.1f, 4.0f);
-                LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
-                glm::ivec2 newResolution = {
-                        static_cast<int>(floor(p_config_->window.outputWindowSize.x * r.resolutionScale)),
-                        static_cast<int>(floor(p_config_->window.outputWindowSize.y * r.resolutionScale))
-                };
-                Engine::Get().DispatchImmediate(OutputImageResizeEvent{newResolution});
-            }
-        }
-        if (ImGui::Checkbox("Auto-resize (fit rendered image to output window)", &r.resolutionAutoResize))
-        {
-            if (r.resolutionAutoResize)
-            {
-                Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_config_->window.outputWindowSize});
-            } else
-            {
-                r.resolutionScale = glm::clamp(r.resolutionScale, 0.1f, 4.0f);
-                LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
-                glm::ivec2 newResolution = {
-                        static_cast<int>(floor(p_config_->window.outputWindowSize.x * r.resolutionScale)),
-                        static_cast<int>(floor(p_config_->window.outputWindowSize.y * r.resolutionScale))
-                };
-                Engine::Get().DispatchImmediate(OutputImageResizeEvent{newResolution});
-            }
+            r.resolutionScale = glm::clamp(r.resolutionScale, 0.1f, 4.0f);
+            LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
+            glm::ivec2 newResolution = {
+                    static_cast<int>(floor(p_config_->renderer.resolution.x * r.resolutionScale)),
+                    static_cast<int>(floor(p_config_->renderer.resolution.y * r.resolutionScale))
+            };
+            Engine::Get().DispatchImmediate(OutputImageResizeEvent{newResolution});
         }
 
         ImGui::SeparatorText("Scene");
@@ -801,8 +777,8 @@ namespace RetroRenderer
             );
             if (p_camera_)
             {
-                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", p_camera_->position.x, p_camera_->position.y,
-                            p_camera_->position.z);
+                ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", p_camera_->m_Position.x, p_camera_->m_Position.y,
+                            p_camera_->m_Position.z);
             }
             assert(p_stats_ != nullptr && "Stats not initialized!");
             ImGui::PlotLines("frameTimes", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
@@ -892,17 +868,17 @@ void ConfigPanel::DisplayJoysticks()
     // Apply camera movement
     if (moveStickState.active)
     {
-        glm::vec3 forward = p_camera_->direction;
-        glm::vec3 right = glm::normalize(glm::cross(forward, p_camera_->up));
+        glm::vec3 forward = p_camera_->m_Direction;
+        glm::vec3 right = glm::normalize(glm::cross(forward, p_camera_->m_Up));
 
-        p_camera_->position += forward * (-moveStickState.delta.y) * moveSpeed * deltaTime;
-        p_camera_->position += right * (moveStickState.delta.x) * moveSpeed * deltaTime;
+        p_camera_->m_Position += forward * (-moveStickState.delta.y) * moveSpeed * deltaTime;
+        p_camera_->m_Position += right * (moveStickState.delta.x) * moveSpeed * deltaTime;
     }
 
     if (rotateStickState.active)
     {
-        p_camera_->eulerRotation.y += (-rotateStickState.delta.x) * rotateSpeed * deltaTime; // yaw
-        p_camera_->eulerRotation.x += (-rotateStickState.delta.y) * rotateSpeed * deltaTime; // pitch
+        p_camera_->m_EulerRotation.y += (-rotateStickState.delta.x) * rotateSpeed * deltaTime; // yaw
+        p_camera_->m_EulerRotation.x += (-rotateStickState.delta.y) * rotateSpeed * deltaTime; // pitch
     }
 }
 

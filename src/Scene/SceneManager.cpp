@@ -53,49 +53,49 @@ namespace RetroRenderer
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_FORWARD))
         {
-            p_Camera->position += p_Camera->direction * (m_MoveFactor * deltaTime);
+            p_Camera->m_Position += p_Camera->m_Direction * (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_BACKWARD))
         {
-            p_Camera->position -= p_Camera->direction * (m_MoveFactor * deltaTime);
+            p_Camera->m_Position -= p_Camera->m_Direction * (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_LEFT))
         {
-            p_Camera->position -= glm::normalize(
-                    glm::cross(p_Camera->direction, p_Camera->up)
+            p_Camera->m_Position -= glm::normalize(
+                    glm::cross(p_Camera->m_Direction, p_Camera->m_Up)
             ) *
                                   (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_RIGHT))
         {
-            p_Camera->position += glm::normalize(
-                    glm::cross(p_Camera->direction, p_Camera->up)
+            p_Camera->m_Position += glm::normalize(
+                    glm::cross(p_Camera->m_Direction, p_Camera->m_Up)
             ) *
                                   (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_UP))
         {
-            p_Camera->position += p_Camera->up * (m_MoveFactor * deltaTime);
+            p_Camera->m_Position += p_Camera->m_Up * (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::MOVE_DOWN))
         {
-            p_Camera->position -= p_Camera->up * (m_MoveFactor * deltaTime);
+            p_Camera->m_Position -= p_Camera->m_Up * (m_MoveFactor * deltaTime);
         }
         if (actions & static_cast<InputActionMask>(InputAction::ROTATE_LEFT))
         {
-            p_Camera->eulerRotation.y += 1.0f * (m_RotateFactor * deltaTime); // Yaw
+            p_Camera->m_EulerRotation.y += 1.0f * (m_RotateFactor * deltaTime); // Yaw
         }
         if (actions & static_cast<InputActionMask>(InputAction::ROTATE_RIGHT))
         {
-            p_Camera->eulerRotation.y -= 1.0f * (m_RotateFactor * deltaTime); // Yaw
+            p_Camera->m_EulerRotation.y -= 1.0f * (m_RotateFactor * deltaTime); // Yaw
         }
         if (actions & static_cast<InputActionMask>(InputAction::ROTATE_UP))
         {
-            p_Camera->eulerRotation.x += 1.0f * (m_RotateFactor * deltaTime); // Pitch
+            p_Camera->m_EulerRotation.x += 1.0f * (m_RotateFactor * deltaTime); // Pitch
         }
         if (actions & static_cast<InputActionMask>(InputAction::ROTATE_DOWN))
         {
-            p_Camera->eulerRotation.x -= 1.0f * (m_RotateFactor * deltaTime); // Pitch
+            p_Camera->m_EulerRotation.x -= 1.0f * (m_RotateFactor * deltaTime); // Pitch
         }
         return true;
     }

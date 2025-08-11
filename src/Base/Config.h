@@ -13,8 +13,6 @@ namespace RetroRenderer
         struct WindowSettings
         {
             glm::ivec2 size = {1280, 720};
-            glm::ivec2 outputWindowSize = {1280,
-                                           720}; // Size of the window that shows rendered image (can be different from image size)
             bool fullscreen = false;
             bool enableVsync = true;
             bool showFPS = true;
@@ -36,10 +34,9 @@ namespace RetroRenderer
         struct BaseRendererSettings
         {
             glm::ivec2 resolution = {1280,
-                                     720}; // Resolution of the render target (can have different size than window, stretching will occur)
+                                     720}; // Resolution of the render target
             float resolutionScale = 1.0f;
-            bool resolutionAutoResize = false;
-            RendererType selectedRenderer = RendererType::SOFTWARE;
+            RendererType selectedRenderer = RendererType::GL;
             AAType aaType = AAType::NONE;
             bool enablePerspectiveCorrect = true;
             ImVec4 clearColor = Color::DefaultBackground().ToImVec4();

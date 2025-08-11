@@ -70,7 +70,7 @@ namespace RetroRenderer
 
         // Pre-defined colors
         static const Color DefaultBackground()
-        { return Color(Color::Uint8Tag{}, 42, 0, 51); } // purple-ish
+        { return Color(Color::Uint8Tag{}, 47, 42, 85); } // purple-ish
         static const Color Black()
         { return Color(Color::Uint8Tag{}, 0, 0, 0); }
         static const Color White()

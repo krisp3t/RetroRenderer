@@ -6,25 +6,25 @@ namespace RetroRenderer
     void Camera::UpdateViewMatrix()
     {
 		auto const& p_config = Engine::Get().GetConfig();
-		aspectRatio = p_config->window.size.x / p_config->window.size.y;
+		m_AspectRatio = static_cast<float>(p_config->renderer.resolution.x) / static_cast<float>(p_config->renderer.resolution.y);
 
-        eulerRotation.x = glm::clamp(eulerRotation.x, -89.0f, 89.0f);
-        eulerRotation.y = glm::mod(eulerRotation.y, 360.0f);
-        eulerRotation.z = glm::mod(eulerRotation.z, 360.0f);
+        m_EulerRotation.x = glm::clamp(m_EulerRotation.x, -89.0f, 89.0f);
+        m_EulerRotation.y = glm::mod(m_EulerRotation.y, 360.0f);
+        m_EulerRotation.z = glm::mod(m_EulerRotation.z, 360.0f);
 
-        direction.x = cos(glm::radians(eulerRotation.y)) * cos(glm::radians(eulerRotation.x));
-        direction.y = sin(glm::radians(eulerRotation.x));
-        direction.z = sin(glm::radians(eulerRotation.y)) * cos(glm::radians(eulerRotation.x));
-        direction = glm::normalize(direction);
+        m_Direction.x = cos(glm::radians(m_EulerRotation.y)) * cos(glm::radians(m_EulerRotation.x));
+        m_Direction.y = sin(glm::radians(m_EulerRotation.x));
+        m_Direction.z = sin(glm::radians(m_EulerRotation.y)) * cos(glm::radians(m_EulerRotation.x));
+        m_Direction = glm::normalize(m_Direction);
 
-        viewMat = glm::lookAt(position, position + direction, up);
+        m_ViewMat = glm::lookAt(m_Position, m_Position + m_Direction, m_Up);
 
-        if (type == CameraType::PERSPECTIVE)
+        if (m_Type == CameraType::PERSPECTIVE)
         {
-            projMat = glm::perspective(glm::radians(fov), aspectRatio, near, far);
+            m_ProjMat = glm::perspective(glm::radians(m_Fov), m_AspectRatio, m_Near, m_Far);
         } else
         {
-            projMat = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, near, far);
+            m_ProjMat = glm::ortho(-m_OrthoSize, m_OrthoSize, -m_OrthoSize, m_OrthoSize, m_Near, m_Far);
         }
     }
 }
