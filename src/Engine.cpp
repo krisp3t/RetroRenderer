@@ -22,7 +22,7 @@ namespace RetroRenderer
         LOGD("p_Config_ ref count: %d", p_config_.use_count());
 
         // Default scene (optional)
-        m_SceneManager.LoadScene("frog/frog.obj");
+        // m_SceneManager.LoadScene("frog/frog.obj");
 
         //m_SceneManager.LoadScene("tests-visual/basic-tests/03-3d-cube/model-quad.obj");
         return true;

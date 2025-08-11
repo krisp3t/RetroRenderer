@@ -404,9 +404,6 @@ namespace RetroRenderer
 #endif
             }
 
-            if (ImGui::MenuItem("Scene Editor"))
-            {
-            }
 
             if (ImGui::MenuItem("Reset"))
             {

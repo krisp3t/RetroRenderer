@@ -1,5 +1,7 @@
 #pragma once
 #include <memory>
+#include <mutex>
+
 #include "Window/DisplaySystem.h"
 #include "Renderer/RenderSystem.h"
 #include "Window/InputSystem.h"
