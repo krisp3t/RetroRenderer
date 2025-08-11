@@ -10,7 +10,7 @@
 
 #include <KrisLogger/Logger.h>
 #include "Scene.h"
-#include "../Renderer/Vertex.h"
+#include "Vertex.h"
 
 namespace RetroRenderer
 {
@@ -112,7 +112,7 @@ namespace RetroRenderer
             aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
             if (mesh->mNumVertices > 0 && mesh->mNumFaces > 0)
             {
-                ProcessMesh(mesh, scene, newModel.m_Meshes);
+                ProcessMesh(mesh, scene, newModel.m_Meshes, node->mName);
             }
         }
         int currentNodeIndex = m_Models.size();
@@ -143,12 +143,11 @@ namespace RetroRenderer
         return ProcessNode(node, scene, -1);
     }
 
-    void Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene, std::vector<Mesh> &meshes)
+    void Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene, std::vector<Mesh> &meshes, const aiString& modelName)
     {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
-        // TODO: add textures
-        // std::vector<Texture> textures;
+        std::vector<Texture> textures;
 
         for (unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
@@ -197,7 +196,16 @@ namespace RetroRenderer
             // TODO: process material
         }
 
-        meshes.emplace_back(std::move(vertices), std::move(indices));
+        // TODO: do not hardcode like this
+        Texture texture{};
+        std::string texPath{modelName.C_Str()};
+        texPath.append(".png");
+        if (texture.LoadFromFile(texPath.c_str()))
+        {
+            textures.push_back(texture);
+        }
+
+        meshes.emplace_back(std::move(vertices), std::move(indices), std::move(textures));
     }
 
     std::vector<int> &Scene::GetVisibleModels()

@@ -27,7 +27,11 @@
                 "docking-experimental"
             ]
         },
-        "assimp"
+        "assimp",
+        "libavif",
+        "libjpeg-turbo",
+        "libpng",
+        "libwebp"
     ],
     "version": "1.0",
     "name": "retrorenderer"

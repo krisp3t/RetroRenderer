@@ -4,7 +4,7 @@
 #include <array>
 #include "../../Base/Config.h"
 #include "../Buffer.h"
-#include "../Vertex.h"
+#include "../../Scene/Vertex.h"
 
 namespace RetroRenderer
 {

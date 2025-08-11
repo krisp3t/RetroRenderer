@@ -3,12 +3,13 @@
 
 namespace RetroRenderer
 {
-    Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices)
+    Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures)
     {
         m_Vertices = vertices;
         m_Indices = indices;
         m_numVertices = vertices.size();
         m_numFaces = indices.size() / 3;
+        m_Textures = textures;
         Init();
     }
 

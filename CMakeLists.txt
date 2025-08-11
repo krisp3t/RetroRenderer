@@ -9,7 +9,7 @@ if(ANDROID)
     set(CMAKE_SYSTEM_NAME Android)
     set(CMAKE_ANDROID_NDK            $ENV{ANDROID_NDK_HOME})
     set(CMAKE_ANDROID_ARCH_ABI       arm64-v8a)
-    set(CMAKE_ANDROID_API            26) # We're using SDL2.0.16, last to support Android SDK 26
+    set(CMAKE_ANDROID_API            26)
     set(CMAKE_ANDROID_STL_TYPE       c++_shared)
 
     set(VCPKG_TARGET_TRIPLET arm64-android)
@@ -45,7 +45,7 @@ find_package(glm       CONFIG REQUIRED)
 find_package(imgui     CONFIG REQUIRED)
 find_package(assimp    CONFIG REQUIRED)
 find_package(glad      CONFIG REQUIRED)
-
+find_package(SDL2_image CONFIG REQUIRED)
 
 # -----------------------------------------------------------------------------
 # Source files
@@ -121,6 +121,7 @@ target_link_libraries(${PROJECT_NAME}
         PRIVATE
         $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
         $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+        $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>
         imgui::imgui
         glm::glm
         assimp::assimp

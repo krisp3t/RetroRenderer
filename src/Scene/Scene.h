@@ -31,7 +31,7 @@ namespace RetroRenderer
         bool ProcessScene(const aiScene* scene);
         bool ProcessNode(aiNode *node, const aiScene *scene);
         bool ProcessNode(aiNode *node, const aiScene *scene, int parentIndex);
-        void ProcessMesh(aiMesh *mesh, const aiScene *scene, std::vector<Mesh> &meshes);
+        void ProcessMesh(aiMesh *mesh, const aiScene *scene, std::vector<Mesh> &meshes, const aiString& modelName);
 
     };
 };

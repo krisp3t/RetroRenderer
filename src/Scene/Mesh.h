@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
-#include "../Renderer/Vertex.h"
+#include "Vertex.h"
+#include "Texture.h"
 
 #ifdef __ANDROID__
 #include <GLES3/gl3.h> // For OpenGL ES 3.0
@@ -15,7 +16,7 @@ namespace RetroRenderer
     {
     public:
         ~Mesh() = default;
-        Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices);
+        Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
 
         void Init();
 
@@ -26,7 +27,9 @@ namespace RetroRenderer
 
         // Per-face
         unsigned int m_numFaces = 0;
-        // std::vector<Texture>
+
+        // Per-mesh
+        std::vector<Texture> m_Textures;
 
         // TODO: get rid of OpenGL specifics!!
         GLuint VAO = 0;
