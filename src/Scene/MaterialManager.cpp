@@ -45,8 +45,8 @@ namespace RetroRenderer
         Material phongTexMaterial;
         phongTexMaterial.name = "phong-tex";
 #ifdef __ANDROID__
-        auto phongVs = g_assetsPath + "/phong-tex-gles.vs";
-        auto phongFs = g_assetsPath + "/phong-tex-gles.fs";
+        auto phongVs = g_assetsPath + "/shaders/phong-tex-gles.vs";
+        auto phongFs = g_assetsPath + "/shaders/phong-tex-gles.fs";
 #else
         auto phongVs = "shaders/phong-tex.vs";
         auto phongFs = "shaders/phong-tex.fs";

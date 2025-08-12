@@ -67,7 +67,7 @@ public class MainActivity extends SDLActivity {
     }
 
     private void copyAssetFile(String assetPath, File destFile) {
-        if (destFile.exists()) return; // Don't overwrite existing
+        // Will overwrite existing!
 
         try (InputStream in = getAssets().open(assetPath);
              OutputStream out = new FileOutputStream(destFile)) {
@@ -81,24 +81,24 @@ public class MainActivity extends SDLActivity {
         }
     }
 
-    private void copyAllAssetsToInternalStorage(String assetPath, File outputDir) {
+    private void copyAllAssetsToInternalStorage(String assetPath, File rootOutputDir) {
         AssetManager assetManager = getAssets();
         try {
             String[] assets = assetManager.list(assetPath);
+
             if (assets == null || assets.length == 0) {
-                // File
-                copyAssetFile(assetPath, new File(outputDir, new File(assetPath).getName()));
-            } else {
-                // Directory
-                File dir = new File(outputDir, assetPath);
-                if (!dir.exists()) {
-                    dir.mkdirs();
+                // It's a file
+                File outFile = new File(rootOutputDir, assetPath);
+                File parentDir = outFile.getParentFile();
+                if (parentDir != null && !parentDir.exists()) {
+                    parentDir.mkdirs();
                 }
+                copyAssetFile(assetPath, outFile);
+            } else {
+                // It's a directory
                 for (String asset : assets) {
-                    copyAllAssetsToInternalStorage(
-                            assetPath.isEmpty() ? asset : assetPath + "/" + asset,
-                            outputDir
-                    );
+                    String childPath = assetPath.isEmpty() ? asset : assetPath + "/" + asset;
+                    copyAllAssetsToInternalStorage(childPath, rootOutputDir);
                 }
             }
         } catch (IOException e) {
