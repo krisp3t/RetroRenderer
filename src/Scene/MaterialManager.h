@@ -43,6 +43,8 @@ public:
     void LoadTexture(const std::string &path);
     void RenderUI();
     void LoadDefaultShaders();
+    Material& GetCurrentMaterial() { return m_Materials[m_CurrentMaterialIndex]; }
+
 private:
     ShaderProgram CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath);
     std::string ReadShaderFile(const std::string& path);

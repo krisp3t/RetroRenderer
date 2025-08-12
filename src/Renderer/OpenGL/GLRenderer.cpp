@@ -56,9 +56,6 @@ namespace RetroRenderer
             return false;
         }
 
-        m_ShaderProgram = CreateShaderProgram();
-        glUseProgram(m_ShaderProgram);
-
         // TODO: add depth buffer
 
         CreateFallbackTexture();
@@ -113,7 +110,8 @@ namespace RetroRenderer
     void GLRenderer::DrawTriangularMesh(const Model *model)
     {
         // TODO: Cache uniforms after shader compile?
-        glUseProgram(m_ShaderProgram);
+        MaterialManager::Material& mat = Engine::Get().GetMaterialManager().GetCurrentMaterial();
+        glUseProgram(mat.shaderProgram.id);
 
         const glm::mat4& modelMat = model->GetTransform();
         const glm::mat4& viewMat = p_Camera->m_ViewMat;
@@ -121,22 +119,22 @@ namespace RetroRenderer
         const glm::mat4 mv = viewMat * modelMat;
         const glm::mat4 mvp = projMat * mv;
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMat)));
-        GLint normalMatLoc = glGetUniformLocation(m_ShaderProgram, "u_NormalMatrix");
+        GLint normalMatLoc = glGetUniformLocation(mat.shaderProgram.id, "u_NormalMatrix");
         glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
 
         // Per-mesh uniforms
-        GLint modelLoc = glGetUniformLocation(m_ShaderProgram, "u_ModelMatrix");
+        GLint modelLoc = glGetUniformLocation(mat.shaderProgram.id, "u_ModelMatrix");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMat));
-        GLint viewProjLoc = glGetUniformLocation(m_ShaderProgram, "u_ViewProjectionMatrix");
+        GLint viewProjLoc = glGetUniformLocation(mat.shaderProgram.id, "u_ViewProjectionMatrix");
         glUniformMatrix4fv(viewProjLoc, 1, GL_FALSE, glm::value_ptr(mvp));
 
-        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_LightPos"), 5.0f, 5.0f, 5.0f);
-        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
-        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_LightColor"), 1.0f, 1.0f, 1.0f);
-        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ObjectColor"), 1.0f, 0.5f, 0.3f);
-        GLint texLoc = glGetUniformLocation(m_ShaderProgram, "u_Texture");
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), 5.0f, 5.0f, 5.0f);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"), 1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ObjectColor"), 1.0f, 0.5f, 0.3f);
+        GLint texLoc = glGetUniformLocation(mat.shaderProgram.id, "u_Texture");
 
         auto& meshes = model->GetMeshes();
         for (const Mesh& mesh : meshes)
@@ -240,6 +238,7 @@ namespace RetroRenderer
             glDeleteShader(shader);
             return 0;
         }
+        LOGD("GLRenderer: Compiled shader: %s", shaderSource);
         return shader;
     }
 

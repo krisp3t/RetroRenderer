@@ -52,7 +52,6 @@ namespace RetroRenderer
         GLuint p_FrameBufferTexture = 0;
         GLuint m_FrameBuffer = 0;
         GLuint m_DepthBuffer = 0;
-        GLuint m_ShaderProgram = 0;
         GLuint m_FallbackTexture = 0;
 
     };

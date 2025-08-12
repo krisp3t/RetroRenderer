@@ -45,6 +45,7 @@ namespace RetroRenderer
         shaderProgram.vertexPath = vertexPath;
         shaderProgram.fragmentPath = fragmentPath;
         shaderProgram.name = vertexPath + "+" + fragmentPath;
+        LOGI("Created shader program %s with handle %d", shaderProgram.name.c_str(), shaderProgram.id);
         return shaderProgram;
     }
 
@@ -76,7 +77,7 @@ namespace RetroRenderer
         const char* materialNames[] = {"Phong (Improved)", "Unlit Texture"};
         ImGui::Combo("Material Type", &m_CurrentMaterialIndex, materialNames, IM_ARRAYSIZE(materialNames));
 
-        Material& currentMat = m_Materials[m_CurrentMaterialIndex];
+        Material& currentMat = GetCurrentMaterial();
 
         // Texture loading
         ImGui::InputText("Texture Path", m_TexturePathBuffer, sizeof(m_TexturePathBuffer));
