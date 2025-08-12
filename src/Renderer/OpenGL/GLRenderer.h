@@ -32,7 +32,13 @@ namespace RetroRenderer
 
         GLuint CreateShaderProgram(const char *vertexShaderSource, const char *fragmentShaderSource);
         GLuint CreateShaderProgram();
-
+    private:
+        static void
+        DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message,
+                      const void *userParam);
+        bool CreateFramebuffer(GLuint fbTex, int w, int h);
+        GLuint CompileShader(GLenum shaderType, const char *shaderSource);
+        void CreateFallbackTexture();
 
     private:
         Camera *p_Camera = nullptr;
@@ -44,13 +50,8 @@ namespace RetroRenderer
         GLuint p_FrameBufferTexture = 0;
         GLuint m_FrameBuffer = 0;
         GLuint m_DepthBuffer = 0;
-
         GLuint m_ShaderProgram = 0;
+        GLuint m_FallbackTexture = 0;
 
-        static void
-        DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message,
-                      const void *userParam);
-        bool CreateFramebuffer(GLuint fbTex, int w, int h);
-        GLuint CompileShader(GLenum shaderType, const char *shaderSource);
     };
 }

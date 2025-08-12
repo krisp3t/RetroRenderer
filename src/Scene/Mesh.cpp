@@ -1,15 +1,19 @@
 #include <SDL_egl.h>
+
+#include <utility>
 #include "Mesh.h"
 
 namespace RetroRenderer
 {
-    Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures)
+    Mesh::Mesh(std::vector<Vertex> vertices,
+     std::vector<unsigned int> indices,
+     std::vector<Texture> textures)
+    : m_Vertices(std::move(vertices))
+    , m_Indices(std::move(indices))
+    , m_Textures(std::move(textures))
     {
-        m_Vertices = vertices;
-        m_Indices = indices;
         m_numVertices = vertices.size();
         m_numFaces = indices.size() / 3;
-        m_Textures = textures;
         Init();
     }
 

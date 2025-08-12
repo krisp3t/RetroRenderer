@@ -14,9 +14,17 @@ namespace RetroRenderer
     public:
         Texture();
         ~Texture();
+        // Disable copying
+        Texture(const Texture&) = delete;
+        Texture& operator=(const Texture&) = delete;
+        // Enable moving
+        Texture(Texture&& other) noexcept;
+        Texture& operator=(Texture&& other) noexcept;
+
         bool LoadFromFile(const char* filePath);
-        void Bind(GLuint unit = 0);
-        GLuint GetID() const;
+        void Bind(GLuint unit = 0) const;
+        GLuint GetID() const { return m_TextureID; }
+        bool IsValid() const { return m_TextureID != 0; }
     private:
         GLuint LoadTextureFromFile(const char* filePath);
         GLuint m_TextureID;

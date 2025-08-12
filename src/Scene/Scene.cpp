@@ -10,6 +10,10 @@
 
 #include <KrisLogger/Logger.h>
 #include "Scene.h"
+
+#include <filesystem>
+#include <format>
+
 #include "Vertex.h"
 
 namespace RetroRenderer
@@ -84,21 +88,6 @@ namespace RetroRenderer
              node->mName.C_Str(),
              node->mNumMeshes,
              parentIndex);
-        /*
-        if (parent)
-        {
-            auto &parentName = parent->GetName();
-            LOGD("Processing node: %s (%d meshes), parent: %s",
-                 node->mName.C_Str(),
-                 node->mNumMeshes,
-                 parentName.c_str());
-        } else
-        {
-            LOGD("Processing node: %s (%d meshes), parent: none",
-                 node->mName.C_Str(),
-                 node->mNumMeshes);
-        }
-         */
 
         // Create a model for this aiNode
         Model newModel{};
@@ -121,14 +110,13 @@ namespace RetroRenderer
             newModel.SetParentTransform(m_Models[parentIndex].GetTransform());
             m_Models[parentIndex].m_Children.push_back(currentNodeIndex);
         }
-        m_Models.push_back(std::move(newModel));
+        m_Models.emplace_back(std::move(newModel));
 
         // Recursively process children
         for (unsigned int i = 0; i < node->mNumChildren; i++)
         {
             ProcessNode(node->mChildren[i], scene, currentNodeIndex);
         }
-
         return true;
     }
 
@@ -152,7 +140,6 @@ namespace RetroRenderer
         for (unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
             Vertex vertex{};
-
             if (mesh->HasPositions())
             {
                 vertex.position.x = mesh->mVertices[i].x;
@@ -179,7 +166,6 @@ namespace RetroRenderer
             }
             vertices.push_back(vertex);
         }
-
         for (unsigned int i = 0; i < mesh->mNumFaces; i++)
         {
             aiFace face = mesh->mFaces[i];
@@ -190,21 +176,22 @@ namespace RetroRenderer
             }
         }
 
+
         if (mesh->mMaterialIndex >= 0)
         {
             //aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
             // TODO: process material
         }
-
+/*
         // TODO: do not hardcode like this
-        Texture texture{};
-        std::string texPath{modelName.C_Str()};
-        texPath.append(".png");
-        if (texture.LoadFromFile(texPath.c_str()))
+        Texture texture;
+        std::string texPath = std::format("{}.png", modelName.C_Str());
+        std::filesystem::path fullPath = std::filesystem::absolute(texPath);
+        if (texture.LoadFromFile(fullPath.string().c_str()))
         {
-            textures.push_back(texture);
+            textures.emplace_back(std::move(texture));
         }
-
+*/
         meshes.emplace_back(std::move(vertices), std::move(indices), std::move(textures));
     }
 

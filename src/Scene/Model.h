@@ -16,6 +16,11 @@ namespace RetroRenderer
     public:
         Model();
         ~Model() = default;
+        Model(const Model&) = delete;
+        Model& operator=(const Model&) = delete;
+        Model(Model&&) noexcept = default;
+        Model& operator=(Model&&) noexcept = default;
+
         const std::vector<Mesh> &GetMeshes() const;
         const std::string &GetName() const;
         void SetName(const aiString &name);

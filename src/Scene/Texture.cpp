@@ -6,13 +6,29 @@ namespace RetroRenderer
     Texture::Texture() : m_TextureID(0)
     {
     }
-
     Texture::~Texture()
     {
         if (m_TextureID)
         {
             glDeleteTextures(1, &m_TextureID);
+            m_TextureID = 0;
         }
+    }
+    Texture::Texture(Texture&& other) noexcept
+    : m_TextureID(other.m_TextureID)
+    {
+        other.m_TextureID = 0; // Invalidate source object
+    }
+    Texture& Texture::operator=(Texture&& other) noexcept {
+        if (this != &other) {
+            if (m_TextureID) {
+                glDeleteTextures(1, &m_TextureID);
+            }
+            // Transfer ownership
+            m_TextureID = other.m_TextureID;
+            other.m_TextureID = 0;
+        }
+        return *this;
     }
 
     GLuint Texture::LoadTextureFromFile(const char* filePath)
@@ -53,18 +69,26 @@ namespace RetroRenderer
 
     bool Texture::LoadFromFile(const char* filePath)
     {
+        if (m_TextureID) {
+            glDeleteTextures(1, &m_TextureID);
+            m_TextureID = 0;
+        }
         m_TextureID = LoadTextureFromFile(filePath);
-        return m_TextureID != 0;
+        if (!m_TextureID) {
+            LOGE("Failed to load texture: %s", filePath);
+            return false;
+        }
+        return true;
     }
 
-    void Texture::Bind(GLuint unit)
+    void Texture::Bind(GLuint unit) const
     {
+        if (!IsValid())
+        {
+            LOGW("Tried to bind empty texture");
+            return;
+        }
         glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, m_TextureID);
-    }
-
-    GLuint Texture::GetID() const
-    {
-        return m_TextureID;
     }
 }

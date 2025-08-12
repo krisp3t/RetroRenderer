@@ -90,6 +90,7 @@ uniform vec3 u_LightPos;
 uniform vec3 u_ViewPos;
 uniform vec3 u_LightColor;
 uniform vec3 u_ObjectColor;
+uniform sampler2D u_Texture;
 
 void main() {
     // Ambient
@@ -109,7 +110,9 @@ void main() {
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
     vec3 specular = specularStrength * spec * u_LightColor;
 
-    vec3 result = (ambient + diffuse + specular) * u_ObjectColor;
+    vec3 texColor = texture(u_Texture, TexCoord).rgb;
+
+    vec3 result = (ambient + diffuse + specular) * texColor * u_ObjectColor;
     FragColor = vec4(result, 1.0);
 }
 )glsl";
@@ -117,6 +120,8 @@ void main() {
         glUseProgram(m_ShaderProgram);
 
         // TODO: add depth buffer
+
+        CreateFallbackTexture();
         glViewport(0, 0, w, h);
         return true;
     }
@@ -167,6 +172,7 @@ void main() {
 
     void GLRenderer::DrawTriangularMesh(const Model *model)
     {
+        // TODO: Cache uniforms after shader compile?
         glUseProgram(m_ShaderProgram);
 
         const glm::mat4& modelMat = model->GetTransform();
@@ -190,15 +196,27 @@ void main() {
         glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
         glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_LightColor"), 1.0f, 1.0f, 1.0f);
         glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ObjectColor"), 1.0f, 0.5f, 0.3f);
+        GLint texLoc = glGetUniformLocation(m_ShaderProgram, "u_Texture");
 
         auto& meshes = model->GetMeshes();
         for (const Mesh& mesh : meshes)
         {
+            /*
+            if (!mesh.m_Textures.empty() && mesh.m_Textures[0].IsValid()) {
+                mesh.m_Textures[0].Bind(0);
+            }
+            else
+            {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
+            }
+            glUniform1i(texLoc, 0);
+            */
             glBindVertexArray(mesh.VAO);
             glDrawElements(GL_TRIANGLES, mesh.m_Indices.size(), GL_UNSIGNED_INT, nullptr);
-            glBindVertexArray(0);
         }
 
+        glBindVertexArray(0);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glUseProgram(0);
     }
@@ -348,4 +366,16 @@ void main() {
         return shaderProgram;
     }
 
+    void GLRenderer::CreateFallbackTexture()
+    {
+        unsigned char whitePixel[4] = { 255, 255, 255, 255 };
+
+        glGenTextures(1, &m_FallbackTexture);
+        glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, whitePixel);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
 }
