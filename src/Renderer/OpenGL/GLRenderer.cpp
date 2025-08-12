@@ -112,7 +112,7 @@ void main() {
 
     vec3 texColor = texture(u_Texture, TexCoord).rgb;
 
-    vec3 result = (ambient + diffuse + specular) * texColor * u_ObjectColor;
+    vec3 result = (ambient + diffuse + specular) * texColor;
     FragColor = vec4(result, 1.0);
 }
 )glsl";
