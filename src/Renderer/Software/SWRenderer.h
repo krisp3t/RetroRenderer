@@ -31,6 +31,12 @@ namespace RetroRenderer
 
         GLuint EndFrame() override;
 
+        GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override
+        {
+            // TODO: implement
+            return 0;
+        }
+
     private:
         Buffer<uint32_t> *m_FrameBuffer = nullptr;
         GLuint p_FrameBufferTexture = 0;

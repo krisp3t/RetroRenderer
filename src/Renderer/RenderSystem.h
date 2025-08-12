@@ -39,6 +39,8 @@ namespace RetroRenderer
 
         void OnLoadScene(const SceneLoadEvent &e);
 
+        [[nodiscard]] GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode);
+
     private:
         std::unique_ptr<Scene> p_scene_ = nullptr;
         std::unique_ptr<SWRenderer> p_SWRenderer_ = nullptr;

@@ -30,7 +30,11 @@ namespace RetroRenderer
         GLuint CreateShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource);
         GLuint CreateShaderProgram();
 
-
+        GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override
+        {
+            // TODO: implement
+            return 0;
+        }
     private:
         Camera* p_Camera = nullptr;
 

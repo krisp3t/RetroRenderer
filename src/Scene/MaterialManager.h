@@ -14,9 +14,18 @@ namespace RetroRenderer
 class MaterialManager
 {
 public:
+    struct ShaderProgram
+    {
+        GLuint id;
+        std::string name;
+        std::string vertexPath;
+        std::string fragmentPath;
+        // time_t lastModified = 0;
+    };
+
     struct Material
     {
-        GLuint shaderProgram;
+        ShaderProgram shaderProgram;
         GLuint textureID;
         std::string name;
         std::string texturePath;
@@ -27,15 +36,24 @@ public:
         glm::vec3 lightColor = glm::vec3(1.0f);
         glm::vec3 objectColor = glm::vec3(1.0f);
     };
+
     MaterialManager() = default;
     ~MaterialManager() = default;
     bool Init();
     void LoadTexture(const std::string &path);
     void RenderUI();
+    void LoadDefaultShaders();
+private:
+    ShaderProgram CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath);
+    std::string ReadShaderFile(const std::string& path);
+    void CheckShaderErrors(GLuint shader, const std::string& type);
 private:
     std::vector<Material> m_Materials;
     int m_CurrentMaterialIndex = 0;
     char m_TexturePathBuffer[256] = "";
+    char vertPathBuffer[256] = "";
+    char fragPathBuffer[256] = "";
+    int newShaderType = 0; // For UI combo box
 };
 
 }

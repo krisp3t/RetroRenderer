@@ -31,10 +31,11 @@ public:
 	void Dispatch(const Event& event);
     void EnqueueEvent(std::unique_ptr<Event> event);
 
-	const std::shared_ptr<Config> GetConfig() const;
-	const std::shared_ptr<Stats> GetStats() const;
-	Camera* GetCamera() const;
+	[[nodiscard]] const std::shared_ptr<Config> GetConfig() const;
+	[[nodiscard]] const std::shared_ptr<Stats> GetStats() const;
+	[[nodiscard]] Camera* GetCamera() const;
 	[[nodiscard]] MaterialManager& GetMaterialManager() const;
+	[[nodiscard]] RenderSystem& GetRenderSystem() const;
 private:
 	Engine() = default;
 	~Engine() = default;
@@ -48,7 +49,7 @@ private:
     std::mutex m_EventQueueMutex;
 
     DisplaySystem m_DisplaySystem;
-    RenderSystem m_RenderSystem;
+    std::unique_ptr<RenderSystem> p_RenderSystem;
     InputSystem m_InputSystem;
     SceneManager m_SceneManager;
 	std::unique_ptr<MaterialManager> p_MaterialManager;

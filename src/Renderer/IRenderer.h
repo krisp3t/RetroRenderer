@@ -26,5 +26,7 @@ namespace RetroRenderer
 
         virtual void DrawTriangularMesh(const Model *model) = 0;
 
+        [[nodiscard]] virtual GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) = 0;
+
     };
 }

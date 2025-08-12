@@ -30,14 +30,16 @@ namespace RetroRenderer
 
         GLuint EndFrame() override;
 
-        GLuint CreateShaderProgram(const char *vertexShaderSource, const char *fragmentShaderSource);
         GLuint CreateShaderProgram();
+        GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override;
+
     private:
         static void
         DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message,
                       const void *userParam);
         bool CreateFramebuffer(GLuint fbTex, int w, int h);
         GLuint CompileShader(GLenum shaderType, const char *shaderSource);
+        void CheckShaderErrors(GLuint shader, const std::string &type);
         void CreateFallbackTexture();
 
     private:

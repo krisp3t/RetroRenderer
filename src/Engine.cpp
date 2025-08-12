@@ -14,7 +14,8 @@ namespace RetroRenderer
         {
             return false;
         }
-        if (!m_RenderSystem.Init(m_DisplaySystem.GetWindow()))
+        p_RenderSystem = std::make_unique<RenderSystem>();
+        if (!p_RenderSystem->Init(m_DisplaySystem.GetWindow()))
         {
             return false;
         }
@@ -68,9 +69,9 @@ namespace RetroRenderer
             if (scene && camera)
             {
                 m_DisplaySystem.BeforeFrame();
-                m_RenderSystem.BeforeFrame(clearColor);
-                auto &queue = m_RenderSystem.BuildRenderQueue(*scene, *camera);
-                GLuint fbTex = m_RenderSystem.Render(queue, scene->m_Models);
+                p_RenderSystem->BeforeFrame(clearColor);
+                auto &queue = p_RenderSystem->BuildRenderQueue(*scene, *camera);
+                GLuint fbTex = p_RenderSystem->Render(queue, scene->m_Models);
                 m_DisplaySystem.DrawFrame(fbTex);
             } else
             {
@@ -140,7 +141,7 @@ namespace RetroRenderer
                 {
                     m_SceneManager.LoadScene(e.sceneDataBuffer.data(), e.sceneDataSize);
                 }
-                m_RenderSystem.OnLoadScene(e); // TODO: send to all subscribers
+                p_RenderSystem->OnLoadScene(e); // TODO: send to all subscribers
                 break;
             }
             case EventType::Scene_Reset:
@@ -151,7 +152,7 @@ namespace RetroRenderer
             case EventType::Output_Image_Resize:
             {
                 const OutputImageResizeEvent &e = static_cast<const OutputImageResizeEvent &>(event);
-                m_RenderSystem.Resize(e.resolution);
+                p_RenderSystem->Resize(e.resolution);
                 break;
             }
             default:
@@ -177,5 +178,10 @@ namespace RetroRenderer
     MaterialManager& Engine::GetMaterialManager() const
     {
         return *p_MaterialManager;
+    }
+
+    RenderSystem& Engine::GetRenderSystem() const
+    {
+        return *p_RenderSystem;
     }
 }

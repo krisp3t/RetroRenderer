@@ -120,7 +120,10 @@ namespace RetroRenderer
 
     void RenderSystem::OnLoadScene(const SceneLoadEvent &e)
     {
-
     }
 
+    GLuint RenderSystem::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode)
+    {
+        return p_activeRenderer_->CompileShaders(vertexCode, fragmentCode);
+    }
 }
