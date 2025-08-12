@@ -78,6 +78,7 @@ namespace RetroRenderer
             LOGE("Failed to load texture: %s", filePath);
             return false;
         }
+        LOGI("Loaded texture %s", filePath);
         return true;
     }
 

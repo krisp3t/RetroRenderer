@@ -140,15 +140,14 @@ namespace RetroRenderer
         for (const Mesh& mesh : meshes)
         {
             // TODO: replace with per-mesh texture?
-            if (mat.textureID != 0)
+            if (mat.texture.GetID() == 0)
             {
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
             }
             else
             {
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, mat.textureID);
+                mat.texture.Bind();
             }
 
             glUniform1i(texLoc, 0);

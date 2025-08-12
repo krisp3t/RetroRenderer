@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include <glm/vec3.hpp>
+
+#include "Texture.h"
 #ifdef __ANDROID__
 #include <GLES3/gl3.h> // For OpenGL ES 3.0
 #else
@@ -16,7 +18,7 @@ class MaterialManager
 public:
     struct ShaderProgram
     {
-        GLuint id;
+        GLuint id = 0;
         std::string name;
         std::string vertexPath;
         std::string fragmentPath;
@@ -26,9 +28,8 @@ public:
     struct Material
     {
         ShaderProgram shaderProgram;
-        GLuint textureID;
+        Texture texture;
         std::string name;
-        std::string texturePath;
 
         float ambientStrength = 0.3f;
         float specularStrength = 0.3f;

@@ -17,6 +17,13 @@ namespace RetroRenderer
 
     void MaterialManager::LoadTexture(const std::string& path)
     {
+        Texture texture;
+        if (!texture.LoadFromFile(path.c_str())) {
+            LOGE("Failed to load texture %s", path.c_str());
+            return;
+        }
+        GetCurrentMaterial().texture = std::move(texture);
+        // TODO: resource leak
     }
 
     void MaterialManager::LoadDefaultShaders()
@@ -24,7 +31,7 @@ namespace RetroRenderer
         Material phongTexMaterial;
         phongTexMaterial.name = "Phong texture-map";
         phongTexMaterial.shaderProgram = CreateShaderProgram("assets/shaders/phong-tex.vs", "assets/shaders/phong-tex.fs");
-        m_Materials.push_back(phongTexMaterial);
+        m_Materials.emplace_back(std::move(phongTexMaterial));
     }
 
     MaterialManager::ShaderProgram MaterialManager::CreateShaderProgram(const std::string& vertexPath,
@@ -74,7 +81,7 @@ namespace RetroRenderer
             return;
         }
 
-        const char* materialNames[] = {"Phong (Improved)", "Unlit Texture"};
+        const char* materialNames[] = {"Phong (texture color)", "Unlit Texture"};
         ImGui::Combo("Material Type", &m_CurrentMaterialIndex, materialNames, IM_ARRAYSIZE(materialNames));
 
         Material& currentMat = GetCurrentMaterial();
@@ -87,9 +94,9 @@ namespace RetroRenderer
         }
 
         // Display current texture
-        if (currentMat.textureID) {
-            ImGui::Text("Current Texture: %s", currentMat.texturePath.c_str());
-            ImGui::Image(ImTextureID((void*)(intptr_t)currentMat.textureID), ImVec2(128, 128));
+        if (currentMat.texture.GetID()) {
+            //ImGui::Text("Current Texture: %s", currentMat.texturePath.c_str());
+            //ImGui::Image(ImTextureID((void*)(intptr_t)currentMat.textureID), ImVec2(128, 128));
         }
 
         // Shader parameters
