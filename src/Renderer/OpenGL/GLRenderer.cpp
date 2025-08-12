@@ -139,14 +139,18 @@ namespace RetroRenderer
         auto& meshes = model->GetMeshes();
         for (const Mesh& mesh : meshes)
         {
-            if (!mesh.m_Textures.empty() && mesh.m_Textures[0].IsValid()) {
-                mesh.m_Textures[0].Bind(0);
-            }
-            else
+            // TODO: replace with per-mesh texture?
+            if (mat.textureID != 0)
             {
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
             }
+            else
+            {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, mat.textureID);
+            }
+
             glUniform1i(texLoc, 0);
             glBindVertexArray(mesh.VAO);
             glDrawElements(GL_TRIANGLES, mesh.m_Indices.size(), GL_UNSIGNED_INT, nullptr);
