@@ -12,9 +12,8 @@ namespace RetroRenderer
     , m_Indices(std::move(indices))
     , m_Textures(std::move(textures))
     {
-        m_numVertices = vertices.size();
-        m_numFaces = indices.size() / 3;
-        Init();
+        m_numVertices = m_Vertices.size();
+        m_numFaces = m_Indices.size() / 3;
     }
 
     void Mesh::Init()
@@ -44,6 +43,10 @@ namespace RetroRenderer
         // TexCoords
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, texCoords));
         glEnableVertexAttribArray(2);
+
+        GLint vboBytes = 0;
+        glGetNamedBufferParameteriv(VBO, GL_BUFFER_SIZE, &vboBytes);
+        assert(vboBytes > 0 && "VBO is zero-sized after Init");
 
         glBindVertexArray(0);
     }

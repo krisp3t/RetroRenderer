@@ -102,6 +102,7 @@ namespace RetroRenderer
             if (mesh->mNumVertices > 0 && mesh->mNumFaces > 0)
             {
                 ProcessMesh(mesh, scene, newModel.m_Meshes, node->mName);
+                newModel.m_Meshes.back().Init();
             }
         }
         int currentNodeIndex = m_Models.size();

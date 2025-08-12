@@ -201,7 +201,6 @@ void main() {
         auto& meshes = model->GetMeshes();
         for (const Mesh& mesh : meshes)
         {
-            /*
             if (!mesh.m_Textures.empty() && mesh.m_Textures[0].IsValid()) {
                 mesh.m_Textures[0].Bind(0);
             }
@@ -211,7 +210,6 @@ void main() {
                 glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
             }
             glUniform1i(texLoc, 0);
-            */
             glBindVertexArray(mesh.VAO);
             glDrawElements(GL_TRIANGLES, mesh.m_Indices.size(), GL_UNSIGNED_INT, nullptr);
         }
