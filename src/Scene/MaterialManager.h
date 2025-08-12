@@ -33,8 +33,9 @@ public:
     void LoadTexture(const std::string &path);
     void RenderUI();
 private:
-    std::vector<Material> m_materials;
-    unsigned int currrentMaterialIndex = 0;
+    std::vector<Material> m_Materials;
+    int m_CurrentMaterialIndex = 0;
+    char m_TexturePathBuffer[256] = "";
 };
 
 }
