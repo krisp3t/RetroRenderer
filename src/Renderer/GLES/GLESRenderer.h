@@ -27,28 +27,20 @@ namespace RetroRenderer
 
         GLuint EndFrame() override;
 
-        GLuint CreateShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource);
-        GLuint CreateShaderProgram();
+        GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override;
 
-        GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override
-        {
-            // TODO: implement
-            return 0;
-        }
+    private:
+        bool CreateFramebuffer(GLuint fbTex, int w, int h);
+        GLuint CompileShader(GLenum shaderType, const char *shaderSource);
+        void CheckShaderErrors(GLuint shader, const std::string &type);
+        void CreateFallbackTexture();
+
     private:
         Camera* p_Camera = nullptr;
 
-        GLuint m_VAO = 0;
-        GLuint m_VBO = 0;
-        GLuint m_EBO = 0;
-
+        GLuint m_FallbackTexture = 0;
         GLuint p_FrameBufferTexture = 0;
         GLuint m_FrameBuffer = 0;
         GLuint m_DepthBuffer = 0;
-
-        GLuint m_ShaderProgram = 0;
-
-        bool CreateFramebuffer(GLuint fbTex, int w, int h);
-        GLuint CompileShader(GLenum shaderType, const char* shaderSource);
     };
 }

@@ -13,68 +13,6 @@ namespace RetroRenderer
             return false;
         }
 
-        // TODO: remove
-        const char* vertexShaderSource = R"glsl(#version 300 es
-precision highp float;
-
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aNormal;
-layout(location = 2) in vec2 aTexCoord;
-
-uniform mat4 u_ModelMatrix;
-uniform mat4 u_ViewProjectionMatrix;
-uniform mat3 u_NormalMatrix; // derived from model matrix
-
-out vec3 FragPos;
-out vec3 Normal;
-out vec2 TexCoord;
-
-void main() {
-    FragPos = vec3(u_ModelMatrix * vec4(aPos, 1.0));
-    Normal = normalize(u_NormalMatrix * aNormal);
-    TexCoord = aTexCoord;
-    gl_Position = u_ViewProjectionMatrix * vec4(FragPos, 1.0);
-}
-)glsl";
-        const char* fragmentShaderSource = R"glsl(#version 300 es
-precision highp float;
-
-in vec3 FragPos;
-in vec3 Normal;
-in vec2 TexCoord;
-
-out vec4 FragColor;
-
-uniform vec3 u_LightPos;
-uniform vec3 u_ViewPos;
-uniform vec3 u_LightColor;
-uniform vec3 u_ObjectColor;
-
-void main() {
-    // Ambient
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * u_LightColor;
-
-    // Diffuse
-    vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(u_LightPos - FragPos);
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * u_LightColor;
-
-    // Specular
-    float specularStrength = 0.5;
-    vec3 viewDir = normalize(u_ViewPos - FragPos);
-    vec3 reflectDir = reflect(-lightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-    vec3 specular = specularStrength * spec * u_LightColor;
-
-    vec3 result = (ambient + diffuse + specular) * u_ObjectColor;
-    FragColor = vec4(result, 1.0);
-}
-)glsl";
-        m_ShaderProgram = CreateShaderProgram(vertexShaderSource, fragmentShaderSource);
-        glUseProgram(m_ShaderProgram);
-
         // TODO: add depth buffer
         glViewport(0, 0, w, h);
         return true;
@@ -88,9 +26,20 @@ void main() {
     bool GLESRenderer::CreateFramebuffer(GLuint fbTex, int w, int h)
     {
         p_FrameBufferTexture = fbTex;
+
+        // Allocate color texture storage
+        glBindTexture(GL_TEXTURE_2D, p_FrameBufferTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        // Create framebuffer
         glGenFramebuffers(1, &m_FrameBuffer);
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, p_FrameBufferTexture, 0);
+
+        // Create depth+stencil buffer
         glGenRenderbuffers(1, &m_DepthBuffer);
         glBindRenderbuffer(GL_RENDERBUFFER, m_DepthBuffer);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
@@ -126,7 +75,9 @@ void main() {
 
     void GLESRenderer::DrawTriangularMesh(const Model* model)
     {
-        glUseProgram(m_ShaderProgram);
+        // TODO: Cache uniforms after shader compile?
+        MaterialManager::Material& mat = Engine::Get().GetMaterialManager().GetCurrentMaterial();
+        glUseProgram(mat.shaderProgram.id);
 
         const glm::mat4& modelMat = model->GetTransform();
         const glm::mat4& viewMat = p_Camera->m_ViewMat;
@@ -134,30 +85,42 @@ void main() {
         const glm::mat4 mv = viewMat * modelMat;
         const glm::mat4 mvp = projMat * mv;
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMat)));
-        GLint normalMatLoc = glGetUniformLocation(m_ShaderProgram, "u_NormalMatrix");
+        GLint normalMatLoc = glGetUniformLocation(mat.shaderProgram.id, "u_NormalMatrix");
         glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
 
         // Per-mesh uniforms
-        GLint modelLoc = glGetUniformLocation(m_ShaderProgram, "u_ModelMatrix");
+        GLint modelLoc = glGetUniformLocation(mat.shaderProgram.id, "u_ModelMatrix");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMat));
-        GLint viewProjLoc = glGetUniformLocation(m_ShaderProgram, "u_ViewProjectionMatrix");
+        GLint viewProjLoc = glGetUniformLocation(mat.shaderProgram.id, "u_ViewProjectionMatrix");
         glUniformMatrix4fv(viewProjLoc, 1, GL_FALSE, glm::value_ptr(mvp));
 
-        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_LightPos"), 5.0f, 5.0f, 5.0f);
-        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
-        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_LightColor"), 1.0f, 1.0f, 1.0f);
-        glUniform3f(glGetUniformLocation(m_ShaderProgram, "u_ObjectColor"), 1.0f, 0.5f, 0.3f);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), 5.0f, 5.0f, 5.0f);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"), 1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ObjectColor"), 1.0f, 0.5f, 0.3f);
+        GLint texLoc = glGetUniformLocation(mat.shaderProgram.id, "u_Texture");
 
         auto& meshes = model->GetMeshes();
         for (const Mesh& mesh : meshes)
         {
+            // TODO: replace with per-mesh texture?
+            if (mat.texture.GetID() == 0)
+            {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
+            }
+            else
+            {
+                mat.texture.Bind();
+            }
+            glUniform1i(texLoc, 0);
             glBindVertexArray(mesh.VAO);
             glDrawElements(GL_TRIANGLES, mesh.m_Indices.size(), GL_UNSIGNED_INT, nullptr);
-            glBindVertexArray(0);
         }
 
+        glBindVertexArray(0);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glUseProgram(0);
     }
@@ -194,6 +157,60 @@ void main() {
         return p_FrameBufferTexture;
     }
 
+    GLuint
+    GLESRenderer::CompileShaders(const std::string &vertexCode, const std::string &fragmentCode) {
+        GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexCode.c_str());
+        if (vertexShader == 0)
+        {
+            return 0;
+        }
+        CheckShaderErrors(vertexShader, "VERTEX");
+        GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentCode.c_str());
+        if (fragmentShader == 0)
+        {
+            glDeleteShader(vertexShader);
+            return 0;
+        }
+        CheckShaderErrors(fragmentShader, "FRAGMENT");
+
+        GLuint shaderProgram = glCreateProgram();
+        if (shaderProgram == 0)
+        {
+            LOGE("Error creating shader program");
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return 0;
+        }
+
+        glAttachShader(shaderProgram, vertexShader);
+        glAttachShader(shaderProgram, fragmentShader);
+        glLinkProgram(shaderProgram);
+        CheckShaderErrors(shaderProgram, "PROGRAM");
+
+        // TODO: get rid of duplicate check shader errors
+        GLint linkStatus;
+        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &linkStatus);
+        if (linkStatus == GL_FALSE)
+        {
+            GLint logLength;
+            glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &logLength);
+            std::vector<char> errorLog(logLength);
+            glGetProgramInfoLog(shaderProgram, logLength, &logLength, errorLog.data());
+            LOGE("Error linking shader program: %s", errorLog.data());
+            glDeleteProgram(shaderProgram);
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return 0;
+        }
+
+        glDetachShader(shaderProgram, vertexShader);
+        glDetachShader(shaderProgram, fragmentShader);
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+
+        return shaderProgram;
+    }
+
 
     GLuint GLESRenderer::CompileShader(GLenum shaderType, const char* shaderSource)
     {
@@ -218,95 +235,46 @@ void main() {
             glDeleteShader(shader);
             return 0;
         }
+        LOGD("GLESRenderer: Compiled shader: %s", shaderSource);
         return shader;
     }
 
-    GLuint GLESRenderer::CreateShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource)
-    {
-        GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
-        if (vertexShader == 0)
+    void GLESRenderer::CheckShaderErrors(GLuint shader, const std::string &type) {
+        GLint success;
+        if (type == "PROGRAM")
         {
-            return 0;
-        }
-
-        GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-        if (fragmentShader == 0)
+            glGetProgramiv(shader, GL_LINK_STATUS, &success);
+            if (success == GL_FALSE)
+            {
+                GLint logLength;
+                glGetProgramiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+                std::vector<char> errorLog(logLength);
+                glGetProgramInfoLog(shader, logLength, &logLength, errorLog.data());
+                LOGE("Error linking %s shader: %s", type.c_str(), errorLog.data());
+            }
+        } else
         {
-            glDeleteShader(vertexShader);
-            return 0;
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+            if (success == GL_FALSE)
+            {
+                GLint logLength;
+                glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+                std::vector<char> errorLog(logLength);
+                glGetShaderInfoLog(shader, logLength, &logLength, errorLog.data());
+                LOGE("Error compiling %s shader: %s", type.c_str(), errorLog.data());
+            }
         }
-
-        GLuint shaderProgram = glCreateProgram();
-        if (shaderProgram == 0)
-        {
-            LOGE("Error creating shader program");
-            glDeleteShader(vertexShader);
-            glDeleteShader(fragmentShader);
-            return 0;
-        }
-
-        glAttachShader(shaderProgram, vertexShader);
-        glAttachShader(shaderProgram, fragmentShader);
-
-
-        glLinkProgram(shaderProgram);
-        GLint linkStatus;
-        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &linkStatus);
-        if (linkStatus == GL_FALSE)
-        {
-            GLint logLength;
-            glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &logLength);
-            std::vector<char> errorLog(logLength);
-            glGetProgramInfoLog(shaderProgram, logLength, &logLength, errorLog.data());
-            LOGE("Error linking shader program: %s", errorLog.data());
-            glDeleteProgram(shaderProgram);
-            glDeleteShader(vertexShader);
-            glDeleteShader(fragmentShader);
-            return 0;
-        }
-
-        glDetachShader(shaderProgram, vertexShader);
-        glDetachShader(shaderProgram, fragmentShader);
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
-
-        return shaderProgram;
     }
 
-    /**
-     * Default shader program (if no shader program is provided). Used for debugging purposes.
-     */
-    GLuint GLESRenderer::CreateShaderProgram()
-    {
-        const char* vertexShaderSource = "#version 330 core\n"
-            "layout (location = 0) in vec3 aPos;\n"
-            "out vec4 vertexColor;\n"
-            "void main()\n"
-            "{\n"
-            "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-            "   vertexColor = vec4(1.0, 0.5, 0.0, 1.0);\n"
-            "}\0";
-        GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
-        glCompileShader(vertexShader);
-        const char* fragmentShaderSource = "#version 330 core\n"
-            "out vec4 FragColor;\n"
-            "in vec4 vertexColor;\n"
-            "void main()\n"
-            "{\n"
-            "   FragColor = vertexColor;\n"
-            "}\n\0";
-        GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
-        glCompileShader(fragmentShader);
-        GLuint shaderProgram;
-        shaderProgram = glCreateProgram();
-        glAttachShader(shaderProgram, vertexShader);
-        glAttachShader(shaderProgram, fragmentShader);
-        glLinkProgram(shaderProgram);
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
-        return shaderProgram;
-    }
+    void GLESRenderer::CreateFallbackTexture() {
+        unsigned char whitePixel[4] = {255, 255, 255, 255};
 
+        glGenTextures(1, &m_FallbackTexture);
+        glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, whitePixel);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
 }

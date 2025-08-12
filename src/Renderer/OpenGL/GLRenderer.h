@@ -45,10 +45,6 @@ namespace RetroRenderer
     private:
         Camera *p_Camera = nullptr;
 
-        GLuint m_VAO = 0;
-        GLuint m_VBO = 0;
-        GLuint m_EBO = 0;
-
         GLuint p_FrameBufferTexture = 0;
         GLuint m_FrameBuffer = 0;
         GLuint m_DepthBuffer = 0;
