@@ -7,6 +7,10 @@
 #include "../Engine.h"
 #include "KrisLogger/Logger.h"
 
+#ifdef __ANDROID__
+#include "../native/AndroidBridge.h"
+#endif
+
 namespace RetroRenderer
 {
     bool MaterialManager::Init()
@@ -24,6 +28,16 @@ namespace RetroRenderer
         }
         GetCurrentMaterial().texture = std::move(texture);
         // TODO: resource leak
+    }
+
+    void MaterialManager::LoadTexture(const uint8_t* data, const size_t size)
+    {
+        Texture texture;
+        if (!texture.LoadFromMemory(data, size)) {
+            LOGE("Failed to load texture from memory");
+            return;
+        }
+        GetCurrentMaterial().texture = std::move(texture);
     }
 
     void MaterialManager::LoadDefaultShaders()
@@ -89,10 +103,19 @@ namespace RetroRenderer
         // Texture loading
         ImGui::SeparatorText("Texture");
         if (ImGui::Button("Load texture")) {
+            // TODO: extract platform specific
+#ifdef __ANDROID__
+            auto* env = static_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+            auto activity = static_cast<jobject>(SDL_AndroidGetActivity());
+            jclass cls = env->GetObjectClass(activity);
+            jmethodID mid = env->GetMethodID(cls, "openTexturePicker", "()V");
+            env->CallVoidMethod(activity, mid);
+#else
             IGFD::FileDialogConfig sceneDialogConfig;
             ImGuiFileDialog::Instance()->Close();
             ImGuiFileDialog::Instance()->OpenDialog("OpenTextureFile", "Choose texture", k_supportedTextures,
                                         sceneDialogConfig);
+#endif
         }
 
         // Display current texture

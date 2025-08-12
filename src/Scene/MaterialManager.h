@@ -42,6 +42,7 @@ public:
     ~MaterialManager() = default;
     bool Init();
     void LoadTexture(const std::string &path);
+    void LoadTexture(const uint8_t* data, const size_t size);
     void RenderUI();
     void LoadDefaultShaders();
     Material& GetCurrentMaterial() { return m_Materials[m_CurrentMaterialIndex]; }

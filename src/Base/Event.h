@@ -9,7 +9,8 @@ namespace RetroRenderer
 	{
 		Output_Image_Resize,
 		Scene_Load,
-		Scene_Reset
+		Scene_Reset,
+		Texture_Load,
 	};
 
 	static constexpr const char* EventTypeToString(EventType type)
@@ -20,6 +21,8 @@ namespace RetroRenderer
 			return "Output_Image_Resize";
 		case EventType::Scene_Load:
 			return "Scene_Load";
+		case EventType::Texture_Load:
+			return "Texture_Load";
 		case EventType::Scene_Reset:
 			return "Scene_Reset";
 		default:
@@ -41,6 +44,20 @@ namespace RetroRenderer
 		{
 			type = EventType::Output_Image_Resize;
 			resolution = res;
+		}
+	};
+	struct TextureLoadEvent : public Event
+	{
+		std::string texturePath;
+		std::vector<uint8_t> textureDataBuffer;
+		size_t textureDataSize = 0;
+		bool loadFromMemory = false;
+		TextureLoadEvent(std::vector<uint8_t> buffer, size_t size)
+		{
+			type = EventType::Texture_Load;
+			textureDataBuffer = buffer;
+			textureDataSize = size;
+			loadFromMemory = true;
 		}
 	};
 

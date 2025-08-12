@@ -22,6 +22,7 @@ public class MainActivity extends SDLActivity {
     private static native void nativeSetAssetManager(AssetManager assetManager);
     public native void nativeSetImGuiIniPath(String path);
     private static native void nativeOnFilePicked(byte[] data);
+    private static native void nativeOnTexturePicked(byte[] data);
 
     @Override
     protected String[] getLibraries() {
@@ -108,6 +109,15 @@ public class MainActivity extends SDLActivity {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*");
         String[] mimeTypes = {"model/obj", "application/octet-stream", "text/plain"}; // TODO: extract all supported types
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+        startActivityForResult(intent, PICK_FILE_REQUEST);
+    }
+
+    public void openTexturePicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        String[] mimeTypes = {"image/png"}; // TODO: extract all supported types
         intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
         startActivityForResult(intent, PICK_FILE_REQUEST);
     }

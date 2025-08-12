@@ -69,6 +69,10 @@ namespace RetroRenderer
         return textureID;
     }
 
+    GLuint Texture::LoadTextureFromMemory(const uint8_t* data, const size_t size)
+    {
+    }
+
     bool Texture::LoadFromFile(const char* filePath)
     {
         if (m_TextureID) {
@@ -82,6 +86,22 @@ namespace RetroRenderer
         }
         LOGI("Loaded texture %s", filePath);
         m_Path = std::string(filePath);
+        return true;
+    }
+
+    bool Texture::LoadFromMemory(const uint8_t* data, const size_t size)
+    {
+        if (m_TextureID) {
+            glDeleteTextures(1, &m_TextureID);
+            m_TextureID = 0;
+        }
+        m_TextureID = LoadTextureFromMemory(data, size);
+        if (!m_TextureID) {
+            LOGE("Failed to load texture from memory");
+            return false;
+        }
+        LOGI("Loaded texture from memory");
+        m_Path = "memory";
         return true;
     }
 

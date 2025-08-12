@@ -129,6 +129,20 @@ namespace RetroRenderer
     {
         switch (event.type)
         {
+            case EventType::Texture_Load:
+            {
+                const TextureLoadEvent &e = static_cast<const TextureLoadEvent &>(event);
+                if (!e.loadFromMemory)
+                {
+                    p_MaterialManager->LoadTexture(e.textureDataBuffer.data(), e.textureDataSize);
+                }
+                else
+                {
+                    LOGE("Not implemented yet");
+                }
+                //p_RenderSystem->OnLoadScene(e); // TODO: send to all subscribers
+                break;
+            }
             case EventType::Scene_Load:
             {
                 const SceneLoadEvent &e = static_cast<const SceneLoadEvent &>(event);
