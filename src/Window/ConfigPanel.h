@@ -40,6 +40,7 @@ private:
     std::shared_ptr<Stats> p_stats_ = nullptr;
     std::vector<uint8_t> m_fontData_ = {}; // keep font bytes alive for the lifetime of imgui
 	bool m_isDragging_ = false;
+    bool m_isFileDialogOpen_ = false;
 
     void StyleColorsEnemymouse();
     void DisplayGUI();

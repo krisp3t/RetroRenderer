@@ -168,6 +168,7 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayExamplesDialog()
     {
+        if (m_isFileDialogOpen_) return;
 #ifdef __ANDROID__
         // We only support native file picker on Android.
         return;
@@ -417,6 +418,24 @@ namespace RetroRenderer
                                                         sceneDialogConfig);
 #endif
             }
+            if (ImGuiFileDialog::Instance()->Display("OpenTextureFile"))
+            {
+                m_isFileDialogOpen_ = true;
+                if (ImGuiFileDialog::Instance()->IsOk())
+                {
+                    m_isFileDialogOpen_ = false;
+                    std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                    LOGD("Selected texture file: %s", filePathName.c_str());
+                    Engine::Get().GetMaterialManager().LoadTexture(filePathName);
+
+                    // TODO: event needed?
+                    // Engine::Get().DispatchImmediate(TextureLoadEvent{filePathName});
+                }
+                ImGuiFileDialog::Instance()->Close();
+            } else
+            {
+                m_isFileDialogOpen_ = false;
+            }
 
 
             if (ImGui::MenuItem("Reset"))
@@ -443,16 +462,7 @@ namespace RetroRenderer
                 ImGuiFileDialog::Instance()->Close();
             }
             // Open Texture File dialog
-            if (ImGuiFileDialog::Instance()->Display("OpenTextureFile"))
-            {
-                if (ImGuiFileDialog::Instance()->IsOk())
-                {
-                    std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                    LOGD("Selected texture file: %s", filePathName.c_str());
-                    // Engine::Get().DispatchImmediate(TextureLoadEvent{filePathName});
-                }
-                ImGuiFileDialog::Instance()->Close();
-            }
+
 
             // About dialog
             ImVec2 center = ImGui::GetMainViewport()->GetCenter();

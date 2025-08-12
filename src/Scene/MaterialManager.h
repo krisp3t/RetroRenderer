@@ -57,6 +57,8 @@ private:
     char vertPathBuffer[256] = "";
     char fragPathBuffer[256] = "";
     int newShaderType = 0; // For UI combo box
+    const char* k_supportedTextures = ".png";
+
 };
 
 }

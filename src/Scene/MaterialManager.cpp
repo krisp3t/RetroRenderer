@@ -3,7 +3,7 @@
 #include <fstream>
 #include <imgui.h>
 #include <sstream>
-
+#include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "../Engine.h"
 #include "KrisLogger/Logger.h"
 
@@ -29,7 +29,7 @@ namespace RetroRenderer
     void MaterialManager::LoadDefaultShaders()
     {
         Material phongTexMaterial;
-        phongTexMaterial.name = "Phong texture-map";
+        phongTexMaterial.name = "phong-tex";
         phongTexMaterial.shaderProgram = CreateShaderProgram("assets/shaders/phong-tex.vs", "assets/shaders/phong-tex.fs");
         m_Materials.emplace_back(std::move(phongTexMaterial));
     }
@@ -80,27 +80,34 @@ namespace RetroRenderer
         {
             return;
         }
-
+        ImGui::SeparatorText("Material");
         const char* materialNames[] = {"Phong (texture color)", "Unlit Texture"};
         ImGui::Combo("Material Type", &m_CurrentMaterialIndex, materialNames, IM_ARRAYSIZE(materialNames));
 
         Material& currentMat = GetCurrentMaterial();
 
         // Texture loading
-        ImGui::InputText("Texture Path", m_TexturePathBuffer, sizeof(m_TexturePathBuffer));
-        ImGui::SameLine();
-        if (ImGui::Button("Load")) {
-            LoadTexture(m_TexturePathBuffer);
+        ImGui::SeparatorText("Texture");
+        if (ImGui::Button("Load texture")) {
+            IGFD::FileDialogConfig sceneDialogConfig;
+            ImGuiFileDialog::Instance()->Close();
+            ImGuiFileDialog::Instance()->OpenDialog("OpenTextureFile", "Choose texture", k_supportedTextures,
+                                        sceneDialogConfig);
         }
 
         // Display current texture
         if (currentMat.texture.GetID()) {
             ImGui::Text("Current Texture: handle %d (%s)", currentMat.texture.GetID(), currentMat.texture.GetPath().c_str());
             ImGui::Image(ImTextureID((void*)(intptr_t)currentMat.texture.GetID()), ImVec2(128, 128));
+        } else
+        {
+            ImGui::Text("Current Texture: none");
         }
 
         // Shader parameters
-        if (currentMat.name == "Phong (Improved)") {
+        // TODO: reflection lol
+        ImGui::SeparatorText("Shader Parameters");
+        if (currentMat.name == "phong-tex") {
             ImGui::SliderFloat("Ambient Strength", &currentMat.ambientStrength, 0.0f, 1.0f);
             ImGui::SliderFloat("Specular Strength", &currentMat.specularStrength, 0.0f, 1.0f);
             ImGui::SliderFloat("Shininess", &currentMat.shininess, 2.0f, 256.0f);
