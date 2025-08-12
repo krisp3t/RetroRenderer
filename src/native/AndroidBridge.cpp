@@ -10,6 +10,7 @@
 #ifdef __ANDROID__
 AAssetManager* g_assetManager = nullptr;
 std::string g_imguiIniPath = "";
+std::string g_assetsPath = "";
 #endif
 
 extern "C"
@@ -26,6 +27,13 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_krisp3t_retrorenderer_MainActivity_nativeSetImGuiIniPath(JNIEnv* env, jobject, jstring path) {
     const char* nativePath = env->GetStringUTFChars(path, nullptr);
     g_imguiIniPath = nativePath;
+    env->ReleaseStringUTFChars(path, nativePath);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_krisp3t_retrorenderer_MainActivity_nativeSetAssetsPath(JNIEnv* env, jobject, jstring path) {
+    const char* nativePath = env->GetStringUTFChars(path, nullptr);
+    g_assetsPath = nativePath;
     env->ReleaseStringUTFChars(path, nativePath);
 }
 

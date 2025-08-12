@@ -21,6 +21,7 @@ public class MainActivity extends SDLActivity {
     // Native
     private static native void nativeSetAssetManager(AssetManager assetManager);
     public native void nativeSetImGuiIniPath(String path);
+    public native void nativeSetAssetsPath(String path);
     private static native void nativeOnFilePicked(byte[] data);
     private static native void nativeOnTexturePicked(byte[] data);
 
@@ -36,6 +37,7 @@ public class MainActivity extends SDLActivity {
         nativeSetAssetManager(getAssets());
         copyAllAssetsToInternalStorage("", getFilesDir());
         nativeSetImGuiIniPath(getFilesDir().getAbsolutePath() + "/config_panel.ini");
+        nativeSetAssetsPath(getFilesDir().getAbsolutePath());
     }
 
     @Override

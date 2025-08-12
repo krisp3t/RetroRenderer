@@ -44,7 +44,15 @@ namespace RetroRenderer
     {
         Material phongTexMaterial;
         phongTexMaterial.name = "phong-tex";
-        phongTexMaterial.shaderProgram = CreateShaderProgram("assets/shaders/phong-tex.vs", "assets/shaders/phong-tex.fs");
+#ifdef __ANDROID__
+        auto phongVs = g_assetsPath + "/phong-tex-gles.vs";
+        auto phongFs = g_assetsPath + "/phong-tex-gles.fs";
+#else
+        auto phongVs = "shaders/phong-tex.vs";
+        auto phongFs = "shaders/phong-tex.fs";
+#endif
+        
+        phongTexMaterial.shaderProgram = CreateShaderProgram(phongVs, phongFs);
         m_Materials.emplace_back(std::move(phongTexMaterial));
     }
 

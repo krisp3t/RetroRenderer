@@ -185,6 +185,7 @@ namespace RetroRenderer
         }
 
         // TODO: do not hardcode like this
+        /*
         Texture texture;
         std::string texPath = std::format("{}.png", modelName.C_Str());
         std::filesystem::path fullPath = std::filesystem::absolute(texPath);
@@ -192,6 +193,7 @@ namespace RetroRenderer
         {
             textures.emplace_back(std::move(texture));
         }
+        */
         meshes.emplace_back(std::move(vertices), std::move(indices), std::move(textures));
     }
 

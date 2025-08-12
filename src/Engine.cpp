@@ -132,7 +132,7 @@ namespace RetroRenderer
             case EventType::Texture_Load:
             {
                 const TextureLoadEvent &e = static_cast<const TextureLoadEvent &>(event);
-                if (!e.loadFromMemory)
+                if (e.loadFromMemory)
                 {
                     p_MaterialManager->LoadTexture(e.textureDataBuffer.data(), e.textureDataSize);
                 }

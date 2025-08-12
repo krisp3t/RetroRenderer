@@ -53,9 +53,16 @@ namespace RetroRenderer
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         // SDL surface format to GL format
-        GLenum format = GL_RGBA;
-        if (surface->format->BytesPerPixel == 3) {
-            format = GL_RGB;
+        GLenum format;
+        switch (surface->format->BytesPerPixel) {
+        case 1: format = GL_RED; break;
+        case 3: format = GL_RGB; break;
+        case 4: format = GL_RGBA; break;
+        default:
+            LOGE("Unsupported texture format: %d BPP", surface->format->BytesPerPixel);
+            SDL_FreeSurface(surface);
+            IMG_Quit();
+            return 0;
         }
 
         // Upload texture data
@@ -71,6 +78,56 @@ namespace RetroRenderer
 
     GLuint Texture::LoadTextureFromMemory(const uint8_t* data, const size_t size)
     {
+        int flags = IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF | IMG_INIT_WEBP;
+        int initted = IMG_Init(flags);
+        if ((initted & flags) != flags) {
+            LOGE("Failed to initialize SDL_image: %s", IMG_GetError());
+            return 0;
+        }
+
+        SDL_RWops* rw = SDL_RWFromConstMem(data, static_cast<int>(size));
+        if (!rw) {
+            LOGE("Failed to create RWops: %s", SDL_GetError());
+            IMG_Quit();
+            return 0;
+        }
+
+        SDL_Surface* surface = IMG_Load_RW(rw, 1); // 1 = auto-close rw after loading
+        if (!surface) {
+            LOGE("Failed to load texture from memory: %s", IMG_GetError());
+            IMG_Quit();
+            return 0;
+        }
+
+        GLenum format;
+        switch (surface->format->BytesPerPixel) {
+        case 1: format = GL_RED; break;
+        case 3: format = GL_RGB; break;
+        case 4: format = GL_RGBA; break;
+        default:
+            LOGE("Unsupported texture format: %d BPP", surface->format->BytesPerPixel);
+            SDL_FreeSurface(surface);
+            IMG_Quit();
+            return 0;
+        }
+
+        GLuint textureID;
+        glGenTextures(1, &textureID);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, format, surface->w, surface->h, 0,
+                     format, GL_UNSIGNED_BYTE, surface->pixels);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        SDL_FreeSurface(surface);
+        IMG_Quit();
+
+        return textureID;
     }
 
     bool Texture::LoadFromFile(const char* filePath)
