@@ -18,6 +18,7 @@ namespace RetroRenderer
 
     void Mesh::Init()
     {
+        // TODO: don't assume gl
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);
@@ -44,9 +45,26 @@ namespace RetroRenderer
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, texCoords));
         glEnableVertexAttribArray(2);
 
-        GLint vboBytes = 0;
-        glGetNamedBufferParameteriv(VBO, GL_BUFFER_SIZE, &vboBytes);
-        assert(vboBytes > 0 && "VBO is zero-sized after Init");
+#ifndef NDEBUG
+        {
+            GLint prev = 0;
+            GLint sizeBytes = 0;
+            glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prev);
+            glBindBuffer(GL_ARRAY_BUFFER, VBO);
+            glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &sizeBytes);
+            glBindBuffer(GL_ARRAY_BUFFER, static_cast<GLuint>(prev));
+            assert(sizeBytes >= static_cast<GLint>(m_numVertices * sizeof(Vertex)) && "VBO is smaller than expected");
+        }
+        {
+            GLint prev = 0;
+            GLint sizeBytes = 0;
+            glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prev);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &sizeBytes);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLuint>(prev));
+            assert(sizeBytes >= static_cast<GLint>(m_Indices.size() * sizeof(unsigned int)) && "EBO is smaller than expected");
+        }
+#endif
 
         glBindVertexArray(0);
     }
