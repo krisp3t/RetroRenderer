@@ -78,7 +78,7 @@ namespace RetroRenderer
 
     GLuint Texture::LoadTextureFromMemory(const uint8_t* data, const size_t size)
     {
-        int flags = IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF | IMG_INIT_WEBP;
+        int flags = IMG_INIT_PNG;
         int initted = IMG_Init(flags);
         if ((initted & flags) != flags) {
             LOGE("Failed to initialize SDL_image: %s", IMG_GetError());
