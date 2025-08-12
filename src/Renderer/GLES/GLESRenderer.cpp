@@ -14,6 +14,7 @@ namespace RetroRenderer
         }
 
         // TODO: add depth buffer
+        CreateFallbackTexture();
         glViewport(0, 0, w, h);
         return true;
     }

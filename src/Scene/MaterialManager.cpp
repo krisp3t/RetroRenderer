@@ -48,8 +48,8 @@ namespace RetroRenderer
         auto phongVs = g_assetsPath + "/shaders/phong-tex-gles.vs";
         auto phongFs = g_assetsPath + "/shaders/phong-tex-gles.fs";
 #else
-        auto phongVs = "shaders/phong-tex.vs";
-        auto phongFs = "shaders/phong-tex.fs";
+        auto phongVs = "assets/shaders/phong-tex.vs";
+        auto phongFs = "assets/shaders/phong-tex.fs";
 #endif
         
         phongTexMaterial.shaderProgram = CreateShaderProgram(phongVs, phongFs);
@@ -124,6 +124,11 @@ namespace RetroRenderer
             ImGuiFileDialog::Instance()->OpenDialog("OpenTextureFile", "Choose texture", k_supportedTextures,
                                         sceneDialogConfig);
 #endif
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Unload texture"))
+        {
+            currentMat.texture = Texture();
         }
 
         // Display current texture
