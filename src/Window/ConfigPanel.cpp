@@ -158,7 +158,8 @@ namespace RetroRenderer
         //DisplayPipelineWindow();
         // TODO: add examples file browser
         DisplaySceneGraph();
-        DisplayInspectorWindow();
+        // DisplayInspectorWindow();
+        DisplayMaterialWindow();
         DisplayConfigWindow(*p_config_);
         DisplayControlsOverlay();
         DisplayMetricsOverlay();
@@ -235,6 +236,17 @@ namespace RetroRenderer
     {
         ImGui::Begin("Inspector");
         ImGui::Text("Inspector");
+        ImGui::End();
+    }
+
+    void ConfigPanel::OnDraw(GLuint framebufferTexture)
+    {
+    }
+
+    void ConfigPanel::DisplayMaterialWindow()
+    {
+        ImGui::Begin("Material Editor");
+        Engine::Get().GetMaterialManager().RenderUI();
         ImGui::End();
     }
 

@@ -1,5 +1,3 @@
-#include <SDL_egl.h>
-
 #include <utility>
 #include "Mesh.h"
 

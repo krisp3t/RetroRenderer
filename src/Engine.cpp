@@ -19,6 +19,11 @@ namespace RetroRenderer
             return false;
         }
         LOGD("p_Config_ ref count: %d", p_config_.use_count());
+        p_MaterialManager = std::make_unique<MaterialManager>();
+        if (!p_MaterialManager->Init())
+        {
+            return false;
+        }
 
         // Default scene (optional)
         // m_SceneManager.LoadScene("frog/frog.obj");
@@ -167,5 +172,10 @@ namespace RetroRenderer
     Camera* Engine::GetCamera() const
     {
         return m_SceneManager.GetCamera();
+    }
+
+    MaterialManager& Engine::GetMaterialManager() const
+    {
+        return *p_MaterialManager;
     }
 }

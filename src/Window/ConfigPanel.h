@@ -51,6 +51,7 @@ private:
     void DisplayEnvironmentSettings();
     void DisplayMainMenu();
     void DisplaySceneGraph();
+    void DisplayMaterialWindow();
     void DisplayInspectorWindow();
     void DisplayPipelineWindow();
     void DisplayConfigWindow(Config& config);

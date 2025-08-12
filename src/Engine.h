@@ -8,6 +8,7 @@
 #include "Scene/SceneManager.h"
 #include "Base/Event.h"
 #include "Base/Stats.h"
+#include "Scene/MaterialManager.h"
 
 namespace RetroRenderer
 {
@@ -33,6 +34,7 @@ public:
 	const std::shared_ptr<Config> GetConfig() const;
 	const std::shared_ptr<Stats> GetStats() const;
 	Camera* GetCamera() const;
+	[[nodiscard]] MaterialManager& GetMaterialManager() const;
 private:
 	Engine() = default;
 	~Engine() = default;
@@ -49,6 +51,7 @@ private:
     RenderSystem m_RenderSystem;
     InputSystem m_InputSystem;
     SceneManager m_SceneManager;
+	std::unique_ptr<MaterialManager> p_MaterialManager;
 };
 
 }
