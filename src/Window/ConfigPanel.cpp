@@ -442,6 +442,17 @@ namespace RetroRenderer
                 }
                 ImGuiFileDialog::Instance()->Close();
             }
+            // Open Texture File dialog
+            if (ImGuiFileDialog::Instance()->Display("OpenTextureFile"))
+            {
+                if (ImGuiFileDialog::Instance()->IsOk())
+                {
+                    std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                    LOGD("Selected texture file: %s", filePathName.c_str());
+                    // Engine::Get().DispatchImmediate(TextureLoadEvent{filePathName});
+                }
+                ImGuiFileDialog::Instance()->Close();
+            }
 
             // About dialog
             ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -800,7 +811,7 @@ namespace RetroRenderer
                             cam->m_Position.z);
             }
             assert(p_stats_ != nullptr && "Stats not initialized!");
-            ImGui::PlotLines("frameTimes", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
+            ImGui::PlotLines("##frameTimes", frameTimes, IM_ARRAYSIZE(frameTimes), frameIndex, nullptr, 0.0f, 50.0f, ImVec2(0, 80));
             if (ImGui::BeginPopupContextWindow("popupCtx"))
             {
                 if (ImGui::MenuItem("Top-left", nullptr, location == 0)) location = 0;

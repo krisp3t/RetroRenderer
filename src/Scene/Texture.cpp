@@ -16,6 +16,7 @@ namespace RetroRenderer
     }
     Texture::Texture(Texture&& other) noexcept
     : m_TextureID(other.m_TextureID)
+    , m_Path(std::move(other.m_Path))
     {
         other.m_TextureID = 0; // Invalidate source object
     }
@@ -27,6 +28,7 @@ namespace RetroRenderer
             // Transfer ownership
             m_TextureID = other.m_TextureID;
             other.m_TextureID = 0;
+            m_Path = std::move(other.m_Path);
         }
         return *this;
     }
@@ -79,6 +81,7 @@ namespace RetroRenderer
             return false;
         }
         LOGI("Loaded texture %s", filePath);
+        m_Path = std::string(filePath);
         return true;
     }
 

@@ -95,8 +95,8 @@ namespace RetroRenderer
 
         // Display current texture
         if (currentMat.texture.GetID()) {
-            //ImGui::Text("Current Texture: %s", currentMat.texturePath.c_str());
-            //ImGui::Image(ImTextureID((void*)(intptr_t)currentMat.textureID), ImVec2(128, 128));
+            ImGui::Text("Current Texture: handle %d (%s)", currentMat.texture.GetID(), currentMat.texture.GetPath().c_str());
+            ImGui::Image(ImTextureID((void*)(intptr_t)currentMat.texture.GetID()), ImVec2(128, 128));
         }
 
         // Shader parameters

@@ -1,5 +1,6 @@
 #pragma once
 #include <SDL_image.h>
+#include <string>
 
 #ifdef __ANDROID__
 #include <GLES3/gl3.h> // For OpenGL ES 3.0
@@ -25,8 +26,10 @@ namespace RetroRenderer
         void Bind(GLuint unit = 0) const;
         GLuint GetID() const { return m_TextureID; }
         bool IsValid() const { return m_TextureID != 0; }
+        const std::string& GetPath() const { return m_Path; }
     private:
         GLuint LoadTextureFromFile(const char* filePath);
         GLuint m_TextureID;
+        std::string m_Path;
     };
 }
