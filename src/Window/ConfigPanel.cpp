@@ -192,6 +192,7 @@ namespace RetroRenderer
         auto &w = p_config_->window;
         ImGui::SeparatorText("Window settings");
         // ImGui::Checkbox("Show configuration panel", &w.showConfigPanel);
+        ImGui::Checkbox("Show controls", &w.showControls);
         ImGui::Checkbox("Show FPS", &w.showFPS);
         if (ImGui::Checkbox("Enable VSync", &w.enableVsync))
         {
@@ -719,8 +720,10 @@ namespace RetroRenderer
 
     void ConfigPanel::DisplayControlsOverlay()
     {
-        static bool isOpen = true;
-        if (!isOpen) return;
+        if (!p_config_->window.showControls)
+        {
+            return;
+        }
 
         ImGuiIO &io = ImGui::GetIO();
         ImGuiWindowFlags windowFlags =
@@ -740,7 +743,7 @@ namespace RetroRenderer
         windowFlags |= ImGuiWindowFlags_NoMove;
 
         ImGui::SetNextWindowBgAlpha(0.35f);
-        if (ImGui::Begin("Controls", &isOpen, windowFlags))
+        if (ImGui::Begin("Controls", &p_config_->window.showControls, windowFlags))
         {
             ImGui::Text("h - toggle GUI");
             ImGui::Text("1 - show wireframe");

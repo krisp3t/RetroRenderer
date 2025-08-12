@@ -17,6 +17,7 @@ namespace RetroRenderer
             bool enableVsync = true;
             bool showFPS = true;
             bool showConfigPanel = true;
+            bool showControls = false;
         };
 
         // Renderer
