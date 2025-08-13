@@ -15,7 +15,7 @@ namespace RetroRenderer
             glm::ivec2 size = {1280, 720};
             bool fullscreen = false;
             bool enableVsync = true;
-            bool showFPS = true;
+            bool showFPS = false;
             bool showConfigPanel = true;
             bool showControls = false;
         };
