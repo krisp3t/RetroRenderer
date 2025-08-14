@@ -100,6 +100,7 @@ namespace RetroRenderer
                 p_activeRenderer_->DrawTriangularMesh(model);
             }
         }
+        p_activeRenderer_->DrawSkybox();
         return p_activeRenderer_->EndFrame();
     }
 

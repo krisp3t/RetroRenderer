@@ -63,6 +63,8 @@ namespace RetroRenderer
         if (cubeTex != 0)
         {
             m_SkyboxTexture = cubeTex;
+            auto skyboxShader = MaterialManager::CreateShaderProgram("assets/shaders/skybox.vs", "assets/shaders/skybox.fs");
+            m_SkyboxProgram = skyboxShader;
         }
         glViewport(0, 0, w, h);
         return true;
@@ -409,6 +411,13 @@ namespace RetroRenderer
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         LOGI("Created skybox %s with texture handle %d", path.c_str(), cubemapTex);
+
+        SDL_FreeSurface(surface);
+        surface = nullptr;
         return cubemapTex;
+    }
+
+    void GLRenderer::DrawSkybox()
+    {
     }
 }

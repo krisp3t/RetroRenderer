@@ -6,6 +6,7 @@
 #include "../../Scene/Scene.h"
 #include "../IRenderer.h"
 #include "../../Base/Color.h"
+#include "../../Scene/MaterialManager.h"
 
 namespace RetroRenderer
 {
@@ -25,6 +26,8 @@ namespace RetroRenderer
         void SetActiveCamera(const Camera &camera) override;
 
         void DrawTriangularMesh(const Model *model) override;
+
+        void DrawSkybox() override;
 
         void BeforeFrame(const Color &clearColor) override;
 
@@ -51,5 +54,6 @@ namespace RetroRenderer
         GLuint m_DepthBuffer = 0;
         GLuint m_FallbackTexture = 0;
         GLuint m_SkyboxTexture = 0;
+        ShaderProgram m_SkyboxProgram;
     };
 }

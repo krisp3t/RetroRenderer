@@ -23,6 +23,8 @@ namespace RetroRenderer
 
         void DrawTriangularMesh(const Model* model) override;
 
+        void DrawSkybox() override;
+
         void BeforeFrame(const Color& clearColor) override;
 
         GLuint EndFrame() override;

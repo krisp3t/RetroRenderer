@@ -131,4 +131,8 @@ namespace RetroRenderer
         glBindTexture(GL_TEXTURE_2D, 0);
         return p_FrameBufferTexture;
     }
+
+    void SWRenderer::DrawSkybox()
+    {
+    }
 }

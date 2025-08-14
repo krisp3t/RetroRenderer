@@ -13,6 +13,14 @@
 
 namespace RetroRenderer
 {
+    struct ShaderProgram
+    {
+        GLuint id = 0;
+        std::string name;
+        std::string vertexPath;
+        std::string fragmentPath;
+        // time_t lastModified = 0;
+    };
 
 class MaterialManager
 {
@@ -35,15 +43,6 @@ public:
         float pbrRoughness;
         float pbrAO;
         float padding6;
-    };
-
-    struct ShaderProgram
-    {
-        GLuint id = 0;
-        std::string name;
-        std::string vertexPath;
-        std::string fragmentPath;
-        // time_t lastModified = 0;
     };
 
     struct PhongParams
@@ -69,11 +68,11 @@ public:
     void RenderUI();
     void LoadDefaultShaders();
     Material& GetCurrentMaterial() { return m_Materials[m_CurrentMaterialIndex]; }
+    static ShaderProgram CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath);
 
 private:
-    ShaderProgram CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath);
-    std::string ReadShaderFile(const std::string& path);
-    void CheckShaderErrors(GLuint shader, const std::string& type);
+    static std::string ReadShaderFile(const std::string& path);
+    static void CheckShaderErrors(GLuint shader, const std::string& type);
 private:
     std::vector<Material> m_Materials;
     int m_CurrentMaterialIndex = 0;

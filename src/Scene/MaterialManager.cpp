@@ -68,7 +68,7 @@ namespace RetroRenderer
         m_Materials.emplace_back(std::move(phongVcMaterial));
     }
 
-    MaterialManager::ShaderProgram MaterialManager::CreateShaderProgram(const std::string& vertexPath,
+    ShaderProgram MaterialManager::CreateShaderProgram(const std::string& vertexPath,
         const std::string& fragmentPath)
     {
         ShaderProgram shaderProgram;
