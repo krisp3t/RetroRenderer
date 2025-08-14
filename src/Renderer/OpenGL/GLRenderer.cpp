@@ -10,26 +10,28 @@ namespace RetroRenderer
      * @brief Debug callback for OpenGL errors. Set breakpoint to catch errors.
      */
     void APIENTRY GLRenderer::DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
-                                            GLsizei length, const GLchar *message, const void *userParam)
+                                            GLsizei length, const GLchar* message, const void* userParam)
     {
         if (severity == GL_DEBUG_SEVERITY_MEDIUM)
         {
             LOGW("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
                  (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
                  type, severity, message);
-        } else if (severity == GL_DEBUG_SEVERITY_HIGH)
+        }
+        else if (severity == GL_DEBUG_SEVERITY_HIGH)
         {
             LOGE("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
                  (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
                  type, severity, message);
-        } else
+        }
+        else
         {
             LOGD("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
                  (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
                  type, severity, message);
         }
 #ifndef NDEBUG
-		DEBUG_BREAK(); // Traverse across callstack to find error
+        DEBUG_BREAK(); // Traverse across callstack to find error
 #endif
     }
 
@@ -63,8 +65,10 @@ namespace RetroRenderer
         if (cubeTex != 0)
         {
             m_SkyboxTexture = cubeTex;
-            auto skyboxShader = MaterialManager::CreateShaderProgram("assets/shaders/skybox.vs", "assets/shaders/skybox.fs");
+            auto skyboxShader = MaterialManager::CreateShaderProgram("assets/shaders/skybox.vs",
+                                                                     "assets/shaders/skybox.fs");
             m_SkyboxProgram = skyboxShader;
+            m_SkyboxVAO = CreateSkyboxVAO();
         }
         glViewport(0, 0, w, h);
         return true;
@@ -109,12 +113,12 @@ namespace RetroRenderer
         //glDeleteRenderbuffers(1, &m_DepthBuffer);
     }
 
-    void GLRenderer::SetActiveCamera(const Camera &camera)
+    void GLRenderer::SetActiveCamera(const Camera& camera)
     {
-        p_Camera = const_cast<Camera *>(&camera);
+        p_Camera = const_cast<Camera*>(&camera);
     }
 
-    void GLRenderer::DrawTriangularMesh(const Model *model)
+    void GLRenderer::DrawTriangularMesh(const Model* model)
     {
         // TODO: Cache uniforms after shader compile?
         MaterialManager::Material& mat = Engine::Get().GetMaterialManager().GetCurrentMaterial();
@@ -140,15 +144,19 @@ namespace RetroRenderer
         glUniformMatrix4fv(viewProjLoc, 1, GL_FALSE, glm::value_ptr(mvp));
 
         // TODO: replace with PhongParamsUBO
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), lightPos.x, lightPos.y, lightPos.z); // TODO: dynamic lights
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"), mat.lightColor.r, mat.lightColor.g, mat.lightColor.b);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), lightPos.x, lightPos.y, lightPos.z);
+        // TODO: dynamic lights
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ViewPos"), p_Camera->m_Position.x,
+                    p_Camera->m_Position.y, p_Camera->m_Position.z);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"), mat.lightColor.r, mat.lightColor.g,
+                    mat.lightColor.b);
         if (mat.phongParams.has_value())
         {
             glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_Shininess"), mat.phongParams->shininess);
-            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_AmbientStrength"), mat.phongParams->ambientStrength);
-            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_SpecularStrength"), mat.phongParams->specularStrength);
-
+            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_AmbientStrength"),
+                        mat.phongParams->ambientStrength);
+            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_SpecularStrength"),
+                        mat.phongParams->specularStrength);
         }
         GLint texLoc = glGetUniformLocation(mat.shaderProgram.id, "u_Texture");
 
@@ -176,7 +184,7 @@ namespace RetroRenderer
         glUseProgram(0);
     }
 
-    void GLRenderer::BeforeFrame(const Color &clearColor)
+    void GLRenderer::BeforeFrame(const Color& clearColor)
     {
         auto c = clearColor.ToImVec4();
         glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
@@ -185,18 +193,18 @@ namespace RetroRenderer
         glEnable(GL_DEPTH_TEST);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        auto &config = Engine::Get().GetConfig();
+        auto& config = Engine::Get().GetConfig();
         switch (config->gl.rasterizer.polygonMode)
         {
-            case Config::RasterizationPolygonMode::POINT:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
-                break;
-            case Config::RasterizationPolygonMode::LINE:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                break;
-            case Config::RasterizationPolygonMode::FILL:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-                break;
+        case Config::RasterizationPolygonMode::POINT:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+            break;
+        case Config::RasterizationPolygonMode::LINE:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            break;
+        case Config::RasterizationPolygonMode::FILL:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            break;
         }
     }
 
@@ -220,7 +228,8 @@ namespace RetroRenderer
                 glGetProgramInfoLog(shader, logLength, &logLength, errorLog.data());
                 LOGE("Error linking %s shader: %s", type.c_str(), errorLog.data());
             }
-        } else
+        }
+        else
         {
             glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
             if (success == GL_FALSE)
@@ -234,7 +243,7 @@ namespace RetroRenderer
         }
     }
 
-    GLuint GLRenderer::CompileShader(GLenum shaderType, const char *shaderSource)
+    GLuint GLRenderer::CompileShader(GLenum shaderType, const char* shaderSource)
     {
         GLuint shader = glCreateShader(shaderType);
         if (shader == 0)
@@ -320,24 +329,24 @@ namespace RetroRenderer
      */
     GLuint GLRenderer::CreateShaderProgram()
     {
-        const char *vertexShaderSource = "#version 330 core\n"
-                                         "layout (location = 0) in vec3 aPos;\n"
-                                         "out vec4 vertexColor;\n"
-                                         "void main()\n"
-                                         "{\n"
-                                         "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-                                         "   vertexColor = vec4(1.0, 0.5, 0.0, 1.0);\n"
-                                         "}\0";
+        const char* vertexShaderSource = "#version 330 core\n"
+            "layout (location = 0) in vec3 aPos;\n"
+            "out vec4 vertexColor;\n"
+            "void main()\n"
+            "{\n"
+            "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+            "   vertexColor = vec4(1.0, 0.5, 0.0, 1.0);\n"
+            "}\0";
         GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
         glCompileShader(vertexShader);
-        const char *fragmentShaderSource = "#version 330 core\n"
-                                           "out vec4 FragColor;\n"
-                                           "in vec4 vertexColor;\n"
-                                           "void main()\n"
-                                           "{\n"
-                                           "   FragColor = vertexColor;\n"
-                                           "}\n\0";
+        const char* fragmentShaderSource = "#version 330 core\n"
+            "out vec4 FragColor;\n"
+            "in vec4 vertexColor;\n"
+            "void main()\n"
+            "{\n"
+            "   FragColor = vertexColor;\n"
+            "}\n\0";
         GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
         glCompileShader(fragmentShader);
@@ -353,7 +362,7 @@ namespace RetroRenderer
 
     void GLRenderer::CreateFallbackTexture()
     {
-        unsigned char whitePixel[4] = { 255, 255, 255, 255 };
+        unsigned char whitePixel[4] = {255, 255, 255, 255};
 
         glGenTextures(1, &m_FallbackTexture);
         glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
@@ -371,33 +380,62 @@ namespace RetroRenderer
     GLuint GLRenderer::CreateCubemap(const std::string& path)
     {
         SDL_Surface* surface = IMG_Load(path.c_str());
-        if (!surface) {
+        if (!surface)
+        {
             LOGW("Could not load cubemap %s!", path.c_str());
             return 0;
         }
+
         int fullWidth = surface->w;
         int fullHeight = surface->h;
-        int faceSize = fullWidth / 6; // 6 faces horizontally
-        GLuint cubemapTex;
+        int faceSize = fullWidth / 4; // horizontal cross: 4 faces in middle row
 
+        if (fullHeight != faceSize * 3)
+        {
+            LOGE("Invalid cubemap cross layout dimensions: %dx%d", fullWidth, fullHeight);
+            SDL_FreeSurface(surface);
+            return 0;
+        }
+
+        GLuint cubemapTex;
         glGenTextures(1, &cubemapTex);
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTex);
-        int bytesPerPixel = surface->format->BytesPerPixel;
+
+        int bpp = surface->format->BytesPerPixel;
         Uint8* pixels = (Uint8*)surface->pixels;
 
-        for (int i = 0; i < 6; ++i) {
-            Uint8* facePixels = new Uint8[faceSize * faceSize * bytesPerPixel];
-            for (int row = 0; row < faceSize; ++row) {
+        struct Offset
+        {
+            int x, y;
+        };
+        Offset faceOffsets[6] = {
+            {2, 1}, // +X
+            {0, 1}, // -X
+            {1, 0}, // +Y
+            {1, 2}, // -Y
+            {1, 1}, // +Z
+            {3, 1} // -Z
+        };
+
+        for (int face = 0; face < 6; ++face)
+        {
+            int ox = faceOffsets[face].x * faceSize;
+            int oy = faceOffsets[face].y * faceSize;
+
+            Uint8* facePixels = new Uint8[faceSize * faceSize * bpp];
+
+            for (int row = 0; row < faceSize; ++row)
+            {
                 memcpy(
-                    facePixels + row * faceSize * bytesPerPixel,
-                    pixels + row * fullWidth * bytesPerPixel + i * faceSize * bytesPerPixel,
-                    faceSize * bytesPerPixel
+                    facePixels + row * faceSize * bpp,
+                    pixels + (oy + row) * fullWidth * bpp + ox * bpp,
+                    faceSize * bpp
                 );
             }
 
-            GLenum format = (surface->format->BytesPerPixel == 4) ? GL_RGBA : GL_RGB;
+            GLenum format = (bpp == 4) ? GL_RGBA : GL_RGB;
             glTexImage2D(
-                GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
                 0, format, faceSize, faceSize, 0,
                 format, GL_UNSIGNED_BYTE, facePixels
             );
@@ -410,14 +448,73 @@ namespace RetroRenderer
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
         LOGI("Created skybox %s with texture handle %d", path.c_str(), cubemapTex);
 
         SDL_FreeSurface(surface);
-        surface = nullptr;
         return cubemapTex;
     }
 
     void GLRenderer::DrawSkybox()
     {
+        glDepthMask(GL_FALSE); // Disable depth writes
+        glDepthFunc(GL_LEQUAL); // allow fragments with depth = 1.0 to pass
+        glUseProgram(m_SkyboxProgram.id);
+
+        glm::mat4 view = glm::mat4(glm::mat3(p_Camera->m_ViewMat)); // remove translation
+        glm::mat4 proj = p_Camera->m_ProjMat;
+
+        GLint viewLoc = glGetUniformLocation(m_SkyboxProgram.id, "u_ViewMatrix");
+        GLint projLoc = glGetUniformLocation(m_SkyboxProgram.id, "u_ProjectionMatrix");
+
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
+
+        glBindVertexArray(m_SkyboxVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, m_SkyboxTexture);
+        glUniform1i(glGetUniformLocation(m_SkyboxProgram.id, "skybox"), 0);
+
+        glDrawArrays(GL_TRIANGLES, 0, 36); // 36 vertices for a cube
+
+        glBindVertexArray(0);
+        glDepthFunc(GL_LESS); // restore default
+        glDepthMask(GL_TRUE); // Re-enable depth writes
+    }
+
+    GLuint GLRenderer::CreateSkyboxVAO()
+    {
+        static const float kSkyboxVerts[] = {
+            // positions (x,y,z)
+            // +X
+            1, 1, -1, 1, -1, -1, 1, -1, 1,
+            1, 1, -1, 1, -1, 1, 1, 1, 1,
+            // -X
+            -1, 1, 1, -1, -1, 1, -1, -1, -1,
+            -1, 1, 1, -1, -1, -1, -1, 1, -1,
+            // +Y
+            -1, 1, 1, 1, 1, 1, 1, 1, -1,
+            -1, 1, 1, 1, 1, -1, -1, 1, -1,
+            // -Y
+            -1, -1, -1, 1, -1, -1, 1, -1, 1,
+            -1, -1, -1, 1, -1, 1, -1, -1, 1,
+            // +Z
+            -1, 1, 1, -1, -1, 1, 1, -1, 1,
+            -1, 1, 1, 1, -1, 1, 1, 1, 1,
+            // -Z
+            1, 1, -1, 1, -1, -1, -1, -1, -1,
+            1, 1, -1, -1, -1, -1, -1, 1, -1,
+        };
+        GLuint vao = 0;
+        GLuint vbo = 0;
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(kSkyboxVerts), kSkyboxVerts, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glBindVertexArray(0);
+        return vao;
     }
 }

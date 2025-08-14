@@ -45,6 +45,7 @@ namespace RetroRenderer
         void CheckShaderErrors(GLuint shader, const std::string &type);
         void CreateFallbackTexture();
         GLuint CreateCubemap(const std::string& path);
+        GLuint CreateSkyboxVAO();
 
     private:
         Camera *p_Camera = nullptr;
@@ -54,6 +55,7 @@ namespace RetroRenderer
         GLuint m_DepthBuffer = 0;
         GLuint m_FallbackTexture = 0;
         GLuint m_SkyboxTexture = 0;
+        GLuint m_SkyboxVAO = 0;
         ShaderProgram m_SkyboxProgram;
     };
 }
