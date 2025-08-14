@@ -457,8 +457,9 @@ namespace RetroRenderer
 
     void GLRenderer::DrawSkybox()
     {
-        glDepthMask(GL_FALSE); // Disable depth writes
-        glDepthFunc(GL_LEQUAL); // allow fragments with depth = 1.0 to pass
+        glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);
         glUseProgram(m_SkyboxProgram.id);
 
         glm::mat4 view = glm::mat4(glm::mat3(p_Camera->m_ViewMat)); // remove translation
@@ -466,6 +467,8 @@ namespace RetroRenderer
 
         GLint viewLoc = glGetUniformLocation(m_SkyboxProgram.id, "u_ViewMatrix");
         GLint projLoc = glGetUniformLocation(m_SkyboxProgram.id, "u_ProjectionMatrix");
+        glUniform1i(glGetUniformLocation(m_SkyboxProgram.id, "skybox"), 0);
+
 
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
@@ -473,37 +476,59 @@ namespace RetroRenderer
         glBindVertexArray(m_SkyboxVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_SkyboxTexture);
-        glUniform1i(glGetUniformLocation(m_SkyboxProgram.id, "skybox"), 0);
 
         glDrawArrays(GL_TRIANGLES, 0, 36); // 36 vertices for a cube
 
         glBindVertexArray(0);
-        glDepthFunc(GL_LESS); // restore default
-        glDepthMask(GL_TRUE); // Re-enable depth writes
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     GLuint GLRenderer::CreateSkyboxVAO()
     {
         static const float kSkyboxVerts[] = {
-            // positions (x,y,z)
-            // +X
-            1, 1, -1, 1, -1, -1, 1, -1, 1,
-            1, 1, -1, 1, -1, 1, 1, 1, 1,
-            // -X
-            -1, 1, 1, -1, -1, 1, -1, -1, -1,
-            -1, 1, 1, -1, -1, -1, -1, 1, -1,
-            // +Y
-            -1, 1, 1, 1, 1, 1, 1, 1, -1,
-            -1, 1, 1, 1, 1, -1, -1, 1, -1,
-            // -Y
-            -1, -1, -1, 1, -1, -1, 1, -1, 1,
-            -1, -1, -1, 1, -1, 1, -1, -1, 1,
-            // +Z
-            -1, 1, 1, -1, -1, 1, 1, -1, 1,
-            -1, 1, 1, 1, -1, 1, 1, 1, 1,
-            // -Z
-            1, 1, -1, 1, -1, -1, -1, -1, -1,
-            1, 1, -1, -1, -1, -1, -1, 1, -1,
+            -1.0f,  1.0f, -1.0f,
+              -1.0f, -1.0f, -1.0f,
+               1.0f, -1.0f, -1.0f,
+               1.0f, -1.0f, -1.0f,
+               1.0f,  1.0f, -1.0f,
+              -1.0f,  1.0f, -1.0f,
+
+              -1.0f, -1.0f,  1.0f,
+              -1.0f, -1.0f, -1.0f,
+              -1.0f,  1.0f, -1.0f,
+              -1.0f,  1.0f, -1.0f,
+              -1.0f,  1.0f,  1.0f,
+              -1.0f, -1.0f,  1.0f,
+
+               1.0f, -1.0f, -1.0f,
+               1.0f, -1.0f,  1.0f,
+               1.0f,  1.0f,  1.0f,
+               1.0f,  1.0f,  1.0f,
+               1.0f,  1.0f, -1.0f,
+               1.0f, -1.0f, -1.0f,
+
+              -1.0f, -1.0f,  1.0f,
+              -1.0f,  1.0f,  1.0f,
+               1.0f,  1.0f,  1.0f,
+               1.0f,  1.0f,  1.0f,
+               1.0f, -1.0f,  1.0f,
+              -1.0f, -1.0f,  1.0f,
+
+              -1.0f,  1.0f, -1.0f,
+               1.0f,  1.0f, -1.0f,
+               1.0f,  1.0f,  1.0f,
+               1.0f,  1.0f,  1.0f,
+              -1.0f,  1.0f,  1.0f,
+              -1.0f,  1.0f, -1.0f,
+
+              -1.0f, -1.0f, -1.0f,
+              -1.0f, -1.0f,  1.0f,
+               1.0f, -1.0f, -1.0f,
+               1.0f, -1.0f, -1.0f,
+              -1.0f, -1.0f,  1.0f,
+               1.0f, -1.0f,  1.0f
         };
         GLuint vao = 0;
         GLuint vbo = 0;

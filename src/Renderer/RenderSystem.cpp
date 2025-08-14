@@ -89,6 +89,7 @@ namespace RetroRenderer
 		auto const& p_stats = Engine::Get().GetStats();
         assert(p_stats != nullptr && "Stats not initialized!");
         p_stats->Reset();
+        p_activeRenderer_->DrawSkybox();
 
         //LOGD("Render queue size: %d", renderQueue.size());
         for (int modelIx: renderQueue)
@@ -100,7 +101,6 @@ namespace RetroRenderer
                 p_activeRenderer_->DrawTriangularMesh(model);
             }
         }
-        p_activeRenderer_->DrawSkybox();
         return p_activeRenderer_->EndFrame();
     }
 
