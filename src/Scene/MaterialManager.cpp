@@ -42,18 +42,27 @@ namespace RetroRenderer
 
     void MaterialManager::LoadDefaultShaders()
     {
+        // TODO: extract
         Material phongTexMaterial;
         phongTexMaterial.name = "phong-tex";
+        Material phongVcMaterial;
+        phongVcMaterial.name = "phong-vc";
 #ifdef __ANDROID__
-        auto phongVs = g_assetsPath + "/shaders/phong-tex-gles.vs";
-        auto phongFs = g_assetsPath + "/shaders/phong-tex-gles.fs";
+        auto phongTexVs = g_assetsPath + "/shaders/phong-tex-gles.vs";
+        auto phongTexFs = g_assetsPath + "/shaders/phong-tex-gles.fs";
+        auto phongVcVs = g_assetsPath + "/shaders/phong-vc-gles.vs";
+        auto phongVcFs = g_assetsPath + "/shaders/phong-vc-gles.fs";
 #else
-        auto phongVs = "assets/shaders/phong-tex.vs";
-        auto phongFs = "assets/shaders/phong-tex.fs";
+        auto phongTexVs = "assets/shaders/phong-tex.vs";
+        auto phongTexFs = "assets/shaders/phong-tex.fs";
+        auto phongVcVs = "assets/shaders/phong-vc.vs";
+        auto phongVcFs = "assets/shaders/phong-vc.fs";
 #endif
         
-        phongTexMaterial.shaderProgram = CreateShaderProgram(phongVs, phongFs);
+        phongTexMaterial.shaderProgram = CreateShaderProgram(phongTexVs, phongTexFs);
         m_Materials.emplace_back(std::move(phongTexMaterial));
+        phongVcMaterial.shaderProgram = CreateShaderProgram(phongVcVs, phongVcFs);
+        m_Materials.emplace_back(std::move(phongVcMaterial));
     }
 
     MaterialManager::ShaderProgram MaterialManager::CreateShaderProgram(const std::string& vertexPath,
@@ -103,7 +112,7 @@ namespace RetroRenderer
             return;
         }
         ImGui::SeparatorText("Material");
-        const char* materialNames[] = {"Phong (texture color)", "Unlit Texture"};
+        const char* materialNames[] = {"Phong (texture color)", "Phong (vertex color)"};
         ImGui::Combo("Material Type", &m_CurrentMaterialIndex, materialNames, IM_ARRAYSIZE(materialNames));
 
         Material& currentMat = GetCurrentMaterial();
@@ -143,7 +152,7 @@ namespace RetroRenderer
         // Shader parameters
         // TODO: reflection lol
         ImGui::SeparatorText("Shader Parameters");
-        if (currentMat.name == "phong-tex") {
+        if (currentMat.name == "phong-tex" || currentMat.name == "phong-vc") {
             ImGui::SliderFloat("Ambient Strength", &currentMat.ambientStrength, 0.0f, 1.0f);
             ImGui::SliderFloat("Specular Strength", &currentMat.specularStrength, 0.0f, 1.0f);
             ImGui::SliderFloat("Shininess", &currentMat.shininess, 2.0f, 256.0f);
