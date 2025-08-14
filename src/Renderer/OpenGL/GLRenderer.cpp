@@ -59,6 +59,11 @@ namespace RetroRenderer
         // TODO: add depth buffer
 
         CreateFallbackTexture();
+        GLuint cubeTex = CreateCubemap("assets/img/skybox-cubemap/Cubemap_Sky_01-512x512.png");
+        if (cubeTex != 0)
+        {
+            m_SkyboxTexture = cubeTex;
+        }
         glViewport(0, 0, w, h);
         return true;
     }
@@ -355,5 +360,55 @@ namespace RetroRenderer
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+
+    /**
+     * Create cubemap in horizontal strip format.
+     * @param path Path of cubemap.
+     */
+    GLuint GLRenderer::CreateCubemap(const std::string& path)
+    {
+        SDL_Surface* surface = IMG_Load(path.c_str());
+        if (!surface) {
+            LOGW("Could not load cubemap %s!", path.c_str());
+            return 0;
+        }
+        int fullWidth = surface->w;
+        int fullHeight = surface->h;
+        int faceSize = fullWidth / 6; // 6 faces horizontally
+        GLuint cubemapTex;
+
+        glGenTextures(1, &cubemapTex);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTex);
+        int bytesPerPixel = surface->format->BytesPerPixel;
+        Uint8* pixels = (Uint8*)surface->pixels;
+
+        for (int i = 0; i < 6; ++i) {
+            Uint8* facePixels = new Uint8[faceSize * faceSize * bytesPerPixel];
+            for (int row = 0; row < faceSize; ++row) {
+                memcpy(
+                    facePixels + row * faceSize * bytesPerPixel,
+                    pixels + row * fullWidth * bytesPerPixel + i * faceSize * bytesPerPixel,
+                    faceSize * bytesPerPixel
+                );
+            }
+
+            GLenum format = (surface->format->BytesPerPixel == 4) ? GL_RGBA : GL_RGB;
+            glTexImage2D(
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                0, format, faceSize, faceSize, 0,
+                format, GL_UNSIGNED_BYTE, facePixels
+            );
+
+            delete[] facePixels;
+        }
+
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        LOGI("Created skybox %s with texture handle %d", path.c_str(), cubemapTex);
+        return cubemapTex;
     }
 }

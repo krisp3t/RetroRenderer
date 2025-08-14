@@ -187,7 +187,7 @@ namespace RetroRenderer
             aiFace face = mesh->mFaces[i];
             if (face.mNumIndices != 3)
             {
-                LOGE("Skipping face that doesn't have exactly 3 indices.");
+                LOGW("Skipping face that doesn't have exactly 3 indices.");
                 continue;
             }
             for (unsigned int j = 0; j < 3; j++)

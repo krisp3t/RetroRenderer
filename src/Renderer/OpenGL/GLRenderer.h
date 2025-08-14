@@ -41,6 +41,7 @@ namespace RetroRenderer
         GLuint CompileShader(GLenum shaderType, const char *shaderSource);
         void CheckShaderErrors(GLuint shader, const std::string &type);
         void CreateFallbackTexture();
+        GLuint CreateCubemap(const std::string& path);
 
     private:
         Camera *p_Camera = nullptr;
@@ -49,6 +50,6 @@ namespace RetroRenderer
         GLuint m_FrameBuffer = 0;
         GLuint m_DepthBuffer = 0;
         GLuint m_FallbackTexture = 0;
-
+        GLuint m_SkyboxTexture = 0;
     };
 }
