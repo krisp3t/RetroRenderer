@@ -1,7 +1,10 @@
-#version 330 core
+#version 300 es
+precision highp float;
+
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoord;
+in vec3 VertexColor;
 
 out vec4 FragColor;
 

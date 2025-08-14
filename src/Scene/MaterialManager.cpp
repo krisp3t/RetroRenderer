@@ -51,10 +51,10 @@ namespace RetroRenderer
         phongVcMaterial.name = "phong-vc";
         phongVcMaterial.phongParams = PhongParams{};
 #ifdef __ANDROID__
-        auto phongTexVs = g_assetsPath + "/shaders/phong-tex-gles.vs";
-        auto phongTexFs = g_assetsPath + "/shaders/phong-tex-gles.fs";
-        auto phongVcVs = g_assetsPath + "/shaders/phong-vc-gles.vs";
-        auto phongVcFs = g_assetsPath + "/shaders/phong-vc-gles.fs";
+        auto phongTexVs = g_assetsPath + "/shaders/phong-tex.vs";
+        auto phongTexFs = g_assetsPath + "/shaders/phong-tex.fs";
+        auto phongVcVs = g_assetsPath + "/shaders/phong-vc.vs";
+        auto phongVcFs = g_assetsPath + "/shaders/phong-vc.fs";
 #else
         auto phongTexVs = "assets/shaders/phong-tex.vs";
         auto phongTexFs = "assets/shaders/phong-tex.fs";
