@@ -61,7 +61,7 @@ namespace RetroRenderer
         // TODO: add depth buffer
 
         CreateFallbackTexture();
-        GLuint cubeTex = CreateCubemap("assets/img/skybox-cubemap/Cubemap_Sky_01-512x512.png");
+        GLuint cubeTex = CreateCubemap("assets/img/skybox-cubemap/Cubemap_Sky_23-512x512.png");
         if (cubeTex != 0)
         {
             m_SkyboxTexture = cubeTex;

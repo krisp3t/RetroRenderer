@@ -86,10 +86,15 @@ namespace RetroRenderer
 
     GLuint RenderSystem::Render(std::vector<int> &renderQueue, std::vector<Model> &models)
     {
+        auto const& p_config = Engine::Get().GetConfig();
 		auto const& p_stats = Engine::Get().GetStats();
         assert(p_stats != nullptr && "Stats not initialized!");
         p_stats->Reset();
-        p_activeRenderer_->DrawSkybox();
+
+        if (p_config->environment.showSkybox)
+        {
+            p_activeRenderer_->DrawSkybox();
+        }
 
         //LOGD("Render queue size: %d", renderQueue.size());
         for (int modelIx: renderQueue)
