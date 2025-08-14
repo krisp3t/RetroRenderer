@@ -105,6 +105,7 @@ namespace RetroRenderer
 
     void RenderSystem::Resize(const glm::ivec2 &resolution)
     {
+        assert(resolution.x > 0 && resolution.y > 0 && "Tried to resize renderer with invalid resolution");
         auto const &p_config = Engine::Get().GetConfig();
         p_config->renderer.resolution = resolution;
         CreateFramebufferTexture(m_SWFramebufferTexture, resolution.x, resolution.y);

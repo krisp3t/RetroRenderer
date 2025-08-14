@@ -166,6 +166,7 @@ namespace RetroRenderer
             case EventType::Output_Image_Resize:
             {
                 const OutputImageResizeEvent &e = static_cast<const OutputImageResizeEvent &>(event);
+                if (e.resolution.x <= 0 || e.resolution.y <= 0) { break; }
                 p_RenderSystem->Resize(e.resolution);
                 break;
             }
