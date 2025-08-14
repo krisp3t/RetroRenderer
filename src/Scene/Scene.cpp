@@ -138,7 +138,12 @@ namespace RetroRenderer
         std::vector<unsigned int> indices;
         std::vector<Texture> textures;
 
-        bool hasVertexColors = mesh->HasVertexColors(0);
+        aiMaterial *material;
+        if (mesh->mMaterialIndex >= 0)
+        {
+            material = scene->mMaterials[mesh->mMaterialIndex];
+        }
+
         for (unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
             Vertex vertex{};
@@ -166,10 +171,11 @@ namespace RetroRenderer
             {
                 vertex.texCoords = glm::vec2(0.0f, 0.0f);
             }
-            if (hasVertexColors)
+            if (material)
             {
-                aiColor4D* aiColor = mesh->mColors[0] + i;
-                vertex.color = glm::vec3(aiColor->r, aiColor->g, aiColor->b);
+                aiColor3D diffuseColor(0.f, 0.f, 0.f);
+                material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+                vertex.color = glm::vec3(diffuseColor.r, diffuseColor.g, diffuseColor.b);
             } else
             {
                 vertex.color = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -193,7 +199,12 @@ namespace RetroRenderer
 
         if (mesh->mMaterialIndex >= 0)
         {
-            //aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+            aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+            LOGI("Processing material %s", material->GetName().C_Str());
+            aiColor3D diffuseColor(0.f, 0.f, 0.f);
+            material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+            aiColor3D specularColor(0.f, 0.f, 0.f);
+            material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
             // TODO: process material
         }
 

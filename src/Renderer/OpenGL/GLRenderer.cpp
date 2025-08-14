@@ -111,8 +111,10 @@ namespace RetroRenderer
     {
         // TODO: Cache uniforms after shader compile?
         MaterialManager::Material& mat = Engine::Get().GetMaterialManager().GetCurrentMaterial();
+        auto& config = Engine::Get().GetConfig();
         glUseProgram(mat.shaderProgram.id);
 
+        const glm::vec3 lightPos = config->environment.lightPosition;
         const glm::mat4& modelMat = model->GetTransform();
         const glm::mat4& viewMat = p_Camera->m_ViewMat;
         const glm::mat4& projMat = p_Camera->m_ProjMat;
@@ -131,7 +133,7 @@ namespace RetroRenderer
         glUniformMatrix4fv(viewProjLoc, 1, GL_FALSE, glm::value_ptr(mvp));
 
         // TODO: replace with PhongParamsUBO
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), 0.0f, 0.0f, 10.0f); // TODO: dynamic lights
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), lightPos.x, lightPos.y, lightPos.z); // TODO: dynamic lights
         glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
         glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"), mat.lightColor.r, mat.lightColor.g, mat.lightColor.b);
         if (mat.phongParams.has_value())

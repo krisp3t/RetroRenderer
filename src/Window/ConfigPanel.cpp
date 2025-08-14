@@ -268,7 +268,7 @@ namespace RetroRenderer
             contentSize.x * r.resolutionScale,
             contentSize.y * r.resolutionScale
         };
-        if (r.resolution != displaySize)
+        if (displaySize.x > 0 && displaySize.y > 0 && r.resolution != displaySize)
         {
             Engine::Get().DispatchImmediate(OutputImageResizeEvent{displaySize});
         }
@@ -737,6 +737,8 @@ namespace RetroRenderer
         ImGui::Checkbox("Show grid", &e.showGrid);
         ImGui::Checkbox("Show floor", &e.showFloor);
         ImGui::Checkbox("Shadow mapping", &e.shadowMap);
+        ImGui::DragFloat3("Light position", &e.lightPosition[0], 0.1f, 0.0f, 0.0f, "%.3f",
+                  ImGuiSliderFlags_Logarithmic);
     }
 
     void ConfigPanel::DisplayControlsOverlay()

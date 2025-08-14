@@ -59,6 +59,7 @@ namespace RetroRenderer
             bool showGrid = true;
             bool showFloor = true;
             bool shadowMap = true;
+            glm::vec3 lightPosition = {0.0f, 0.0f, 5.0f};
         };
 
         // Culling
