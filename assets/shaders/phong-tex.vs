@@ -19,5 +19,6 @@ void main() {
     FragPos = vec3(u_ModelMatrix * vec4(aPos, 1.0));
     Normal = normalize(u_NormalMatrix * aNormal);
     TexCoord = aTexCoord;
+    VertexColor = aColor;
     gl_Position = u_ViewProjectionMatrix * vec4(FragPos, 1.0);
 }
