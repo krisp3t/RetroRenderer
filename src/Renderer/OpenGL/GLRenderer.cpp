@@ -130,10 +130,21 @@ namespace RetroRenderer
         GLint viewProjLoc = glGetUniformLocation(mat.shaderProgram.id, "u_ViewProjectionMatrix");
         glUniformMatrix4fv(viewProjLoc, 1, GL_FALSE, glm::value_ptr(mvp));
 
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), 5.0f, 5.0f, 5.0f);
+        // TODO: replace with PhongParamsUBO
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), 0.0f, 0.0f, 10.0f); // TODO: dynamic lights
         glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"), 1.0f, 1.0f, 1.0f);
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ObjectColor"), 1.0f, 0.5f, 0.3f);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"), mat.lightColor.r, mat.lightColor.g, mat.lightColor.b);
+        if (mat.phongParams.has_value())
+        {
+            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_Shininess"), mat.phongParams->shininess);
+            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_AmbientStrength"), mat.phongParams->ambientStrength);
+            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_SpecularStrength"), mat.phongParams->specularStrength);
+
+        }
+
+
+
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ObjectColor"), 1.0f, 0.0f, 1.0f);
         GLint texLoc = glGetUniformLocation(mat.shaderProgram.id, "u_Texture");
 
         auto& meshes = model->GetMeshes();

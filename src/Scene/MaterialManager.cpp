@@ -45,8 +45,10 @@ namespace RetroRenderer
         // TODO: extract
         Material phongTexMaterial;
         phongTexMaterial.name = "phong-tex";
+        phongTexMaterial.phongParams = PhongParams{};
         Material phongVcMaterial;
         phongVcMaterial.name = "phong-vc";
+        phongVcMaterial.phongParams = PhongParams{};
 #ifdef __ANDROID__
         auto phongTexVs = g_assetsPath + "/shaders/phong-tex-gles.vs";
         auto phongTexFs = g_assetsPath + "/shaders/phong-tex-gles.fs";
@@ -150,12 +152,11 @@ namespace RetroRenderer
         }
 
         // Shader parameters
-        // TODO: reflection lol
         ImGui::SeparatorText("Shader Parameters");
-        if (currentMat.name == "phong-tex" || currentMat.name == "phong-vc") {
-            ImGui::SliderFloat("Ambient Strength", &currentMat.ambientStrength, 0.0f, 1.0f);
-            ImGui::SliderFloat("Specular Strength", &currentMat.specularStrength, 0.0f, 1.0f);
-            ImGui::SliderFloat("Shininess", &currentMat.shininess, 2.0f, 256.0f);
+        if (currentMat.phongParams.has_value()) {
+            ImGui::SliderFloat("Ambient Strength", &currentMat.phongParams->ambientStrength, 0.0f, 1.0f);
+            ImGui::SliderFloat("Specular Strength", &currentMat.phongParams->specularStrength, 0.0f, 1.0f);
+            ImGui::SliderFloat("Shininess", &currentMat.phongParams->shininess, 2.0f, 256.0f);
             ImGui::ColorEdit3("Light Color", &currentMat.lightColor[0]);
         }
 

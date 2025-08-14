@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <string>
 #include <vector>
 #include <glm/vec3.hpp>
@@ -16,6 +17,26 @@ namespace RetroRenderer
 class MaterialManager
 {
 public:
+    struct alignas(16) LightingParamsUBO {
+        int lightingModel;   // 0 = none, 1 = Phong, 2 = Blinn-Phong, 3 = PBR
+        float padding1, padding2, padding3;
+
+        float phongAmbient;
+        float phongSpecular;
+        float phongShininess;
+        float padding4;
+
+        float blinnAmbient;
+        float blinnSpecular;
+        float blinnShininess;
+        float padding5;
+
+        float pbrMetallic;
+        float pbrRoughness;
+        float pbrAO;
+        float padding6;
+    };
+
     struct ShaderProgram
     {
         GLuint id = 0;
@@ -25,15 +46,18 @@ public:
         // time_t lastModified = 0;
     };
 
+    struct PhongParams
+    {
+        float ambientStrength = 0.3f;
+        float specularStrength = 0.3f;
+        float shininess = 32.0f;
+    };
     struct Material
     {
         ShaderProgram shaderProgram;
         Texture texture;
         std::string name;
-
-        float ambientStrength = 0.3f;
-        float specularStrength = 0.3f;
-        float shininess = 32.0f;
+        std::optional<PhongParams> phongParams;
         glm::vec3 lightColor = glm::vec3(1.0f);
         glm::vec3 objectColor = glm::vec3(1.0f);
     };
