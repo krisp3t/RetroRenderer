@@ -55,11 +55,10 @@ public:
     struct Material
     {
         ShaderProgram shaderProgram;
-        Texture texture;
+        std::optional<Texture> texture;
         std::string name;
         std::optional<PhongParams> phongParams;
         glm::vec3 lightColor = glm::vec3(1.0f);
-        glm::vec3 objectColor = glm::vec3(1.0f);
     };
 
     MaterialManager() = default;

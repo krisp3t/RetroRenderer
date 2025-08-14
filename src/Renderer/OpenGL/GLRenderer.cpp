@@ -141,24 +141,20 @@ namespace RetroRenderer
             glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_SpecularStrength"), mat.phongParams->specularStrength);
 
         }
-
-
-
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ObjectColor"), 1.0f, 0.0f, 1.0f);
         GLint texLoc = glGetUniformLocation(mat.shaderProgram.id, "u_Texture");
 
         auto& meshes = model->GetMeshes();
         for (const Mesh& mesh : meshes)
         {
             // TODO: replace with per-mesh texture?
-            if (mat.texture.GetID() == 0)
+            if (!mat.texture.has_value() || mat.texture->GetID() == 0)
             {
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
             }
             else
             {
-                mat.texture.Bind();
+                mat.texture->Bind();
             }
 
             glUniform1i(texLoc, 0);

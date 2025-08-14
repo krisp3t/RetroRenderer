@@ -100,7 +100,6 @@ namespace RetroRenderer
         glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), 5.0f, 5.0f, 5.0f);
         glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
         glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"), 1.0f, 1.0f, 1.0f);
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ObjectColor"), 1.0f, 0.5f, 0.3f);
         GLint texLoc = glGetUniformLocation(mat.shaderProgram.id, "u_Texture");
 
         auto& meshes = model->GetMeshes();

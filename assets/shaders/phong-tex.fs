@@ -8,7 +8,6 @@ out vec4 FragColor;
 uniform vec3 u_LightPos;
 uniform vec3 u_ViewPos;
 uniform vec3 u_LightColor;
-uniform vec3 u_ObjectColor;
 uniform sampler2D u_Texture;
 
 void main() {

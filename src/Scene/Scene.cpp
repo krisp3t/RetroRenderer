@@ -49,7 +49,7 @@ namespace RetroRenderer
         }
 #else
         scene = importer.ReadFile(path.c_str(),
-            aiProcess_Triangulate | aiProcess_FlipUVs);
+            aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
 #endif
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
@@ -138,6 +138,7 @@ namespace RetroRenderer
         std::vector<unsigned int> indices;
         std::vector<Texture> textures;
 
+        bool hasVertexColors = mesh->HasVertexColors(0);
         for (unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
             Vertex vertex{};
@@ -164,6 +165,14 @@ namespace RetroRenderer
             } else
             {
                 vertex.texCoords = glm::vec2(0.0f, 0.0f);
+            }
+            if (hasVertexColors)
+            {
+                aiColor4D* aiColor = mesh->mColors[0] + i;
+                vertex.color = glm::vec3(aiColor->r, aiColor->g, aiColor->b);
+            } else
+            {
+                vertex.color = glm::vec3(1.0f, 1.0f, 1.0f);
             }
             vertices.push_back(vertex);
         }

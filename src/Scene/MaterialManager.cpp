@@ -46,6 +46,7 @@ namespace RetroRenderer
         Material phongTexMaterial;
         phongTexMaterial.name = "phong-tex";
         phongTexMaterial.phongParams = PhongParams{};
+        phongTexMaterial.texture = Texture{};
         Material phongVcMaterial;
         phongVcMaterial.name = "phong-vc";
         phongVcMaterial.phongParams = PhongParams{};
@@ -121,36 +122,38 @@ namespace RetroRenderer
 
         // Texture loading
         ImGui::SeparatorText("Texture");
-        if (ImGui::Button("Load texture")) {
-            // TODO: extract platform specific
+        if (currentMat.texture.has_value())
+        {
+            if (ImGui::Button("Load texture")) {
+                // TODO: extract platform specific
 #ifdef __ANDROID__
-            auto* env = static_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
-            auto activity = static_cast<jobject>(SDL_AndroidGetActivity());
-            jclass cls = env->GetObjectClass(activity);
-            jmethodID mid = env->GetMethodID(cls, "openTexturePicker", "()V");
-            env->CallVoidMethod(activity, mid);
+                auto* env = static_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+                auto activity = static_cast<jobject>(SDL_AndroidGetActivity());
+                jclass cls = env->GetObjectClass(activity);
+                jmethodID mid = env->GetMethodID(cls, "openTexturePicker", "()V");
+                env->CallVoidMethod(activity, mid);
 #else
-            IGFD::FileDialogConfig sceneDialogConfig;
-            ImGuiFileDialog::Instance()->Close();
-            ImGuiFileDialog::Instance()->OpenDialog("OpenTextureFile", "Choose texture", k_supportedTextures,
-                                        sceneDialogConfig);
+                IGFD::FileDialogConfig sceneDialogConfig;
+                ImGuiFileDialog::Instance()->Close();
+                ImGuiFileDialog::Instance()->OpenDialog("OpenTextureFile", "Choose texture", k_supportedTextures,
+                                            sceneDialogConfig);
 #endif
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Unload texture"))
-        {
-            currentMat.texture = Texture();
-        }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Unload texture"))
+            {
+                currentMat.texture = Texture();
+            }
 
-        // Display current texture
-        if (currentMat.texture.GetID()) {
-            ImGui::Text("Current Texture: handle %d (%s)", currentMat.texture.GetID(), currentMat.texture.GetPath().c_str());
-            ImGui::Image(ImTextureID((void*)(intptr_t)currentMat.texture.GetID()), ImVec2(128, 128));
-        } else
-        {
-            ImGui::Text("Current Texture: none");
+            // Display current texture
+            if (currentMat.texture->GetID()) {
+                ImGui::Text("Current Texture: handle %d (%s)", currentMat.texture->GetID(), currentMat.texture->GetPath().c_str());
+                ImGui::Image(ImTextureID((void*)(intptr_t)currentMat.texture->GetID()), ImVec2(128, 128));
+            } else
+            {
+                ImGui::Text("Current Texture: none");
+            }
         }
-
         // Shader parameters
         ImGui::SeparatorText("Shader Parameters");
         if (currentMat.phongParams.has_value()) {
@@ -159,7 +162,5 @@ namespace RetroRenderer
             ImGui::SliderFloat("Shininess", &currentMat.phongParams->shininess, 2.0f, 256.0f);
             ImGui::ColorEdit3("Light Color", &currentMat.lightColor[0]);
         }
-
-        ImGui::ColorEdit3("Object Tint", &currentMat.objectColor[0]);
     }
 }
