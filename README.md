@@ -35,3 +35,6 @@ Launch the project with launch profile "Launch RetroRenderer in workspaceRoot" t
 - [ChiliTomatoNoodle: 3D Programming Fundamentals](https://www.youtube.com/watch?v=uehGqieEbus&list=PLqCJpWy5Fohe8ucwhksiv9hTF5sfid8lA)
 - [Dmitry V. Sokolov: TinyRenderer](https://github.com/ssloy/tinyrenderer)
 - [Jean-Colas Prunier: Scratchapixel](https://www.scratchapixel.com/)
+
+## Assets
+- [Seamless Sky Backgrounds](https://opengameart.org/content/seamless-sky-backgrounds)
