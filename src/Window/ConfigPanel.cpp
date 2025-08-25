@@ -737,8 +737,7 @@ namespace RetroRenderer
         ImGui::Checkbox("Show grid", &e.showGrid);
         ImGui::Checkbox("Show floor", &e.showFloor);
         ImGui::Checkbox("Shadow mapping", &e.shadowMap);
-        ImGui::DragFloat3("Light position", &e.lightPosition[0], 0.1f, 0.0f, 0.0f, "%.3f",
-                  ImGuiSliderFlags_Logarithmic);
+        ImGui::DragFloat3("Light position", &e.lightPosition[0], 0.1f, 0.0f, 0.0f, "%.3f");
     }
 
     void ConfigPanel::DisplayControlsOverlay()

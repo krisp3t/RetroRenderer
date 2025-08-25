@@ -34,6 +34,7 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_krisp3t_retrorenderer_MainActivity_nativeSetAssetsPath(JNIEnv* env, jobject, jstring path) {
     const char* nativePath = env->GetStringUTFChars(path, nullptr);
     g_assetsPath = nativePath;
+    g_assetsPath.append("/");
     env->ReleaseStringUTFChars(path, nativePath);
 }
 

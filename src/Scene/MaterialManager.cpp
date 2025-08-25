@@ -50,18 +50,11 @@ namespace RetroRenderer
         Material phongVcMaterial;
         phongVcMaterial.name = "phong-vc";
         phongVcMaterial.phongParams = PhongParams{};
-#ifdef __ANDROID__
-        auto phongTexVs = g_assetsPath + "/shaders/phong-tex.vs";
-        auto phongTexFs = g_assetsPath + "/shaders/phong-tex.fs";
-        auto phongVcVs = g_assetsPath + "/shaders/phong-vc.vs";
-        auto phongVcFs = g_assetsPath + "/shaders/phong-vc.fs";
-#else
-        auto phongTexVs = "assets/shaders/phong-tex.vs";
-        auto phongTexFs = "assets/shaders/phong-tex.fs";
-        auto phongVcVs = "assets/shaders/phong-vc.vs";
-        auto phongVcFs = "assets/shaders/phong-vc.fs";
-#endif
-        
+        auto phongTexVs = "shaders/phong-tex.vs";
+        auto phongTexFs = "shaders/phong-tex.fs";
+        auto phongVcVs = "shaders/phong-vc.vs";
+        auto phongVcFs = "shaders/phong-vc.fs";
+
         phongTexMaterial.shaderProgram = CreateShaderProgram(phongTexVs, phongTexFs);
         m_Materials.emplace_back(std::move(phongTexMaterial));
         phongVcMaterial.shaderProgram = CreateShaderProgram(phongVcVs, phongVcFs);
@@ -72,8 +65,12 @@ namespace RetroRenderer
         const std::string& fragmentPath)
     {
         ShaderProgram shaderProgram;
-        std::string vertexCode = ReadShaderFile(vertexPath);
-        std::string fragmentCode = ReadShaderFile(fragmentPath);
+        std::string rootPath = "assets/";
+#ifdef __ANDROID__
+        rootPath = g_assetsPath;
+#endif
+        std::string vertexCode = ReadShaderFile(rootPath + vertexPath);
+        std::string fragmentCode = ReadShaderFile(rootPath + fragmentPath);
         if (vertexCode.empty() || fragmentCode.empty()) {
             return {0, "Invalid Shader", vertexPath, fragmentPath};
         }

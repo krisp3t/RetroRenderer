@@ -63,8 +63,8 @@ namespace RetroRenderer
         if (cubeTex != 0)
         {
             m_SkyboxTexture = cubeTex;
-            auto skyboxShader = MaterialManager::CreateShaderProgram("assets/shaders/skybox.vs",
-                                                                     "assets/shaders/skybox.fs");
+            auto skyboxShader = MaterialManager::CreateShaderProgram("shaders/skybox.vs",
+                                                                     "shaders/skybox.fs");
             m_SkyboxProgram = skyboxShader;
             m_SkyboxVAO = CreateSkyboxVAO();
         }
