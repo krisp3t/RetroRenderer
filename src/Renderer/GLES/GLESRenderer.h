@@ -3,6 +3,8 @@
 #include "../../Scene/Scene.h"
 #include "../IRenderer.h"
 #include "../../Base/Color.h"
+#include "../../Scene/MaterialManager.h"
+
 
 namespace RetroRenderer
 {
@@ -29,6 +31,7 @@ namespace RetroRenderer
 
         GLuint EndFrame() override;
 
+        GLuint CreateShaderProgram();
         GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override;
 
     private:
@@ -36,13 +39,18 @@ namespace RetroRenderer
         GLuint CompileShader(GLenum shaderType, const char *shaderSource);
         void CheckShaderErrors(GLuint shader, const std::string &type);
         void CreateFallbackTexture();
+        GLuint CreateCubemap(const std::string& path);
+        GLuint CreateSkyboxVAO();
 
     private:
         Camera* p_Camera = nullptr;
 
-        GLuint m_FallbackTexture = 0;
         GLuint p_FrameBufferTexture = 0;
         GLuint m_FrameBuffer = 0;
         GLuint m_DepthBuffer = 0;
+        GLuint m_FallbackTexture = 0;
+        GLuint m_SkyboxTexture = 0;
+        GLuint m_SkyboxVAO = 0;
+        ShaderProgram m_SkyboxProgram;
     };
 }

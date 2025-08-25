@@ -58,8 +58,6 @@ namespace RetroRenderer
             return false;
         }
 
-        // TODO: add depth buffer
-
         CreateFallbackTexture();
         GLuint cubeTex = CreateCubemap("assets/img/skybox-cubemap/Cubemap_Sky_23-512x512.png");
         if (cubeTex != 0)
@@ -245,13 +243,17 @@ namespace RetroRenderer
 
     GLuint GLRenderer::CompileShader(GLenum shaderType, const char* shaderSource)
     {
+        constexpr std::string_view kShaderPrefix = "#version 330 core\nprecision highp float;\n";
+        std::string appendStr = std::string(kShaderPrefix) + shaderSource;
+        const char* srcPtr = appendStr.c_str();
+
         GLuint shader = glCreateShader(shaderType);
         if (shader == 0)
         {
             LOGE("Error creating shader");
             return 0;
         }
-        glShaderSource(shader, 1, &shaderSource, nullptr);
+        glShaderSource(shader, 1, &srcPtr, nullptr);
         glCompileShader(shader);
 
         GLint success;
@@ -266,7 +268,7 @@ namespace RetroRenderer
             glDeleteShader(shader);
             return 0;
         }
-        LOGD("GLRenderer: Compiled shader: %s", shaderSource);
+        LOGD("GLRenderer: Compiled shader: %s", srcPtr);
         return shader;
     }
 
