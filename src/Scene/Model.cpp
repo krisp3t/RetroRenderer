@@ -11,7 +11,8 @@ namespace RetroRenderer
     void Model::Init(Scene* scene, const std::string& name, const aiMatrix4x4& localMatrix)
     {
         p_Scene = scene;
-        MarkDirty();
+        m_Name = name;
+        m_LocalMatrix = AssimpToGlmMatrix(localMatrix);
     }
 
     const std::vector<Mesh> &Model::GetMeshes() const
@@ -47,6 +48,12 @@ namespace RetroRenderer
         {
             p_Scene->MarkDirtyModel(childIx);
         }
+    }
+
+    void Model::SetParent(int parent)
+    {
+        m_Parent = parent;
+        MarkDirty();
     }
 
     void Model::SetLocalTransform(const aiMatrix4x4& mat)

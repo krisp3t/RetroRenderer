@@ -92,11 +92,6 @@ namespace RetroRenderer
         // Create a model for this aiNode
         Model newModel{};
         newModel.Init(this, node->mName.C_Str(), node->mTransformation);
-        if (parentIndex != -1)
-        {
-            newModel.m_Parent = parentIndex;
-            m_Models[parentIndex].m_Children.push_back(m_Models.size());
-        }
         // Process all meshes for this model
         for (size_t i = 0; i < node->mNumMeshes; i++)
         {
@@ -110,6 +105,7 @@ namespace RetroRenderer
         int currentNodeIndex = m_Models.size();
         if (parentIndex != -1)
         {
+            newModel.SetParent(parentIndex);
             m_Models[parentIndex].m_Children.push_back(currentNodeIndex);
         }
         m_Models.emplace_back(std::move(newModel));

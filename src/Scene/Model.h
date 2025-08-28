@@ -29,6 +29,7 @@ namespace RetroRenderer
         const std::string &GetName() const;
         void SetName(const aiString &name);
         void SetLocalTransform(const aiMatrix4x4 &mat);
+        void SetParent(int parent);
         const glm::mat4 &GetWorldTransform() const;
         void MarkDirty();
 
