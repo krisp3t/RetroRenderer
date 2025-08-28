@@ -47,7 +47,7 @@ namespace RetroRenderer
         assert(m_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
         assert(model != nullptr && "Tried to draw null model");
 
-        const glm::mat4 &modelMat = model->GetTransform();
+        const glm::mat4 &modelMat = model->GetWorldTransform();
         const glm::mat4 &viewMat = p_Camera->m_ViewMat;
         const glm::mat4 &projMat = p_Camera->m_ProjMat;
         const glm::mat4 mv = viewMat * modelMat;

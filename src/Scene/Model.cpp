@@ -1,10 +1,17 @@
 #include "Model.h"
+#include "Scene.h"
 
 namespace RetroRenderer
 {
     Model::Model()
     {
         m_Meshes = std::vector<Mesh>();
+    }
+
+    void Model::Init(Scene* scene, const std::string& name, const aiMatrix4x4& localMatrix)
+    {
+        p_Scene = scene;
+        MarkDirty();
     }
 
     const std::vector<Mesh> &Model::GetMeshes() const
@@ -32,29 +39,35 @@ namespace RetroRenderer
         );
     }
 
-    void Model::SetTransform(const aiMatrix4x4 &mat)
+    void Model::MarkDirty()
     {
-        m_nodeTransform = AssimpToGlmMatrix(mat);
+        RecomputeWorldMatrix();
+        assert(p_Scene != nullptr && "Scene hasn't been assigned to model");
+        for (const auto& childIx : m_Children)
+        {
+            p_Scene->MarkDirtyModel(childIx);
+        }
     }
 
-    void Model::SetParentTransform(const glm::mat4 &mat)
+    void Model::SetLocalTransform(const aiMatrix4x4& mat)
     {
-        m_parentTransform = mat;
+        m_LocalMatrix = AssimpToGlmMatrix(mat);
+        MarkDirty();
     }
 
-    void Model::SetParentTransform(const aiMatrix4x4 &mat)
+    const glm::mat4& Model::GetWorldTransform() const
     {
-        m_parentTransform = AssimpToGlmMatrix(mat);
+        return m_WorldMatrix;
     }
 
-    void Model::SetLocalTransform(const aiMatrix4x4 &mat)
+    void Model::RecomputeWorldMatrix()
     {
-        auto localTransform = AssimpToGlmMatrix(mat);
-        m_nodeTransform = m_parentTransform * localTransform;
-    }
-
-    const glm::mat4 &Model::GetTransform() const
-    {
-        return m_nodeTransform;
+        auto parentWorld = glm::mat4(1.0f);
+        assert(p_Scene != nullptr && "Scene hasn't been assigned to model");
+        if (m_Parent.has_value())
+        {
+            parentWorld = p_Scene->GetModelWorldTransform(m_Parent.value());
+        }
+        m_WorldMatrix = parentWorld * m_LocalMatrix;
     }
 }

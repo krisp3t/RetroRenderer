@@ -124,7 +124,7 @@ namespace RetroRenderer
         glUseProgram(mat.shaderProgram.id);
 
         const glm::vec3 lightPos = config->environment.lightPosition;
-        const glm::mat4& modelMat = model->GetTransform();
+        const glm::mat4& modelMat = model->GetWorldTransform();
         const glm::mat4& viewMat = p_Camera->m_ViewMat;
         const glm::mat4& projMat = p_Camera->m_ProjMat;
         const glm::mat4 mv = viewMat * modelMat;

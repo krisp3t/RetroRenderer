@@ -91,10 +91,12 @@ namespace RetroRenderer
 
         // Create a model for this aiNode
         Model newModel{};
-        newModel.SetName(node->mName);
-        newModel.m_Parent = parentIndex;
-        newModel.SetTransform(node->mTransformation);
-
+        newModel.Init(this, node->mName.C_Str(), node->mTransformation);
+        if (parentIndex != -1)
+        {
+            newModel.m_Parent = parentIndex;
+            m_Models[parentIndex].m_Children.push_back(m_Models.size());
+        }
         // Process all meshes for this model
         for (size_t i = 0; i < node->mNumMeshes; i++)
         {
@@ -108,7 +110,6 @@ namespace RetroRenderer
         int currentNodeIndex = m_Models.size();
         if (parentIndex != -1)
         {
-            newModel.SetParentTransform(m_Models[parentIndex].GetTransform());
             m_Models[parentIndex].m_Children.push_back(currentNodeIndex);
         }
         m_Models.emplace_back(std::move(newModel));
@@ -235,5 +236,16 @@ namespace RetroRenderer
         {
             m_VisibleModels.push_back(i);
         }
+    }
+
+    const glm::mat4& Scene::GetModelWorldTransform(int index) const
+    {
+        assert(index >= 0 && index < m_Models.size() && "Invalid model index");
+        return m_Models[index].GetWorldTransform();
+    }
+
+    void Scene::MarkDirtyModel(int index)
+    {
+        m_Models[index].MarkDirty();
     }
 }
