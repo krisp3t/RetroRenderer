@@ -178,11 +178,23 @@ namespace RetroRenderer
         {
             if (opened)
             {
-                glm::vec3 pos, rot, scl;
-                model.GetTRS(pos, rot, scl);
-                ImGui::Text("Position: (%.2f, %.2f, %.2f)", pos.x, pos.y, pos.z);
-                ImGui::Text("Rotation: (%.2f, %.2f, %.2f)", rot.x, rot.y, rot.z);
-                ImGui::Text("Scale:    (%.2f, %.2f, %.2f)", scl.x, scl.y, scl.z);
+                glm::vec3 lPos, lRot, lScl;
+                glm::vec3 wPos, wRot, wScl;
+                model.GetLocalTRS(lPos, lRot, lScl);
+                model.GetWorldTRS(wPos, wRot, wScl);
+
+                ImGui::Text("Local pos:      (%.2f, %.2f, %.2f)", lPos.x, lPos.y, lPos.z);
+                ImGui::SameLine();
+                ImGui::Text("World pos:      (%.2f, %.2f, %.2f)", wPos.x, wPos.y, wPos.z);
+
+                ImGui::Text("Local rot:      (%.2f, %.2f, %.2f)", lRot.x, lRot.y, lRot.z);
+                ImGui::SameLine();
+                ImGui::Text("World rot:      (%.2f, %.2f, %.2f)", wRot.x, wRot.y, wRot.z);
+
+                ImGui::Text("Local scale:    (%.2f, %.2f, %.2f)", lScl.x, lScl.y, lScl.z);
+                ImGui::SameLine();
+                ImGui::Text("World scale:    (%.2f, %.2f, %.2f)", wScl.x, wScl.y, wScl.z);
+
                 for (int childIndex : p_Scene->m_Models[modelIndex].m_Children)
                 {
                     RenderUIModelRecursive(childIndex);

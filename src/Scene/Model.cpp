@@ -81,7 +81,17 @@ namespace RetroRenderer
         m_WorldMatrix = parentWorld * m_LocalMatrix;
     }
 
-    void Model::GetTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, glm::vec3& outScale) const
+    void Model::GetLocalTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, glm::vec3& outScale) const
+    {
+        glm::vec3 skew;
+        glm::vec4 perspective;
+        glm::quat rotation;
+
+        glm::decompose(m_LocalMatrix, outScale, rotation, outTranslation, skew, perspective);
+        outRotationEuler = glm::degrees(glm::eulerAngles(rotation));
+    }
+
+    void Model::GetWorldTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, glm::vec3& outScale) const
     {
         glm::vec3 skew;
         glm::vec4 perspective;
