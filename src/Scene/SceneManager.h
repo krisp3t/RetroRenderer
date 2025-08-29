@@ -19,9 +19,12 @@ namespace RetroRenderer
         bool ProcessInput(InputActionMask actions, unsigned int deltaTime);
         void Update(unsigned int deltaTime);
         void NewFrame();
+        void RenderUI();
         [[nodiscard]] std::shared_ptr<Scene> GetScene() const;
         [[nodiscard]] Camera* GetCamera() const;
     private:
+        void RenderUIModelRecursive(int modelIndex);
+
         std::shared_ptr<Scene> p_Scene = nullptr;
         std::unique_ptr<Camera> p_Camera = nullptr;
         float m_MoveFactor = 0.02f;

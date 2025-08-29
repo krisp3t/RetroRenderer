@@ -1,6 +1,9 @@
 #include <KrisLogger/Logger.h>
 #include "SceneManager.h"
 
+#include <imgui.h>
+#include <glm/gtc/type_ptr.inl>
+
 
 namespace RetroRenderer
 {
@@ -127,5 +130,60 @@ namespace RetroRenderer
     std::shared_ptr<Scene> SceneManager::GetScene() const
     {
         return p_Scene;
+    }
+
+    void SceneManager::RenderUI()
+    {
+        // Fixed nodes
+        if (ImGui::TreeNode("Main camera"))
+        {
+            ImGui::Text("Main camera");
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNode("Ambient light"))
+        {
+            ImGui::Text("Ambient light");
+            ImGui::TreePop();
+        }
+
+        if (p_Scene.get() == nullptr)
+        {
+            return;
+        }
+        if (ImGui::TreeNode("Scene"))
+        {
+            for (size_t i = 0; i < p_Scene->m_Models.size(); i++)
+            {
+                if (!p_Scene->m_Models[i].m_Parent.has_value()) // roots only
+                {
+                    RenderUIModelRecursive(i);
+                }
+            }
+            ImGui::TreePop();
+        }
+    }
+
+    void SceneManager::RenderUIModelRecursive(int modelIndex)
+    {
+        auto &model = p_Scene->m_Models[modelIndex];
+        constexpr ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow
+                             | ImGuiTreeNodeFlags_OpenOnDoubleClick
+                             | ImGuiTreeNodeFlags_SpanAvailWidth;
+        /*
+        if (scene.m_SelectedModel == modelIndex)
+            nodeFlags |= ImGuiTreeNodeFlags_Selected;
+        */
+        bool opened = true;
+        if (ImGui::TreeNode(model.GetName().c_str()))
+        {
+            if (opened)
+            {
+                for (int childIndex : p_Scene->m_Models[modelIndex].m_Children)
+                {
+                    RenderUIModelRecursive(childIndex);
+                }
+            }
+            ImGui::TreePop();
+        }
     }
 }

@@ -19,6 +19,7 @@ namespace RetroRenderer
         {
             return false;
         }
+        p_SceneManager = std::make_unique<SceneManager>();
         LOGD("p_Config_ ref count: %d", p_config_.use_count());
         p_MaterialManager = std::make_unique<MaterialManager>();
         if (!p_MaterialManager->Init())
@@ -27,9 +28,9 @@ namespace RetroRenderer
         }
 
         // Default scene (optional)
-        // m_SceneManager.LoadScene("frog/frog.obj");
+        // p_SceneManager->LoadScene("frog/frog.obj");
 
-        //m_SceneManager.LoadScene("tests-visual/basic-tests/03-3d-cube/model-quad.obj");
+        //p_SceneManager->LoadScene("tests-visual/basic-tests/03-3d-cube/model-quad.obj");
         return true;
     }
 
@@ -54,18 +55,18 @@ namespace RetroRenderer
 
             // TODO: optimisation?
             /*
-			if (m_SceneManager.ProcessInput(inputActions, delta))
+			if (p_SceneManager->ProcessInput(inputActions, delta))
 			{
-				m_SceneManager.Update(delta);
+				p_SceneManager->Update(delta);
 			}
             */
-            m_SceneManager.ProcessInput(inputActions, delta);
-            m_SceneManager.Update(delta);
-            m_SceneManager.NewFrame();
+            p_SceneManager->ProcessInput(inputActions, delta);
+            p_SceneManager->Update(delta);
+            p_SceneManager->NewFrame();
 
             Color clearColor = Color{p_config_->renderer.clearColor};
-            auto scene = m_SceneManager.GetScene();
-            auto camera = m_SceneManager.GetCamera();
+            auto scene = p_SceneManager->GetScene();
+            auto camera = p_SceneManager->GetCamera();
             if (scene && camera)
             {
                 m_DisplaySystem.BeforeFrame();
@@ -149,18 +150,18 @@ namespace RetroRenderer
                 if (!e.loadFromMemory)
                 {
                     LOGD("Attempting to load scene from path: %s", e.scenePath.c_str());
-                    m_SceneManager.LoadScene(e.scenePath);
+                    p_SceneManager->LoadScene(e.scenePath);
                 }
                 else
                 {
-                    m_SceneManager.LoadScene(e.sceneDataBuffer.data(), e.sceneDataSize);
+                    p_SceneManager->LoadScene(e.sceneDataBuffer.data(), e.sceneDataSize);
                 }
                 p_RenderSystem->OnLoadScene(e); // TODO: send to all subscribers
                 break;
             }
             case EventType::Scene_Reset:
             {
-                m_SceneManager.ResetScene();
+                p_SceneManager->ResetScene();
                 break;
             }
             case EventType::Output_Image_Resize:
@@ -187,7 +188,7 @@ namespace RetroRenderer
 
     Camera* Engine::GetCamera() const
     {
-        return m_SceneManager.GetCamera();
+        return p_SceneManager->GetCamera();
     }
 
     MaterialManager& Engine::GetMaterialManager() const
@@ -198,5 +199,10 @@ namespace RetroRenderer
     RenderSystem& Engine::GetRenderSystem() const
     {
         return *p_RenderSystem;
+    }
+
+    SceneManager& Engine::GetSceneManager() const
+    {
+        return *p_SceneManager;
     }
 }

@@ -36,6 +36,8 @@ public:
 	[[nodiscard]] Camera* GetCamera() const;
 	[[nodiscard]] MaterialManager& GetMaterialManager() const;
 	[[nodiscard]] RenderSystem& GetRenderSystem() const;
+	[[nodiscard]] SceneManager& GetSceneManager() const;
+
 private:
 	Engine() = default;
 	~Engine() = default;
@@ -51,7 +53,7 @@ private:
     DisplaySystem m_DisplaySystem;
     std::unique_ptr<RenderSystem> p_RenderSystem;
     InputSystem m_InputSystem;
-    SceneManager m_SceneManager;
+    std::unique_ptr<SceneManager> p_SceneManager;
 	std::unique_ptr<MaterialManager> p_MaterialManager;
 };
 
