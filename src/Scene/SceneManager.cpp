@@ -178,6 +178,11 @@ namespace RetroRenderer
         {
             if (opened)
             {
+                glm::vec3 pos, rot, scl;
+                model.GetTRS(pos, rot, scl);
+                ImGui::Text("Position: (%.2f, %.2f, %.2f)", pos.x, pos.y, pos.z);
+                ImGui::Text("Rotation: (%.2f, %.2f, %.2f)", rot.x, rot.y, rot.z);
+                ImGui::Text("Scale:    (%.2f, %.2f, %.2f)", scl.x, scl.y, scl.z);
                 for (int childIndex : p_Scene->m_Models[modelIndex].m_Children)
                 {
                     RenderUIModelRecursive(childIndex);

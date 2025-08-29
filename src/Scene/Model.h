@@ -32,6 +32,9 @@ namespace RetroRenderer
         void SetParent(int parent);
         const glm::mat4 &GetWorldTransform() const;
         void MarkDirty();
+        void GetTRS(glm::vec3& outTranslation,
+                       glm::vec3& outRotationEuler,
+                       glm::vec3& outScale) const;
 
         std::optional<int> m_Parent;
         std::vector<int> m_Children;

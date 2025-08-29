@@ -1,3 +1,6 @@
+#include <glm/detail/type_quat.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include "Model.h"
 #include "Scene.h"
 
@@ -76,5 +79,15 @@ namespace RetroRenderer
             parentWorld = p_Scene->GetModelWorldTransform(m_Parent.value());
         }
         m_WorldMatrix = parentWorld * m_LocalMatrix;
+    }
+
+    void Model::GetTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, glm::vec3& outScale) const
+    {
+        glm::vec3 skew;
+        glm::vec4 perspective;
+        glm::quat rotation;
+
+        glm::decompose(m_WorldMatrix, outScale, rotation, outTranslation, skew, perspective);
+        outRotationEuler = glm::degrees(glm::eulerAngles(rotation));
     }
 }
