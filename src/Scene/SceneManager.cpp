@@ -140,9 +140,9 @@ namespace RetroRenderer
             ImGui::Text("Main camera");
             ImGui::TreePop();
         }
-        if (ImGui::TreeNode("Ambient light"))
+        if (ImGui::TreeNode("Directional light"))
         {
-            ImGui::Text("Ambient light");
+            ImGui::Text("Directional light");
             ImGui::TreePop();
         }
 
