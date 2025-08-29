@@ -1,6 +1,5 @@
 in vec3 FragPos;
 in vec3 Normal;
-in vec2 TexCoord;
 in vec3 VertexColor;
 
 out vec4 FragColor;
@@ -28,8 +27,6 @@ void main() {
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), u_Shininess);
     vec3 specular = u_SpecularStrength * spec * u_LightColor;
-
-    vec3 texColor = texture(u_Texture, TexCoord).rgb;
 
     vec3 result = (ambient + diffuse + specular) * VertexColor;
     FragColor = vec4(result, 1.0);

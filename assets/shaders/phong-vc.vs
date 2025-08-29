@@ -9,7 +9,6 @@ uniform mat3 u_NormalMatrix; // derived from model matrix
 
 out vec3 FragPos;
 out vec3 Normal;
-out vec2 TexCoord;
 out vec3 VertexColor;
 
 void main() {
