@@ -40,7 +40,7 @@ Java_com_krisp3t_retrorenderer_MainActivity_nativeSetAssetsPath(JNIEnv* env, job
 
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_krisp3t_retrorenderer_MainActivity_nativeOnFilePicked(
+Java_com_krisp3t_retrorenderer_MainActivity_nativeOnScenePicked(
 JNIEnv* env, jobject /* this */, jbyteArray fileData, jstring extension) {
     size_t length = env->GetArrayLength(fileData);
     std::vector<uint8_t> buffer(length);

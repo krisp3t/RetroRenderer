@@ -12,8 +12,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 public class MainActivity extends SDLActivity {
     // Requests
@@ -23,7 +21,7 @@ public class MainActivity extends SDLActivity {
     private static native void nativeSetAssetManager(AssetManager assetManager);
     public native void nativeSetImGuiIniPath(String path);
     public native void nativeSetAssetsPath(String path);
-    private static native void nativeOnFilePicked(byte[] data, String extension);
+    private static native void nativeOnScenePicked(byte[] data, String extension);
     private static native void nativeOnTexturePicked(byte[] data, String extension);
 
     @Override
@@ -69,7 +67,7 @@ public class MainActivity extends SDLActivity {
                 }
 
                 if (requestCode == PICK_SCENE_REQUEST) {
-                    nativeOnFilePicked(fileBytes, extension);
+                    nativeOnScenePicked(fileBytes, extension);
                 } else if (requestCode == PICK_TEXTURE_REQUEST) {
                     nativeOnTexturePicked(fileBytes, extension);
                 }
@@ -129,7 +127,7 @@ public class MainActivity extends SDLActivity {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*");
-        String[] mimeTypes = {"model/obj", "application/octet-stream", "text/plain"}; // TODO: extract all supported types
+        String[] mimeTypes = {"model/obj", "model/gltf+json", "model/gltf-binary", "model/vnd.usdz+zip", "application/octet-stream", "application/fbx"}; // TODO: extract all supported types
         intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
         startActivityForResult(intent, PICK_SCENE_REQUEST);
     }
