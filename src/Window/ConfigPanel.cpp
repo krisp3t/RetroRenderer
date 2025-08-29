@@ -204,7 +204,16 @@ namespace RetroRenderer
     void ConfigPanel::DisplaySceneGraph()
     {
         ImGui::Begin("Scene Graph");
+        ImGuiIO& io = ImGui::GetIO();
+        ImFont* smallFont = io.Fonts->Fonts[0]; // base font (index 0)
+        constexpr float kScale = 0.8f;
+        ImGui::PushFont(smallFont);
+        ImGui::SetWindowFontScale(kScale);
+
         Engine::Get().GetSceneManager().RenderUI();
+
+        ImGui::SetWindowFontScale(1.0f);
+        ImGui::PopFont();
         ImGui::End();
     }
 
@@ -757,12 +766,13 @@ namespace RetroRenderer
                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
                 ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
         constexpr float kPadding = 10.0f;
+        ImFont* smallFont = io.Fonts->Fonts[0]; // base font (index 0)
+        constexpr float kScale = 0.8f;
 
         static float frameTimes[100] = {0};  // Buffer for frame times
         static int frameIndex = 0;
         frameTimes[frameIndex] = 1000.0f / io.Framerate;  // Store current frame time in milliseconds
         frameIndex = (frameIndex + 1) % 100;  // Wrap index around when it reaches the buffer size
-
 
         const ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
@@ -778,6 +788,8 @@ namespace RetroRenderer
         ImGui::SetNextWindowBgAlpha(0.35f);
         if (ImGui::Begin("Metrics", &p_config_->window.showFPS, windowFlags))
         {
+            ImGui::PushFont(smallFont);
+            ImGui::SetWindowFontScale(kScale);
             ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
             ImGui::Text(
                     "%d x %d (%s)",
@@ -806,6 +818,8 @@ namespace RetroRenderer
                 if (ImGui::MenuItem("Close")) p_config_->window.showFPS = false;
                 ImGui::EndPopup();
             }
+            ImGui::SetWindowFontScale(1.0f);
+            ImGui::PopFont();
         }
         ImGui::End();
     }
