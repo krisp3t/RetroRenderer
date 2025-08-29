@@ -127,37 +127,35 @@ namespace RetroRenderer
         const glm::mat4& modelMat = model->GetWorldTransform();
         const glm::mat4& viewMat = p_Camera->m_ViewMat;
         const glm::mat4& projMat = p_Camera->m_ProjMat;
-        const glm::mat4 mv = viewMat * modelMat;
-        const glm::mat4 mvp = projMat * mv;
-        glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMat)));
-        GLint normalMatLoc = glGetUniformLocation(mat.shaderProgram.id, "u_NormalMatrix");
-        glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
-        glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
+        // Combined matrices
+        glm::mat4 mv  = viewMat * modelMat;
+        glm::mat4 mvp = projMat * mv;
+        glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(mv)));
 
-        // Per-mesh uniforms
-        GLint modelLoc = glGetUniformLocation(mat.shaderProgram.id, "u_ModelMatrix");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMat));
-        GLint viewProjLoc = glGetUniformLocation(mat.shaderProgram.id, "u_ViewProjectionMatrix");
-        glUniformMatrix4fv(viewProjLoc, 1, GL_FALSE, glm::value_ptr(mvp));
+        // Upload uniforms
+        glUniformMatrix4fv(glGetUniformLocation(mat.shaderProgram.id, "u_ModelMatrix"), 1, GL_FALSE, glm::value_ptr(modelMat));
+        glUniformMatrix4fv(glGetUniformLocation(mat.shaderProgram.id, "u_MVP"), 1, GL_FALSE, glm::value_ptr(mvp));
+        glUniformMatrix3fv(glGetUniformLocation(mat.shaderProgram.id, "u_NormalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
-        // TODO: replace with PhongParamsUBO
         glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), lightPos.x, lightPos.y, lightPos.z);
-        // TODO: dynamic lights
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ViewPos"), p_Camera->m_Position.x,
-                    p_Camera->m_Position.y, p_Camera->m_Position.z);
-        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"), mat.lightColor.r, mat.lightColor.g,
-                    mat.lightColor.b);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ViewPos"),
+                    p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
+        glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"),
+                    mat.lightColor.r, mat.lightColor.g, mat.lightColor.b);
+
         if (mat.phongParams.has_value())
         {
             glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_Shininess"), mat.phongParams->shininess);
-            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_AmbientStrength"),
-                        mat.phongParams->ambientStrength);
-            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_SpecularStrength"),
-                        mat.phongParams->specularStrength);
+            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_AmbientStrength"), mat.phongParams->ambientStrength);
+            glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_SpecularStrength"), mat.phongParams->specularStrength);
         }
         GLint texLoc = glGetUniformLocation(mat.shaderProgram.id, "u_Texture");
+        GLint normalMatLoc = glGetUniformLocation(mat.shaderProgram.id, "u_NormalMatrix");
+        glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
+        // Draw meshes
+        glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
         auto& meshes = model->GetMeshes();
         for (const Mesh& mesh : meshes)
         {

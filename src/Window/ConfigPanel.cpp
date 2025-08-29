@@ -802,6 +802,7 @@ namespace RetroRenderer
                     p_stats_->renderedVerts,
                     p_stats_->renderedTris
             );
+            ImGui::Text("0 draw calls");
             if (auto cam = Engine::Get().GetCamera())
             {
                 ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", cam->m_Position.x, cam->m_Position.y,
