@@ -5,7 +5,9 @@ namespace RetroRenderer
 {
     bool Engine::Init()
     {
+#ifndef __EMSCRIPTEN__
         LOGD("Starting RetroRenderer in directory: %s", SDL_GetBasePath());
+#endif
         if (!m_DisplaySystem.Init())
         {
             return false;

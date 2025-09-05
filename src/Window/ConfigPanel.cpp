@@ -4,9 +4,9 @@
  */
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
-#include <imgui_impl_sdl2.h>
+//#include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
-#include <SDL.h>
+#include <SDL/SDL.h>
 #include <utility>
 #include <glm/gtc/type_ptr.hpp>
 #include <KrisLogger/Logger.h>
@@ -66,7 +66,7 @@ namespace RetroRenderer
         io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
 #endif
         //io.FontGlobalScale = 2.0f;
-        ImGui_ImplSDL2_InitForOpenGL(window, glContext);
+        //ImGui_ImplSDL2_InitForOpenGL(window, glContext);
         ImGui_ImplOpenGL3_Init(glslVersion);
 
         p_Window_ = window;
@@ -263,14 +263,14 @@ namespace RetroRenderer
             ImVec2 resetPos = ImVec2(windowPos.x + windowSize.x / 2, windowPos.y + windowSize.y / 2);
             LOGD("Stop camera drag, resetting mouse to (%.0f, %.0f)", resetPos.x, resetPos.y);
             m_isDragging_ = false;
-            SDL_SetRelativeMouseMode(SDL_FALSE);
-            SDL_WarpMouseInWindow(p_Window_, resetPos.x, resetPos.y); // reset to center
+            //SDL_SetRelativeMouseMode(SDL_FALSE);
+            //SDL_WarpMouseInWindow(p_Window_, resetPos.x, resetPos.y); // reset to center
         };
 
         auto HandleCameraDrag = [&]()
         {
             int deltaX, deltaY;
-            SDL_GetRelativeMouseState(&deltaX, &deltaY);
+            //SDL_GetRelativeMouseState(&deltaX, &deltaY);
             if (auto cam = Engine::Get().GetCamera())
             {
                 cam->m_EulerRotation.y += deltaX * 0.05f;
@@ -312,7 +312,7 @@ namespace RetroRenderer
                     {
                         LOGD("Start camera drag");
                         m_isDragging_ = true;
-                        SDL_SetRelativeMouseMode(SDL_TRUE); // Capture mouse
+                        //SDL_SetRelativeMouseMode(SDL_TRUE); // Capture mouse
                     }
                     HandleCameraDrag();
                 }
@@ -923,7 +923,7 @@ void ConfigPanel::DisplayJoysticks()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
+        //ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
         DisplayGUI();
@@ -937,18 +937,18 @@ void ConfigPanel::DisplayJoysticks()
         // Multi-viewport support
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
-            SDL_Window *backupCurrentWindow = SDL_GL_GetCurrentWindow();
-            SDL_GLContext backupCurrentContext = SDL_GL_GetCurrentContext();
+            //SDL_Window *backupCurrentWindow = SDL_GL_GetCurrentWindow();
+            //SDL_GLContext backupCurrentContext = SDL_GL_GetCurrentContext();
             ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();
-            SDL_GL_MakeCurrent(backupCurrentWindow, backupCurrentContext);
+            //SDL_GL_MakeCurrent(backupCurrentWindow, backupCurrentContext);
         }
     }
 
     void ConfigPanel::Destroy()
     {
         ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplSDL2_Shutdown();
+        //ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
     }
 

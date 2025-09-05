@@ -30,6 +30,25 @@ if(ANDROID)
             $<$<CONFIG:Debug>:-g>
             $<$<CONFIG:Debug>:-O0>
     )
+elseif(EMSCRIPTEN)
+    set(CMAKE_EXECUTABLE_SUFFIX ".html")
+
+    set(CMAKE_EXE_LINKER_FLAGS
+            "${CMAKE_EXE_LINKER_FLAGS} \
+        -sUSE_SDL=2 \
+        -sUSE_SDL_IMAGE=2 \
+        -sSDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]' \
+        -sUSE_WEBGL2=1 \
+        -sMIN_WEBGL_VERSION=2 \
+        -sMAX_WEBGL_VERSION=2 \
+        -sALLOW_MEMORY_GROWTH=1 \
+        -sASYNCIFY \
+        --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets \
+        ")
+
+    # Optional debug flags
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG
+            "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -g4 --source-map-base http://localhost:8080/")
 else()
     # TODO: desktop
     set(RENDERER_BACKENDS
@@ -40,12 +59,14 @@ endif()
 # -----------------------------------------------------------------------------
 # Dependencies (vcpkg)
 # -----------------------------------------------------------------------------
+if (!EMSCRIPTEN)
 find_package(SDL2      CONFIG REQUIRED)
+find_package(SDL2_image CONFIG REQUIRED)
+endif ()
 find_package(glm       CONFIG REQUIRED)
 find_package(imgui     CONFIG REQUIRED)
 find_package(assimp    CONFIG REQUIRED)
 find_package(glad      CONFIG REQUIRED)
-find_package(SDL2_image CONFIG REQUIRED)
 
 # -----------------------------------------------------------------------------
 # Source files
@@ -117,11 +138,16 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CM
 # -----------------------------------------------------------------------------
 # Libraries linkage
 # -----------------------------------------------------------------------------
+if (!EMSCRIPTEN)
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
         $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
         $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
         $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>
+)
+endif()
+target_link_libraries(${PROJECT_NAME}
+        PRIVATE
         imgui::imgui
         glm::glm
         assimp::assimp

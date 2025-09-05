@@ -1,5 +1,5 @@
 #pragma once
-#include <SDL_image.h>
+#include <SDL/SDL_image.h>
 #include <string>
 
 #ifdef __ANDROID__

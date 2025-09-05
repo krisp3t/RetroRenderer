@@ -1,5 +1,10 @@
 #define SDL_MAIN_HANDLED
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#else
 #include <SDL.h>
+#endif
 #include <KrisLogger/Logger.h>
 #include "Engine.h"
 

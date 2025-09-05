@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SDL2/SDL.h>
+#include <SDL/SDL.h>
 #include <memory>
 #include "ConfigPanel.h"
 #include "../Renderer/Buffer.h"
@@ -25,6 +25,11 @@ namespace RetroRenderer
                 SDL_WINDOW_FULLSCREEN |
                 SDL_WINDOW_RESIZABLE |
                 SDL_WINDOW_ALLOW_HIGHDPI);
+#elifdef __EMSCRIPTEN__
+        static constexpr SDL_WindowFlags kWindowFlags =
+                static_cast<const SDL_WindowFlags>(
+                SDL_WINDOW_OPENGL |
+                SDL_WINDOW_RESIZABLE);
 #else
         static constexpr SDL_WindowFlags kWindowFlags =
     static_cast<const SDL_WindowFlags>(

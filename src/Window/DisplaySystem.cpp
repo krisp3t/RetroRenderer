@@ -24,7 +24,7 @@ namespace RetroRenderer
             LOGE("Unable to initialize SDL: %s\n", SDL_GetError());
             return false;
         }
-        SDL_GL_LoadLibrary(nullptr); // Load default OpenGL library
+        //SDL_GL_LoadLibrary(nullptr); // Load default OpenGL library
         // TODO: only enable GLAD extensions which are actually used
 #if defined(IMGUI_IMPL_OPENGL_ES2)
         // GL ES 2.0 + GLSL 100
@@ -47,6 +47,12 @@ namespace RetroRenderer
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#elif defined(__EMSCRIPTEN__)
+        const char* glslVersion = "#version 300 es";
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+        SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 #else
         // GL 4.3
         const char* glslVersion = "#version 330 core";
@@ -66,13 +72,14 @@ namespace RetroRenderer
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         */
-        m_window_ = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth,
-                                    screenHeight, kWindowFlags);
+        //m_window_ = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth,
+        //                            screenHeight, kWindowFlags);
         if (m_window_ == nullptr)
         {
             LOGE("Unable to create window: %s", SDL_GetError());
             return false;
         }
+        /*
         m_glContext_ = SDL_GL_CreateContext(m_window_);
         if (!m_glContext_)
         {
@@ -80,7 +87,7 @@ namespace RetroRenderer
             return false;
         }
         SDL_GL_MakeCurrent(m_window_, m_glContext_);
-
+*/
 #ifndef __ANDROID__
         if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
         {

@@ -2,7 +2,7 @@
 
 #include <array>
 #include <utility>
-#include <SDL2/SDL.h>
+#include <SDL/SDL.h>
 
 namespace RetroRenderer
 {
