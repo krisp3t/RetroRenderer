@@ -111,8 +111,9 @@ namespace RetroRenderer
         glViewport(0, 0, screenWidth, screenHeight);
         glEnable(GL_DEPTH_TEST);
 
+#ifndef __EMSCRIPTEN__
         SDL_GL_SetSwapInterval(p_config->window.enableVsync ? 1 : 0);
-
+#endif
         m_configPanel_ = std::make_unique<ConfigPanel>();
         m_configPanel_->Init(m_window_, m_glContext_, p_config, glslVersion, p_stats);
         return true;

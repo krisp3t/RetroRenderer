@@ -6,11 +6,11 @@
 
 #ifdef __EMSCRIPTEN__
 namespace {
-    RetroRenderer::Engine* g_engine = nullptr;
+    RetroRenderer::Engine* g_Engine = nullptr;
 
     extern "C" void MainLoopWrapper() {
-        if (g_engine) {
-            g_engine->ProcessFrame();
+        if (g_Engine) {
+            g_Engine->ProcessFrame();
         }
     }
 }
@@ -57,7 +57,7 @@ namespace RetroRenderer
 
         LOGD("Entered main loop");
 #ifdef __EMSCRIPTEN__
-        g_engine = this;
+        g_Engine = this;
         emscripten_set_main_loop(MainLoopWrapper, 0, 1);
 #else
         while (m_Running)

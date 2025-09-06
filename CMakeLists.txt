@@ -36,6 +36,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
             src/Renderer/GLES/GLESRenderer.cpp
     )
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION assets/)
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/index.html DESTINATION /)
 else()
     set(RENDERER_BACKENDS
             src/Renderer/OpenGL/GLRenderer.h
