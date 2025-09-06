@@ -92,13 +92,12 @@ namespace RetroRenderer
 #endif
 
         LOGI("OpenGL loaded");
+#ifndef __EMSCRIPTEN__
         LOGI("OpenGL Vendor:    %s", glGetString(GL_VENDOR));
         LOGI("OpenGL Renderer:  %s", glGetString(GL_RENDERER));
         LOGI("OpenGL Version:   %s", glGetString(GL_VERSION));
         LOGI("GLSL Version:     %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
-#ifndef __EMSCRIPTEN__
         LOGI("OpenGL extensions:     %s", glGetString(GL_EXTENSIONS));
-#endif
         int contextFlags;
         glGetIntegerv(GL_CONTEXT_FLAGS, &contextFlags);
         if (contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT) {
@@ -107,6 +106,7 @@ namespace RetroRenderer
         else {
             LOGW("Debug context not available!");
         }
+#endif
 
         glViewport(0, 0, screenWidth, screenHeight);
         glEnable(GL_DEPTH_TEST);

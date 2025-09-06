@@ -7,11 +7,8 @@
 #include "../Scene/Camera.h"
 #include "../Base/Stats.h"
 #include "../Base/Color.h"
-#ifdef __ANDROID__
-#include <GLES3/gl3.h> // For OpenGL ES 3.0
-#else
-#include <glad/glad.h>
-#endif
+#include "../include/kris_glheaders.h"
+
 
 namespace RetroRenderer
 {

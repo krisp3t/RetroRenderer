@@ -1,7 +1,5 @@
 #pragma once
-#ifndef __ANDROID__
-    #include <glad/glad.h>
-#endif
+#include "../../include/kris_glheaders.h"
 #include "../../Scene/Camera.h"
 #include "../../Scene/Scene.h"
 #include "../IRenderer.h"

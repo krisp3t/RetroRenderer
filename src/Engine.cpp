@@ -8,7 +8,7 @@
 namespace {
     RetroRenderer::Engine* g_engine = nullptr;
 
-    void MainLoopWrapper() {
+    extern "C" void MainLoopWrapper() {
         if (g_engine) {
             g_engine->ProcessFrame();
         }

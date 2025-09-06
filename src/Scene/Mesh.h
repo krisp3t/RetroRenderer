@@ -2,12 +2,8 @@
 #include <vector>
 #include "Vertex.h"
 #include "Texture.h"
+#include "../include/kris_glheaders.h"
 
-#ifdef __ANDROID__ || __EMSCRIPTEN__
-#include <GLES3/gl3.h> // For OpenGL ES 3.0
-#else
-#include <glad/glad.h>
-#endif
 
 namespace RetroRenderer
 {

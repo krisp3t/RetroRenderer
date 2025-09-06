@@ -30,8 +30,13 @@ if(ANDROID)
             $<$<CONFIG:Debug>:-g>
             $<$<CONFIG:Debug>:-O0>
     )
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    set(RENDERER_BACKENDS
+            src/Renderer/GLES/GLESRenderer.h
+            src/Renderer/GLES/GLESRenderer.cpp
+    )
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION assets/)
 else()
-    # TODO: desktop
     set(RENDERER_BACKENDS
             src/Renderer/OpenGL/GLRenderer.h
             src/Renderer/OpenGL/GLRenderer.cpp
@@ -59,6 +64,7 @@ set(SOURCE_ROOT_DIRS
         src/Renderer/Software
         src/Scene
         src/Window
+        src/include
 )
 set(SOURCES "")
 foreach (dir ${SOURCE_ROOT_DIRS})
@@ -68,7 +74,7 @@ foreach (dir ${SOURCE_ROOT_DIRS})
     )
     list(APPEND SOURCES ${CURR_SOURCES})
 endforeach ()
-add_subdirectory(lib/KrisLogger)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/KrisLogger)
 
 # -----------------------------------------------------------------------------
 # Native glue for Android
@@ -135,9 +141,6 @@ target_link_libraries(${PROJECT_NAME}
         glad::glad
         KrisLogger
 )
-if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION assets/)
-endif()
 # -----------------------------------------------------------------------------
 # Android-specific system libs
 # -----------------------------------------------------------------------------

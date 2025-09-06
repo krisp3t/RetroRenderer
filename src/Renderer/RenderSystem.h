@@ -6,7 +6,7 @@
 #include "../Scene/Scene.h"
 #include "Software/SWRenderer.h"
 #include "../Base/Color.h"
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 	#include "GLES/GLESRenderer.h"
 #else
 	#include "OpenGL/GLRenderer.h"
@@ -44,7 +44,7 @@ namespace RetroRenderer
     private:
         std::unique_ptr<Scene> p_scene_ = nullptr;
         std::unique_ptr<SWRenderer> p_SWRenderer_ = nullptr;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
         std::unique_ptr<GLESRenderer> p_GLRenderer_ = nullptr;
 #else
         std::unique_ptr<GLRenderer> p_GLRenderer_ = nullptr;
