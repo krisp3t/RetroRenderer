@@ -4,7 +4,10 @@
  */
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
-//#include <imgui_impl_sdl2.h>
+#include <imgui_internal.h>
+#ifndef __EMSCRIPTEN__
+#include <imgui_impl_sdl2.h>
+#endif
 #include <imgui_impl_opengl3.h>
 #include <SDL.h>
 #include <utility>
@@ -17,9 +20,6 @@
 #endif
 
 #include "ConfigPanel.h"
-
-#include <imgui_internal.h>
-
 #include "../Base/InputActions.h"
 #include "../Base/Event.h"
 #include "../Engine.h"
@@ -45,6 +45,12 @@ namespace RetroRenderer
         (void) io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard
                           | ImGuiConfigFlags_DockingEnable;
+#ifdef __EMSCRIPTEN__
+        int w, h;
+        SDL_GetWindowSize(window, &w, &h);
+        ImGui::GetIO().DisplaySize = ImVec2((float)w, (float)h);
+#endif
+
 #ifdef __ANDROID__
         io.IniFilename = g_imguiIniPath.c_str();
 #else
@@ -66,7 +72,9 @@ namespace RetroRenderer
         io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
 #endif
         //io.FontGlobalScale = 2.0f;
-        //ImGui_ImplSDL2_InitForOpenGL(window, glContext);
+#ifndef __EMSCRIPTEN__
+        ImGui_ImplSDL2_InitForOpenGL(window, glContext);
+#endif
         ImGui_ImplOpenGL3_Init(glslVersion);
 
         p_Window_ = window;
