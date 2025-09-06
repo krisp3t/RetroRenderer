@@ -24,7 +24,7 @@ namespace RetroRenderer
             LOGE("Unable to initialize SDL: %s\n", SDL_GetError());
             return false;
         }
-        //SDL_GL_LoadLibrary(nullptr); // Load default OpenGL library
+        SDL_GL_LoadLibrary(nullptr); // Load default OpenGL library
         // TODO: only enable GLAD extensions which are actually used
 #if defined(IMGUI_IMPL_OPENGL_ES2)
         // GL ES 2.0 + GLSL 100
@@ -49,12 +49,14 @@ namespace RetroRenderer
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #elif defined(__EMSCRIPTEN__)
         const char* glslVersion = "#version 300 es";
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 #else
-        // GL 4.3
+        // Desktop: GL 4.3
         const char* glslVersion = "#version 330 core";
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -66,12 +68,7 @@ namespace RetroRenderer
 #ifdef SDL_HINT_IME_SHOW_UI
         SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
 #endif
-/*
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-        SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-        */
+
         m_window_ = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth,
                                     screenHeight, kWindowFlags);
         if (m_window_ == nullptr)
@@ -79,7 +76,6 @@ namespace RetroRenderer
             LOGE("Unable to create window: %s", SDL_GetError());
             return false;
         }
-        /*
         m_glContext_ = SDL_GL_CreateContext(m_window_);
         if (!m_glContext_)
         {
@@ -87,8 +83,7 @@ namespace RetroRenderer
             return false;
         }
         SDL_GL_MakeCurrent(m_window_, m_glContext_);
-*/
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
         if (!gladLoadGLLoader(SDL_GL_GetProcAddress))
         {
             LOGE("Error initializing GLAD\n");
@@ -101,10 +96,10 @@ namespace RetroRenderer
         LOGI("OpenGL Renderer:  %s", glGetString(GL_RENDERER));
         LOGI("OpenGL Version:   %s", glGetString(GL_VERSION));
         LOGI("GLSL Version:     %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
+#ifndef __EMSCRIPTEN__
         LOGI("OpenGL extensions:     %s", glGetString(GL_EXTENSIONS));
-
+#endif
         int contextFlags;
-        /*
         glGetIntegerv(GL_CONTEXT_FLAGS, &contextFlags);
         if (contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT) {
             LOGI("Debug context is active!");
@@ -112,9 +107,9 @@ namespace RetroRenderer
         else {
             LOGW("Debug context not available!");
         }
-        */
+
         glViewport(0, 0, screenWidth, screenHeight);
-        // glEnable(GL_DEPTH_TEST);
+        glEnable(GL_DEPTH_TEST);
 
         SDL_GL_SetSwapInterval(p_config->window.enableVsync ? 1 : 0);
 

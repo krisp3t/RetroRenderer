@@ -6,7 +6,7 @@
 #include <imgui.h>
 //#include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
-#include <SDL/SDL.h>
+#include <SDL.h>
 #include <utility>
 #include <glm/gtc/type_ptr.hpp>
 #include <KrisLogger/Logger.h>

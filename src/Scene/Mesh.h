@@ -3,7 +3,7 @@
 #include "Vertex.h"
 #include "Texture.h"
 
-#ifdef __ANDROID__
+#ifdef __ANDROID__ || __EMSCRIPTEN__
 #include <GLES3/gl3.h> // For OpenGL ES 3.0
 #else
 #include <glad/glad.h>
