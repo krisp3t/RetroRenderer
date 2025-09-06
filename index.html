@@ -5,15 +5,38 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>RetroRenderer</title>
+    <style>
+        #output {
+            width: 100%;
+            height: 200px;
+            background: black;
+            color: #00ff00;
+            font-family: monospace;
+            overflow-y: scroll;
+            padding: 5px;
+            box-sizing: border-box;
+            white-space: pre-wrap; /* preserves newlines */
+        }
+    </style>
 </head>
 
 <body>
 
 <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+<div id="output"></div>
 
 <script type='text/javascript'>
+    var outputElement = document.getElementById('output');
+    function printToOutput(text) {
+        if (!text) return;
+        outputElement.textContent += text + "\n";
+        outputElement.scrollTop = outputElement.scrollHeight; // auto scroll
+    }
+
     var Module = {
-        canvas: (function() { return document.getElementById('canvas'); })()
+        canvas: (function() { return document.getElementById('canvas'); })(),
+        print: printToOutput,   // stdout
+        printErr: printToOutput // stderr
     };
 </script>
 

@@ -271,8 +271,8 @@ namespace RetroRenderer
             ImVec2 resetPos = ImVec2(windowPos.x + windowSize.x / 2, windowPos.y + windowSize.y / 2);
             LOGD("Stop camera drag, resetting mouse to (%.0f, %.0f)", resetPos.x, resetPos.y);
             m_isDragging_ = false;
-            //SDL_SetRelativeMouseMode(SDL_FALSE);
-            //SDL_WarpMouseInWindow(p_Window_, resetPos.x, resetPos.y); // reset to center
+            SDL_SetRelativeMouseMode(SDL_FALSE);
+            SDL_WarpMouseInWindow(p_Window_, resetPos.x, resetPos.y); // reset to center
         };
 
         auto HandleCameraDrag = [&]()
@@ -320,7 +320,7 @@ namespace RetroRenderer
                     {
                         LOGD("Start camera drag");
                         m_isDragging_ = true;
-                        //SDL_SetRelativeMouseMode(SDL_TRUE); // Capture mouse
+                        SDL_SetRelativeMouseMode(SDL_TRUE); // Capture mouse
                     }
                     HandleCameraDrag();
                 }
