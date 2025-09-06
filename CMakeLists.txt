@@ -17,8 +17,8 @@ if(ANDROID)
     set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "$ENV{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake")
 
     set(NATIVE_FILES
-            src/native/AndroidBridge.h
-            src/native/AndroidBridge.cpp
+            src/native/android/AndroidBridge.h
+            src/native/android/AndroidBridge.cpp
     )
     set(RENDERER_BACKENDS
             src/Renderer/GLES/GLESRenderer.h
@@ -34,6 +34,10 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     set(RENDERER_BACKENDS
             src/Renderer/GLES/GLESRenderer.h
             src/Renderer/GLES/GLESRenderer.cpp
+    )
+    set(NATIVE_FILES
+            src/native/emscripten/imgui_impl_sdl2.h
+            src/native/emscripten/imgui_impl_sdl2.cpp
     )
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION assets/)
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/index.html DESTINATION /)
@@ -94,7 +98,7 @@ endif()
 if(ANDROID)
     add_library(${PROJECT_NAME} SHARED ${SOURCES} ${RENDERER_BACKENDS} ${NATIVE_FILES})
 else()
-    add_executable(${PROJECT_NAME} ${SOURCES} ${RENDERER_BACKENDS})
+    add_executable(${PROJECT_NAME} ${SOURCES} ${RENDERER_BACKENDS} ${NATIVE_FILES})
 endif()
 
 # -----------------------------------------------------------------------------

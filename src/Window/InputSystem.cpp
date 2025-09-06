@@ -1,4 +1,8 @@
-//#include <imgui_impl_sdl2.h>
+#ifdef __EMSCRIPTEN__
+#include "../native/emscripten/imgui_impl_sdl2.h"
+#else
+#include <imgui_impl_sdl2.h>
+#endif
 #include <KrisLogger/Logger.h>
 #include "InputSystem.h"
 #include "../Engine.h"
@@ -17,7 +21,7 @@ namespace RetroRenderer
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
-			//ImGui_ImplSDL2_ProcessEvent(&event);
+			ImGui_ImplSDL2_ProcessEvent(&event);
             switch (event.type)
             {
                 case SDL_QUIT:

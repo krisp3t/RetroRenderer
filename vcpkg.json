@@ -23,6 +23,7 @@
         },
         {
             "name": "imgui",
+            "version>=": "1.91.9",
             "features": [
                 "opengl3-binding",
                 "docking-experimental"
@@ -31,6 +32,7 @@
         },
         {
             "name": "imgui",
+            "version>=": "1.91.9",
             "features": [
                 "sdl2-binding",
                 "opengl3-binding",

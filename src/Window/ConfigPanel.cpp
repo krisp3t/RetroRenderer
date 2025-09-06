@@ -5,7 +5,9 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_internal.h>
-#ifndef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
+#include "../native/emscripten/imgui_impl_sdl2.h"
+#else
 #include <imgui_impl_sdl2.h>
 #endif
 #include <imgui_impl_opengl3.h>
@@ -72,9 +74,7 @@ namespace RetroRenderer
         io.Fonts->AddFontFromFileTTF("assets/fonts/Tomorrow-Italic.ttf", 20);
 #endif
         //io.FontGlobalScale = 2.0f;
-#ifndef __EMSCRIPTEN__
         ImGui_ImplSDL2_InitForOpenGL(window, glContext);
-#endif
         ImGui_ImplOpenGL3_Init(glslVersion);
 
         p_Window_ = window;
