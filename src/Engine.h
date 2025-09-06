@@ -24,6 +24,7 @@ public:
 
     bool Init();
     void Run();
+	void ProcessFrame();
     void Destroy();
 
     // Events
@@ -55,6 +56,9 @@ private:
     InputSystem m_InputSystem;
     std::unique_ptr<SceneManager> p_SceneManager;
 	std::unique_ptr<MaterialManager> p_MaterialManager;
+
+	Uint32 m_StartTicks = 0;
+	bool m_Running = true;
 };
 
 }

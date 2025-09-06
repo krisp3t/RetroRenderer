@@ -30,25 +30,6 @@ if(ANDROID)
             $<$<CONFIG:Debug>:-g>
             $<$<CONFIG:Debug>:-O0>
     )
-elseif(EMSCRIPTEN)
-    set(CMAKE_EXECUTABLE_SUFFIX ".html")
-
-    set(CMAKE_EXE_LINKER_FLAGS
-            "${CMAKE_EXE_LINKER_FLAGS} \
-        -sUSE_SDL=2 \
-        -sUSE_SDL_IMAGE=2 \
-        -sSDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]' \
-        -sUSE_WEBGL2=1 \
-        -sMIN_WEBGL_VERSION=2 \
-        -sMAX_WEBGL_VERSION=2 \
-        -sALLOW_MEMORY_GROWTH=1 \
-        -sASYNCIFY \
-        --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets \
-        ")
-
-    # Optional debug flags
-    set(CMAKE_EXE_LINKER_FLAGS_DEBUG
-            "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -g4 --source-map-base http://localhost:8080/")
 else()
     # TODO: desktop
     set(RENDERER_BACKENDS
@@ -59,7 +40,7 @@ endif()
 # -----------------------------------------------------------------------------
 # Dependencies (vcpkg)
 # -----------------------------------------------------------------------------
-if (!EMSCRIPTEN)
+if(NOT (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten"))
 find_package(SDL2      CONFIG REQUIRED)
 find_package(SDL2_image CONFIG REQUIRED)
 endif ()
@@ -138,7 +119,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CM
 # -----------------------------------------------------------------------------
 # Libraries linkage
 # -----------------------------------------------------------------------------
-if (!EMSCRIPTEN)
+if(NOT (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten"))
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
         $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
@@ -154,7 +135,9 @@ target_link_libraries(${PROJECT_NAME}
         glad::glad
         KrisLogger
 )
-
+if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION assets/)
+endif()
 # -----------------------------------------------------------------------------
 # Android-specific system libs
 # -----------------------------------------------------------------------------

@@ -1,6 +1,21 @@
 #include <KrisLogger/Logger.h>
 #include "Engine.h"
 
+#include <emscripten/emscripten.h>
+
+
+#ifdef __EMSCRIPTEN__
+namespace {
+    RetroRenderer::Engine* g_engine = nullptr;
+
+    void MainLoopWrapper() {
+        if (g_engine) {
+            g_engine->ProcessFrame();
+        }
+    }
+}
+#endif
+
 namespace RetroRenderer
 {
     bool Engine::Init()
@@ -38,55 +53,56 @@ namespace RetroRenderer
 
     void Engine::Run()
     {
-        auto start = SDL_GetTicks();
-        unsigned int delta = 0;
+        m_StartTicks = SDL_GetTicks();
 
         LOGD("Entered main loop");
-        for (;;)
+#ifdef __EMSCRIPTEN__
+        g_engine = this;
+        emscripten_set_main_loop(MainLoopWrapper, 0, 1);
+#else
+        while (m_Running)
         {
-            start = SDL_GetTicks();
-
-            ProcessEventQueue();
-
-            auto inputActions = m_InputSystem.HandleInput();
-            if (inputActions & static_cast<InputActionMask>(InputAction::QUIT))
-            {
-                break;
-            }
-            // TODO: handle camera switching
-
-            // TODO: optimisation?
-            /*
-			if (p_SceneManager->ProcessInput(inputActions, delta))
-			{
-				p_SceneManager->Update(delta);
-			}
-            */
-            p_SceneManager->ProcessInput(inputActions, delta);
-            p_SceneManager->Update(delta);
-            p_SceneManager->NewFrame();
-
-            Color clearColor = Color{p_config_->renderer.clearColor};
-            auto scene = p_SceneManager->GetScene();
-            auto camera = p_SceneManager->GetCamera();
-            if (scene && camera)
-            {
-                m_DisplaySystem.BeforeFrame();
-                p_RenderSystem->BeforeFrame(clearColor);
-                auto &queue = p_RenderSystem->BuildRenderQueue(*scene, *camera);
-                GLuint fbTex = p_RenderSystem->Render(queue, scene->m_Models);
-                m_DisplaySystem.DrawFrame(fbTex);
-            } else
-            {
-                p_stats_->Reset();
-                m_DisplaySystem.BeforeFrame();
-                m_DisplaySystem.DrawFrame();
-            }
-
-            m_DisplaySystem.SwapBuffers();
-
-            delta = SDL_GetTicks() - start;
+           ProcessFrame();
         }
+#endif
+    }
+
+    void Engine::ProcessFrame()
+    {
+        auto delta = SDL_GetTicks() - m_StartTicks;
+
+        ProcessEventQueue();
+
+        auto inputActions = m_InputSystem.HandleInput();
+        if (inputActions & static_cast<InputActionMask>(InputAction::QUIT))
+        {
+            m_Running = false;
+            return;
+        }
+        // TODO: handle camera switching
+
+        p_SceneManager->ProcessInput(inputActions, delta);
+        p_SceneManager->Update(delta);
+        p_SceneManager->NewFrame();
+
+        Color clearColor = Color{p_config_->renderer.clearColor};
+        auto scene = p_SceneManager->GetScene();
+        auto camera = p_SceneManager->GetCamera();
+        if (scene && camera)
+        {
+            m_DisplaySystem.BeforeFrame();
+            p_RenderSystem->BeforeFrame(clearColor);
+            auto &queue = p_RenderSystem->BuildRenderQueue(*scene, *camera);
+            GLuint fbTex = p_RenderSystem->Render(queue, scene->m_Models);
+            m_DisplaySystem.DrawFrame(fbTex);
+        } else
+        {
+            p_stats_->Reset();
+            m_DisplaySystem.BeforeFrame();
+            m_DisplaySystem.DrawFrame();
+        }
+
+        m_DisplaySystem.SwapBuffers();
     }
 
     void Engine::Destroy()

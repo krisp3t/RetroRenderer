@@ -72,8 +72,8 @@ namespace RetroRenderer
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         */
-        //m_window_ = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth,
-        //                            screenHeight, kWindowFlags);
+        m_window_ = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth,
+                                    screenHeight, kWindowFlags);
         if (m_window_ == nullptr)
         {
             LOGE("Unable to create window: %s", SDL_GetError());
