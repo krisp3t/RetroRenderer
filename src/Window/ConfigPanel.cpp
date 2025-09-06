@@ -6,7 +6,9 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #ifdef __EMSCRIPTEN__
+#include "../native/emscripten/EmscriptenBridge.h"
 #include "../native/emscripten/imgui_impl_sdl2.h"
+#include <emscripten.h>
 #else
 #include <imgui_impl_sdl2.h>
 #endif
@@ -25,6 +27,47 @@
 #include "../Base/InputActions.h"
 #include "../Base/Event.h"
 #include "../Engine.h"
+
+#ifdef __EMSCRIPTEN__
+EM_JS(void, OpenWebFilePicker_JS, (), {
+    let input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.obj,.fbx,.glb,.gltf,.usd';
+    input.style.display = 'none';
+
+    input.onchange = e => {
+        let file = e.target.files[0];
+        if (!file) return;
+
+        let reader = new FileReader();
+        reader.onload = function(event) {
+            let data = event.target.result;
+
+            // Allocate memory in WASM and copy file
+            let size = data.byteLength;
+            let ptr = Module._malloc(size);
+            if (!ptr) {
+                console.error("Failed to allocate memory");
+                return;
+            }
+            let heapBytes = new Uint8Array(Module.HEAPU8.buffer, ptr, size);
+            heapBytes.set(new Uint8Array(data));
+
+            Module.ccall(
+                'OnWebFileSelected',
+                null,
+                ['number','number'],
+                [ptr, size]
+            );
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+});
+#endif
 
 namespace RetroRenderer
 {
@@ -401,8 +444,10 @@ namespace RetroRenderer
             // ----------------
             if (ImGui::MenuItem("Open scene"))
             {
-#ifdef __ANDROID__
+#if defined(__ANDROID__)
                 OpenAndroidFilePicker();
+#elif defined(__EMSCRIPTEN__)
+                OpenWebFilePicker();
 #else
                 IGFD::FileDialogConfig sceneDialogConfig;
                 ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose scene", k_supportedModels,
@@ -968,6 +1013,13 @@ void ConfigPanel::DisplayJoysticks()
     jclass cls = env->GetObjectClass(activity);
     jmethodID mid = env->GetMethodID(cls, "openFilePicker", "()V");
     env->CallVoidMethod(activity, mid);
+#endif
+    }
+
+    void ConfigPanel::OpenWebFilePicker()
+    {
+#ifdef __EMSCRIPTEN__
+        OpenWebFilePicker_JS();
 #endif
     }
 }

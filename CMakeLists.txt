@@ -36,6 +36,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
             src/Renderer/GLES/GLESRenderer.cpp
     )
     set(NATIVE_FILES
+            src/native/emscripten/EmscriptenBridge.h
             src/native/emscripten/imgui_impl_sdl2.h
             src/native/emscripten/imgui_impl_sdl2.cpp
     )
@@ -126,6 +127,13 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -pedantic>
 )
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    target_link_options(${PROJECT_NAME}  PRIVATE
+            "-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']"
+            "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8']"
+    )
+endif()
 
 # -----------------------------------------------------------------------------
 # Libraries linkage
