@@ -976,7 +976,7 @@ void ConfigPanel::DisplayJoysticks()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         ImGui_ImplOpenGL3_NewFrame();
-        //ImGui_ImplSDL2_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
         DisplayGUI();
@@ -1001,7 +1001,7 @@ void ConfigPanel::DisplayJoysticks()
     void ConfigPanel::Destroy()
     {
         ImGui_ImplOpenGL3_Shutdown();
-        //ImGui_ImplSDL2_Shutdown();
+        ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
     }
 

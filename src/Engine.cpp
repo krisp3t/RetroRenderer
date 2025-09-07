@@ -1,10 +1,9 @@
 #include <KrisLogger/Logger.h>
 #include "Engine.h"
 
+#ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 
-
-#ifdef __EMSCRIPTEN__
 namespace {
     RetroRenderer::Engine* g_Engine = nullptr;
 
@@ -107,10 +106,13 @@ namespace RetroRenderer
 
     void Engine::Destroy()
     {
+
+        m_DisplaySystem.Destroy();
     }
 
     void Engine::EnqueueEvent(std::unique_ptr<Event> event)
     {
+        LOGD("Enqueuing event (type: %s)", EventTypeToString(event->type));
         std::lock_guard<std::mutex> lock(m_EventQueueMutex);
         m_EventQueue.push(std::move(event));
     }
@@ -146,6 +148,7 @@ namespace RetroRenderer
 
     void Engine::Dispatch(const Event &event)
     {
+        LOGI("Handling event (type: %s)", EventTypeToString(event.type));
         switch (event.type)
         {
             case EventType::Texture_Load:
