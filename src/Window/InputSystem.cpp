@@ -38,9 +38,10 @@ namespace RetroRenderer
                 case SDL_WINDOWEVENT:
                     if (event.window.event == SDL_WINDOWEVENT_RESIZED)
                     {
-                        LOGD("Window resized to %d x %d", event.window.data1, event.window.data2);
-                        p_config->window.size.x = event.window.data1;
-                        p_config->window.size.y = event.window.data2;
+                        auto e = std::make_unique<WindowResizeEvent>(
+                            glm::ivec2{event.window.data1, event.window.data2}
+                        );
+                        Engine::Get().EnqueueEvent(std::move(e));
                     }
 					break;
             }

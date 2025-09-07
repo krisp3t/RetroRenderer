@@ -26,4 +26,15 @@ extern "C" EMSCRIPTEN_KEEPALIVE void OnWebFileSelected(uint8_t* data, int size)
 
     RetroRenderer::Engine::Get().EnqueueEvent(std::move(event));
 }
+
+extern "C" EMSCRIPTEN_KEEPALIVE void OnCanvasResize(int width, int height)
+{
+    LOGD("OnCanvasResize: %d x %d", width, height);
+
+    auto event = std::make_unique<RetroRenderer::WindowResizeEvent>(
+        glm::ivec2{width, height}
+    );
+    RetroRenderer::Engine::Get().EnqueueEvent(std::move(event));
+}
+
 #endif

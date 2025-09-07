@@ -135,7 +135,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CM
 if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     target_link_options(${PROJECT_NAME}  PRIVATE
             "-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']"
-            "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8','setCanvasSize']"
+            "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8']"
     )
 endif()
 

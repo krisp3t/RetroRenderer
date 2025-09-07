@@ -8,6 +8,7 @@ namespace RetroRenderer
 	enum class EventType
 	{
 		Output_Image_Resize,
+		Window_Resize,
 		Scene_Load,
 		Scene_Reset,
 		Texture_Load,
@@ -19,6 +20,8 @@ namespace RetroRenderer
 		{
 		case EventType::Output_Image_Resize:
 			return "Output_Image_Resize";
+		case EventType::Window_Resize:
+			return "Window_Resize";
 		case EventType::Scene_Load:
 			return "Scene_Load";
 		case EventType::Texture_Load:
@@ -43,6 +46,16 @@ namespace RetroRenderer
 		OutputImageResizeEvent(glm::ivec2 res)
 		{
 			type = EventType::Output_Image_Resize;
+			resolution = res;
+		}
+	};
+	struct WindowResizeEvent : public Event
+	{
+		glm::ivec2 resolution;
+
+		WindowResizeEvent(glm::ivec2 res)
+		{
+			type = EventType::Window_Resize;
 			resolution = res;
 		}
 	};

@@ -189,6 +189,16 @@ namespace RetroRenderer
                 p_RenderSystem->Resize(e.resolution);
                 break;
             }
+            case EventType::Window_Resize:
+            {
+                const WindowResizeEvent &e = static_cast<const WindowResizeEvent &>(event);
+                LOGD("Window resized to %d x %d", e.resolution.x, e.resolution.y);
+                if (e.resolution.x <= 0 || e.resolution.y <= 0) { break; }
+                auto &p_config = GetConfig();
+                p_config->window.size.x = e.resolution.x;
+                p_config->window.size.y = e.resolution.y;
+                break;
+            }
             default:
                 LOGW("Unknown event type");
         }

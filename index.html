@@ -256,6 +256,10 @@
         canvas.width = window.innerWidth - 80;
         canvas.height = availableHeight;
         canvasSizeElement.textContent = `${canvas.width} x ${canvas.height}`;
+
+        if (Module._OnCanvasResize) {
+            Module._OnCanvasResize(canvas.width, canvas.height);
+        }
     }
 
     resizeCanvas();
