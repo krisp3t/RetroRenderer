@@ -14,7 +14,11 @@ namespace RetroRenderer
         }
 
         CreateFallbackTexture();
+#ifdef __ANDROID__
         GLuint cubeTex = CreateCubemap("img/skybox-cubemap/Cubemap_Sky_23-512x512.png");
+#else
+        GLuint cubeTex = CreateCubemap("assets/img/skybox-cubemap/Cubemap_Sky_23-512x512.png");
+#endif
         if (cubeTex != 0)
         {
             m_SkyboxTexture = cubeTex;
