@@ -6,16 +6,39 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>RetroRenderer</title>
     <style>
-        #output {
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
             width: 100%;
-            height: 200px;
+            display: flex;
+            flex-direction: column;
             background: black;
+            overflow: hidden;
+        }
+        #canvas {
+            flex: 1; /* Take remaining space */
+            display: block;
+            width: 100%;
+            /* Add pixelated rendering for crisp graphics if needed */
+            image-rendering: pixelated;
+        }
+        #resizer {
+            height: 5px;
+            background: #333;
+            cursor: ns-resize;
+            flex-shrink: 0; /* Prevent resizer from shrinking */
+        }
+        #output {
+            height: 200px; /* Initial height */
+            background: #000;
             color: #00ff00;
             font-family: monospace;
-            overflow-y: scroll;
+            overflow-y: auto;
             padding: 5px;
             box-sizing: border-box;
-            white-space: pre-wrap; /* preserves newlines */
+            white-space: pre-wrap;
+            flex-shrink: 0; /* Prevent output from shrinking */
         }
     </style>
 </head>
@@ -23,21 +46,61 @@
 <body>
 
 <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+<div id="resizer"></div>
 <div id="output"></div>
 
 <script type='text/javascript'>
-    var outputElement = document.getElementById('output');
-    function printToOutput(text) {
-        if (!text) return;
-        outputElement.textContent += text + "\n";
-        outputElement.scrollTop = outputElement.scrollHeight; // auto scroll
-    }
-
     var Module = {
         canvas: (function() { return document.getElementById('canvas'); })(),
         print: printToOutput,   // stdout
         printErr: printToOutput // stderr
     };
+    var outputElement = document.getElementById('output');
+
+    function printToOutput(text) {
+        if (!text) return;
+        outputElement.textContent += text + "\n";
+        outputElement.scrollTop = outputElement.scrollHeight; // auto scroll
+    }
+    function resizeCanvas() {
+      var canvas = Module.canvas;
+      const outputHeight = outputElement.offsetHeight;
+      const availableHeight = window.innerHeight - outputHeight;
+      const pixelRatio = window.devicePixelRatio || 1;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = availableHeight + 'px';
+      canvas.width = Math.floor(window.innerWidth * pixelRatio);
+      canvas.height = Math.floor(availableHeight * pixelRatio);
+      if (Module.setCanvasSize) {
+        Module.setCanvasSize(canvas.width, canvas.height, false);
+      }
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('load', resizeCanvas);
+
+    // --- Resizer logic ---
+    const resizer = document.getElementById("resizer");
+    const output = document.getElementById("output");
+    let isResizing = false;
+
+    resizer.addEventListener("mousedown", function(e) {
+        isResizing = true;
+        document.body.style.cursor = "ns-resize";
+        e.preventDefault();
+    });
+
+    window.addEventListener("mousemove", function(e) {
+        if (!isResizing) return;
+        const newHeight = window.innerHeight - e.clientY;
+        output.style.height = Math.max(100, newHeight) + 'px';
+        resizeCanvas();
+    });
+
+    window.addEventListener("mouseup", function() {
+        isResizing = false;
+        document.body.style.cursor = "default";
+    });
 </script>
 
 <script src="retrorenderer"></script>

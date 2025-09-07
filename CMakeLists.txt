@@ -41,7 +41,11 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
             src/native/emscripten/imgui_impl_sdl2.cpp
     )
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION assets/)
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/index.html DESTINATION /)
+    configure_file(
+            ${CMAKE_CURRENT_SOURCE_DIR}/index.html
+            ${CMAKE_CURRENT_BINARY_DIR}/index.html
+            COPYONLY
+    )
 else()
     set(RENDERER_BACKENDS
             src/Renderer/OpenGL/GLRenderer.h
@@ -131,7 +135,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CM
 if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     target_link_options(${PROJECT_NAME}  PRIVATE
             "-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']"
-            "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8']"
+            "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8','setCanvasSize']"
     )
 endif()
 
