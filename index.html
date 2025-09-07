@@ -219,6 +219,18 @@
 </div>
 
 <script>
+    const ANSI_COLORS = {
+        "30": "#000000", // black
+        "31": "#ff5555", // red
+        "32": "#50fa7b", // green
+        "33": "#f1fa8c", // yellow
+        "34": "#bd93f9", // blue
+        "35": "#ff79c6", // magenta
+        "36": "#8be9fd", // cyan
+        "37": "#f8f8f2", // white/gray
+        "90": "#999999"  // bright black (gray)
+    };
+
     const canvas = document.getElementById('canvas');
     const placeholder = document.getElementById('canvas-placeholder');
     const outputElement = document.getElementById('output');
@@ -234,19 +246,66 @@
 
     var Module = {
         canvas: canvas,
-        print: (text) => {
-            outputElement.textContent += text + '\n';
-            outputElement.scrollTop = outputElement.scrollHeight;
-        },
-        printErr: (text) => {
-            outputElement.textContent += 'ERROR: ' + text + '\n';
-            outputElement.scrollTop = outputElement.scrollHeight;
-        },
+        print: printToOutput,
+        printErr: printToOutput,
         setStatus: (text) => { statusElement.textContent = text; },
         onRuntimeInitialized: () => {
             placeholder.style.display = "none";
         }
     };
+
+    function ansiToHtml(text) {
+        const ansiRegex = /\x1b\[(\d+)m/g; // matches things like \x1b[36m
+        let result = "";
+        let lastIndex = 0;
+        let currentColor = null;
+
+        text.replace(ansiRegex, (match, code, offset) => {
+            // Add the plain text before this match
+            result += escapeHtml(text.substring(lastIndex, offset));
+
+            if (code === "0") {
+                // Reset
+                if (currentColor !== null) {
+                    result += "</span>";
+                    currentColor = null;
+                }
+            } else if (ANSI_COLORS[code]) {
+                if (currentColor !== null) {
+                    result += "</span>";
+                }
+                currentColor = ANSI_COLORS[code];
+                result += `<span style="color:${currentColor}">`;
+            }
+
+            lastIndex = offset + match.length;
+        });
+
+        // Add the rest of the string
+        result += escapeHtml(text.substring(lastIndex));
+
+        // Close any unclosed span
+        if (currentColor !== null) {
+            result += "</span>";
+        }
+
+        return result;
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    function printToOutput(text) {
+        if (!text) return;
+        const div = document.createElement("div");
+        div.innerHTML = ansiToHtml(text);
+        outputElement.appendChild(div);
+        outputElement.scrollTop = outputElement.scrollHeight;
+    }
 
     function resizeCanvas() {
         const consoleContainer = document.querySelector('.console-container');
