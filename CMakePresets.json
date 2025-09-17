@@ -133,8 +133,8 @@
             "inherits": "debug",
             "cacheVariables": {
                 "CMAKE_SYSTEM_NAME": "Emscripten",
-                "CMAKE_C_COMPILER": "emcc.bat",
-                "CMAKE_CXX_COMPILER": "em++.bat",
+                "CMAKE_C_COMPILER": "emcc",
+                "CMAKE_CXX_COMPILER": "em++",
                 "CMAKE_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
                 "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
                 "CMAKE_EXECUTABLE_SUFFIX": ".html",
