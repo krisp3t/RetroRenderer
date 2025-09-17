@@ -15,17 +15,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Setup Emscripten
       uses: mymindstorm/setup-emsdk@v14
       with:
         version: 4.0.14
           
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-          vcpkgGitCommitId: cb1fb4d21dcb517ceaaee6f4b1f4733dfbd72119
-          runVcpkgInstall: false
+    - name: Bootstrap vcpkg
+      run: |
+        ./extern/vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
     - name: Configure CMake
       run: cmake --preset wasm32-emscripten
