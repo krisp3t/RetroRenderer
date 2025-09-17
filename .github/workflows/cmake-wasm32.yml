@@ -25,7 +25,7 @@ jobs:
       uses: lukka/run-vcpkg@v11
       with:
           vcpkgGitCommitId: cb1fb4d21dcb517ceaaee6f4b1f4733dfbd72119
-          runVcpkgInstall: true
+          runVcpkgInstall: false
 
     - name: Configure CMake
       run: cmake --preset wasm32-emscripten
