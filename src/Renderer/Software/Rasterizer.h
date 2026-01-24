@@ -14,8 +14,7 @@ public:
     ~Rasterizer() = default;
     // TODO: add configurable line/triangle colors
     static glm::vec2 NDCToViewport(const glm::vec2& v, size_t width, size_t height);
-    static void DrawTriangle(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>& vertices,
-                             Config& cfg);
+    static void DrawTriangle(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>& vertices, Config& cfg);
     static void DrawQuad(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>& vertices);
     static void DrawLine(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, Pixel color);
     static void DrawHLine(Buffer<Pixel>& framebuffer, int x0, int x1, int y, Pixel color);
@@ -30,14 +29,14 @@ private:
     // Wireframe trig
     static void DrawWireframeTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec2, 3>& viewportVertices);
     // Flat trig
-    static void DrawFlatTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec2, 3>& viewportVertices,
-                                 Config::CullSettings& cull_cfg);
+    static void DrawFlatTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec2, 3>& viewportVertices);
     static void FillFlatBottomTri(Buffer<Pixel>& framebuffer, glm::vec2& v0, glm::vec2& v1, glm::vec2& v2);
     static void FillFlatTopTri(Buffer<Pixel>& framebuffer, glm::vec2& v0, glm::vec2& v1, glm::vec2& v2);
     // Trig cull
     static bool PixelCullTriangle(const glm::vec2& v0, const glm::vec2& v1, const glm::vec2& v2,
                                   const glm::vec2& testPoint);
     static bool IsTriangleDegenerate(std::array<glm::vec2, 3>& vertices);
+    static bool IsBackface(std::array<glm::vec2, 3>& vertices);
 };
 
 } // namespace RetroRenderer
