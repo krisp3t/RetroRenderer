@@ -25,10 +25,10 @@ class SWRenderer : public IRenderer {
         return 0;
     }
 
-    [[nodiscard]] const Buffer<uint32_t>& GetFrameBuffer() const;
+    [[nodiscard]] const Buffer<Pixel>& GetFrameBuffer() const;
 
   private:
-    std::unique_ptr<Buffer<uint32_t>> m_FrameBuffer = nullptr;
+    std::unique_ptr<Buffer<Pixel>> m_FrameBuffer = nullptr;
     Camera* p_Camera = nullptr;
     std::unique_ptr<Rasterizer> m_Rasterizer = nullptr;
 };

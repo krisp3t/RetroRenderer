@@ -5,7 +5,7 @@
 
 namespace RetroRenderer {
 bool SWRenderer::Init(int w, int h) {
-    auto fb = std::unique_ptr<Buffer<uint32_t>>(new(std::nothrow) Buffer<uint32_t>(w, h));
+    auto fb = std::unique_ptr<Buffer<Pixel>>(new(std::nothrow) Buffer<Pixel>(w, h));
     if (!fb) {
         LOGE("Failed to create software framebuffer");
         return false;
@@ -16,7 +16,7 @@ bool SWRenderer::Init(int w, int h) {
 }
 
 bool SWRenderer::Resize(int w, int h) {
-    auto newBuffer = std::unique_ptr<Buffer<uint32_t>>(new(std::nothrow) Buffer<uint32_t>(w, h));
+    auto newBuffer = std::unique_ptr<Buffer<Pixel>>(new(std::nothrow) Buffer<Pixel>(w, h));
     if (!newBuffer) {
         LOGE("Failed to resize software framebuffer");
         return false;
@@ -92,7 +92,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
 }
 
 void SWRenderer::BeforeFrame(const Color& clearColor) {
-    m_FrameBuffer->Clear(clearColor.ToRGBA());
+    m_FrameBuffer->Clear(clearColor.ToPixel());
 }
 
 GLuint SWRenderer::EndFrame() {
@@ -102,7 +102,7 @@ GLuint SWRenderer::EndFrame() {
 void SWRenderer::DrawSkybox() {
 }
 
-const Buffer<uint32_t>& SWRenderer::GetFrameBuffer() const {
+const Buffer<Pixel>& SWRenderer::GetFrameBuffer() const {
     assert(m_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
     return *m_FrameBuffer;
 }
