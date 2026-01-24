@@ -157,6 +157,21 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
 
             // Rasterizer
             const auto& cfg = Engine::Get().GetConfig();
+            // Early-reject in NDC
+            if (cfg->cull.rasterClip) {
+                bool allOutside = true;
+                for (const auto& v : vertices) {
+                    if (v.position.x >= -1.0f && v.position.x <= 1.0f &&
+                        v.position.y >= -1.0f && v.position.y <= 1.0f &&
+                        v.position.z >= -1.0f && v.position.z <= 1.0f) {
+                        allOutside = false;
+                        break;
+                    }
+                }
+                if (allOutside) {
+                    continue;
+                }
+            }
             if (cfg->cull.geometricClip) {
                 std::vector<Vertex> poly = {vertices[0], vertices[1], vertices[2]};
                 std::vector<Vertex> clipped = ClipPolygonNdc(poly);
