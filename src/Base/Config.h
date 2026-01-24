@@ -23,10 +23,12 @@ struct Config {
         MSAA,
         FXAA,
     };
+
     enum class RendererType {
         SOFTWARE,
         GL
     };
+
     struct BaseRendererSettings {
         glm::ivec2 resolution = {1280, 720}; // Resolution of the render target
         float resolutionScale = 1.0f;
@@ -35,6 +37,7 @@ struct Config {
         bool enablePerspectiveCorrect = true;
         ImVec4 clearColor = Color::DefaultBackground().ToImVec4();
     };
+
     struct SoftwareRendererSettings {
         bool showNormals = false;
         bool showTangents = false;
@@ -66,16 +69,19 @@ struct Config {
         DDA,
         BRESENHAM
     };
+
     enum class RasterizationPolygonMode {
         POINT, // GL_POINT
-        LINE,  // wireframe = GL_LINE
-        FILL,  // default   = GL_FILL
+        LINE, // wireframe = GL_LINE
+        FILL, // default   = GL_FILL
     };
+
     enum class RasterizationFillMode {
         SCANLINE,
         BARYCENTRIC,
         PINEDA
     };
+
     struct SoftwareRasterizerSettings {
         float pointSize = 1.0f;
         float lineWidth = 1.0f;
@@ -85,6 +91,7 @@ struct Config {
         RasterizationPolygonMode polygonMode = RasterizationPolygonMode::FILL;
         RasterizationFillMode fillMode = RasterizationFillMode::SCANLINE;
     };
+
     struct GLRasterizerSettings {
         RasterizationPolygonMode polygonMode = RasterizationPolygonMode::FILL;
     };
@@ -93,6 +100,7 @@ struct Config {
         SoftwareRendererSettings renderer;
         SoftwareRasterizerSettings rasterizer;
     };
+
     struct GLSpecifics {
         GLRasterizerSettings rasterizer;
     };

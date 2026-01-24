@@ -81,8 +81,8 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             }
 
             // Rasterizer
-            const auto& cfg = Engine::Get().GetConfig()->software.rasterizer;
-            m_Rasterizer->DrawTriangle(*m_FrameBuffer, vertices, cfg);
+            const auto& cfg = Engine::Get().GetConfig();
+            Rasterizer::DrawTriangle(*m_FrameBuffer, vertices, *cfg);
 
             // Stats
             // p_stats_->renderedVerts += mesh->m_numVertices;

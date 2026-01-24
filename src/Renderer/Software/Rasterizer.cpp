@@ -91,7 +91,7 @@ void Rasterizer::DrawLineBresenham(Buffer<Pixel>& fb, glm::vec2 p0, glm::vec2 p1
 }
 
 void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>& vertices,
-                              const Config::SoftwareRasterizerSettings& cfg) {
+                              Config& cfg) {
 
     // Convert vertices to viewport space
     std::array<glm::vec2, 3> viewportVertices{};
@@ -100,7 +100,7 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>&
     }
 
     // TODO: add cfg.lineColor
-    switch (cfg.polygonMode) {
+    switch (cfg.software.rasterizer.polygonMode) {
     case Config::RasterizationPolygonMode::POINT:
         DrawPointTriangle(framebuffer, viewportVertices);
         break;
@@ -113,7 +113,7 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>&
         DrawWireframeTriangle(framebuffer, viewportVertices);
         break;
     case Config::RasterizationPolygonMode::FILL:
-        DrawFlatTriangle(framebuffer, viewportVertices);
+        DrawFlatTriangle(framebuffer, viewportVertices, cfg.cull);
         break;
     default:
         LOGW("Invalid polygon mode");
@@ -168,12 +168,11 @@ bool Rasterizer::IsTriangleDegenerate(std::array<glm::vec2, 3>& vertices) {
     return glm::cross(glm::vec3(vertices[1] - vertices[0], 0.0f), glm::vec3(vertices[2] - vertices[0], 0.0f)).z == 0.0f;
 }
 
-void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec2, 3>& viewportVertices) {
+void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec2, 3>& viewportVertices,
+                                  Config::CullSettings& cull_cfg) {
     auto& v0 = viewportVertices[0];
     auto& v1 = viewportVertices[1];
     auto& v2 = viewportVertices[2];
-
-    auto& p_Config = Engine::Get().GetConfig();
 
     // Sort vertices by y-coordinate
     if (v0.y > v1.y)
@@ -185,7 +184,7 @@ void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer, std::array<glm::ve
 
     // Skip degenerate triangles (zero area)
     // Done in backface culling already
-    if (!p_Config->cull.backfaceCulling) {
+    if (cull_cfg.backfaceCulling) {
         if (IsTriangleDegenerate(viewportVertices))
             return;
     }
