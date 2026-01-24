@@ -5,24 +5,28 @@
 
 namespace RetroRenderer {
 bool SWRenderer::Init(int w, int h) {
-    try {
-        m_FrameBuffer = new Buffer<uint32_t>(w, h);
-    } catch (const std::bad_alloc &) {
-        LOGE("Failed to create frame buffer");
+    auto fb = std::unique_ptr<Buffer<uint32_t>>(
+        new (std::nothrow) Buffer<uint32_t>(w, h)
+    );
+    if (!fb) {
+        LOGE("Failed to create software framebuffer");
         return false;
     }
+    m_FrameBuffer = std::move(fb);
     m_Rasterizer = std::make_unique<Rasterizer>();
     return true;
 }
 
-void SWRenderer::Resize(int w, int h) {
-    delete m_FrameBuffer;
-    m_FrameBuffer = new Buffer<uint32_t>(w, h);
-}
-
-void SWRenderer::Destroy() {
-    delete m_FrameBuffer;
-    m_FrameBuffer = nullptr;
+bool SWRenderer::Resize(int w, int h) {
+    auto newBuffer = std::unique_ptr<Buffer<uint32_t>>(
+    new (std::nothrow) Buffer<uint32_t>(w, h)
+    );
+    if (!newBuffer) {
+        LOGE("Failed to resize software framebuffer");
+        return false;
+    }
+    m_FrameBuffer = std::move(newBuffer);
+    return true;
 }
 
 void SWRenderer::SetActiveCamera(const Camera &camera) {
@@ -102,7 +106,8 @@ GLuint SWRenderer::EndFrame() {
 void SWRenderer::DrawSkybox() {
 }
 
-const Buffer<uint32_t> *SWRenderer::GetFrameBuffer() const {
-    return m_FrameBuffer;
+const Buffer<uint32_t> &SWRenderer::GetFrameBuffer() const {
+    assert(m_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
+    return *m_FrameBuffer;
 }
 } // namespace RetroRenderer

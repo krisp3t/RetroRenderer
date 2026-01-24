@@ -2,6 +2,7 @@
 #include <glm/glm.hpp>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace RetroRenderer {
 enum class EventType {

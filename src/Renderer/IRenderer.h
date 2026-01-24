@@ -14,7 +14,7 @@ class IRenderer {
     virtual ~IRenderer() = default;
 
     // virtual bool Init(int w, int h) = 0;
-    virtual void Destroy() = 0;
+    virtual void Destroy() {}
 
     virtual void BeforeFrame(const Color &clearColor) = 0; // Clear screen / framebuffer texture
 

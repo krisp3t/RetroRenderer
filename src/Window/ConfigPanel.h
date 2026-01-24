@@ -4,6 +4,7 @@
 #include "../Scene/Camera.h"
 #include "../include/kris_glheaders.h"
 #include <vector>
+#include <SDL.h>
 
 namespace RetroRenderer {
 struct VirtualStickState {

@@ -85,11 +85,10 @@ GLuint RenderSystem::Render(std::vector<int> &renderQueue, std::vector<Model> &m
         }
     }
     if (p_activeRenderer_ == p_SWRenderer_.get()) {
-        const auto *buffer = p_SWRenderer_->GetFrameBuffer();
-        assert(buffer != nullptr && "SW framebuffer not initialized");
+        const auto& buffer = p_SWRenderer_->GetFrameBuffer();
         glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(buffer->width),
-                        static_cast<GLsizei>(buffer->height), GL_RGBA, GL_UNSIGNED_BYTE, buffer->data);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(buffer.width),
+                        static_cast<GLsizei>(buffer.height), GL_RGBA, GL_UNSIGNED_BYTE, buffer.data);
         glBindTexture(GL_TEXTURE_2D, 0);
         return m_SWFramebufferTexture;
     }
