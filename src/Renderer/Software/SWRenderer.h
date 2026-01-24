@@ -17,9 +17,9 @@ namespace RetroRenderer
 
         ~SWRenderer() = default;
 
-        bool Init(GLuint fbTexture, int w, int h);
+        bool Init(int w, int h);
 
-        void Resize(GLuint newFbTex, int w, int h);
+        void Resize(int w, int h);
 
         void Destroy() override;
 
@@ -39,9 +39,10 @@ namespace RetroRenderer
             return 0;
         }
 
+        [[nodiscard]] const Buffer<uint32_t> *GetFrameBuffer() const;
+
     private:
         Buffer<uint32_t> *m_FrameBuffer = nullptr;
-        GLuint p_FrameBufferTexture = 0;
         Camera *p_Camera = nullptr;
         std::unique_ptr<Rasterizer> m_Rasterizer = nullptr;
     };

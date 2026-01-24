@@ -5,7 +5,7 @@
 
 namespace RetroRenderer
 {
-    bool SWRenderer::Init(GLuint fbTex, int w, int h)
+    bool SWRenderer::Init(int w, int h)
     {
         try
         {
@@ -16,20 +16,20 @@ namespace RetroRenderer
             LOGE("Failed to create frame buffer");
             return false;
         }
-        p_FrameBufferTexture = fbTex;
         m_Rasterizer = std::make_unique<Rasterizer>();
         return true;
     }
 
-    void SWRenderer::Resize(GLuint newFbTex, int w, int h)
+    void SWRenderer::Resize(int w, int h)
     {
-        p_FrameBufferTexture = newFbTex;
+        delete m_FrameBuffer;
         m_FrameBuffer = new Buffer<uint32_t>(w, h);
     }
 
     void SWRenderer::Destroy()
     {
         delete m_FrameBuffer;
+        m_FrameBuffer = nullptr;
     }
 
     void SWRenderer::SetActiveCamera(const Camera &camera)
@@ -73,9 +73,10 @@ namespace RetroRenderer
             for (unsigned int i = 0; i < mesh.m_numFaces; i++)
             {
                 // Input Assembler
-                auto &v0 = mesh.m_Vertices[mesh.m_Indices[i]];
-                auto &v1 = mesh.m_Vertices[mesh.m_Indices[i + 1]];
-                auto &v2 = mesh.m_Vertices[mesh.m_Indices[i + 2]];
+                unsigned int baseIndex = i * 3;
+                auto &v0 = mesh.m_Vertices[mesh.m_Indices[baseIndex]];
+                auto &v1 = mesh.m_Vertices[mesh.m_Indices[baseIndex + 1]];
+                auto &v2 = mesh.m_Vertices[mesh.m_Indices[baseIndex + 2]];
                 std::array<Vertex, 3> vertices = {v0, v1, v2};
 
                 // TODO: backface cull
@@ -106,33 +107,20 @@ namespace RetroRenderer
 
     void SWRenderer::BeforeFrame(const Color &clearColor)
     {
-        auto c = clearColor.ToImVec4();
-        glBindFramebuffer(GL_FRAMEBUFFER, p_FrameBufferTexture);
-		glClearColor(c.x, c.y, c.z, c.w);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
         m_FrameBuffer->Clear(clearColor.ToRGBA());
     }
 
     GLuint SWRenderer::EndFrame()
     {
-        glBindTexture(GL_TEXTURE_2D, p_FrameBufferTexture);
-        glTexSubImage2D(
-                GL_TEXTURE_2D,
-                0,
-                0,
-                0,
-                m_FrameBuffer->width,
-                m_FrameBuffer->height,
-                GL_RGBA,
-				GL_UNSIGNED_INT_24_8,
-                m_FrameBuffer->data
-        );
-        glBindTexture(GL_TEXTURE_2D, 0);
-        return p_FrameBufferTexture;
+        return 0;
     }
 
     void SWRenderer::DrawSkybox()
     {
+    }
+
+    const Buffer<uint32_t> *SWRenderer::GetFrameBuffer() const
+    {
+        return m_FrameBuffer;
     }
 }

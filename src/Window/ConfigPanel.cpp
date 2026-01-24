@@ -99,7 +99,7 @@ namespace RetroRenderer
 #ifdef __ANDROID__
         io.IniFilename = g_imguiIniPath.c_str();
 #else
-        io.IniFilename = "config_panel.ini";
+        io.IniFilename = "assets/config_panel.ini";
 #endif
         StyleColorsEnemymouse();
 #ifdef __ANDROID__

@@ -23,7 +23,7 @@ namespace RetroRenderer
         CreateFramebufferTexture(m_SWFramebufferTexture, fbResolution.x, fbResolution.y);
         CreateFramebufferTexture(m_GLFramebufferTexture, fbResolution.x, fbResolution.y);
 
-        if (!p_SWRenderer_->Init(m_SWFramebufferTexture, fbResolution.x, fbResolution.y))
+        if (!p_SWRenderer_->Init(fbResolution.x, fbResolution.y))
         {
             LOGE("Failed to initialize SWRenderer");
             return false;
@@ -106,6 +106,25 @@ namespace RetroRenderer
                 p_activeRenderer_->DrawTriangularMesh(model);
             }
         }
+        if (p_activeRenderer_ == p_SWRenderer_.get())
+        {
+            const auto *buffer = p_SWRenderer_->GetFrameBuffer();
+            assert(buffer != nullptr && "SW framebuffer not initialized");
+            glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
+            glTexSubImage2D(
+                GL_TEXTURE_2D,
+                0,
+                0,
+                0,
+                static_cast<GLsizei>(buffer->width),
+                static_cast<GLsizei>(buffer->height),
+                GL_RGBA,
+                GL_UNSIGNED_BYTE,
+                buffer->data
+            );
+            glBindTexture(GL_TEXTURE_2D, 0);
+            return m_SWFramebufferTexture;
+        }
         return p_activeRenderer_->EndFrame();
     }
 
@@ -117,7 +136,7 @@ namespace RetroRenderer
         CreateFramebufferTexture(m_SWFramebufferTexture, resolution.x, resolution.y);
         CreateFramebufferTexture(m_GLFramebufferTexture, resolution.x, resolution.y);
         LOGI("Resizing output image to %d x %d", resolution.x, resolution.y);
-        p_SWRenderer_->Resize(m_SWFramebufferTexture, resolution.x, resolution.y);
+        p_SWRenderer_->Resize(resolution.x, resolution.y);
         p_GLRenderer_->Resize(m_GLFramebufferTexture, resolution.x, resolution.y);
     }
 
