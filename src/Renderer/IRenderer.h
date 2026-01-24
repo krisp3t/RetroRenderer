@@ -14,18 +14,19 @@ class IRenderer {
     virtual ~IRenderer() = default;
 
     // virtual bool Init(int w, int h) = 0;
-    virtual void Destroy() {}
+    virtual void Destroy() {
+    }
 
-    virtual void BeforeFrame(const Color &clearColor) = 0; // Clear screen / framebuffer texture
+    virtual void BeforeFrame(const Color& clearColor) = 0; // Clear screen / framebuffer texture
 
     virtual GLuint EndFrame() = 0; // Copy to framebuffer texture
 
-    virtual void SetActiveCamera(const Camera &camera) = 0;
+    virtual void SetActiveCamera(const Camera& camera) = 0;
 
-    virtual void DrawTriangularMesh(const Model *model) = 0;
+    virtual void DrawTriangularMesh(const Model* model) = 0;
 
     virtual void DrawSkybox() = 0;
 
-    [[nodiscard]] virtual GLuint CompileShaders(const std::string &vertexCode, const std::string &fragmentCode) = 0;
+    [[nodiscard]] virtual GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) = 0;
 };
 } // namespace RetroRenderer

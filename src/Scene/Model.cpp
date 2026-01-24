@@ -9,25 +9,25 @@ Model::Model() {
     m_Meshes = std::vector<Mesh>();
 }
 
-void Model::Init(Scene *scene, const std::string &name, const aiMatrix4x4 &localMatrix) {
+void Model::Init(Scene* scene, const std::string& name, const aiMatrix4x4& localMatrix) {
     p_Scene = scene;
     m_Name = name;
     m_LocalMatrix = AssimpToGlmMatrix(localMatrix);
 }
 
-const std::vector<Mesh> &Model::GetMeshes() const {
+const std::vector<Mesh>& Model::GetMeshes() const {
     return m_Meshes;
 }
 
-const std::string &Model::GetName() const {
+const std::string& Model::GetName() const {
     return m_Name;
 }
 
-void Model::SetName(const aiString &name) {
+void Model::SetName(const aiString& name) {
     m_Name = name.C_Str();
 }
 
-glm::mat4 Model::AssimpToGlmMatrix(const aiMatrix4x4 &mat) {
+glm::mat4 Model::AssimpToGlmMatrix(const aiMatrix4x4& mat) {
     return glm::mat4(mat[0][0], mat[1][0], mat[2][0], mat[3][0], mat[0][1], mat[1][1], mat[2][1], mat[3][1], mat[0][2],
                      mat[1][2], mat[2][2], mat[3][2], mat[0][3], mat[1][3], mat[2][3], mat[3][3]);
 }
@@ -35,7 +35,7 @@ glm::mat4 Model::AssimpToGlmMatrix(const aiMatrix4x4 &mat) {
 void Model::MarkDirty() {
     RecomputeWorldMatrix();
     assert(p_Scene != nullptr && "Scene hasn't been assigned to model");
-    for (const auto &childIx : m_Children) {
+    for (const auto& childIx : m_Children) {
         p_Scene->MarkDirtyModel(childIx);
     }
 }
@@ -45,12 +45,12 @@ void Model::SetParent(int parent) {
     MarkDirty();
 }
 
-void Model::SetLocalTransform(const aiMatrix4x4 &mat) {
+void Model::SetLocalTransform(const aiMatrix4x4& mat) {
     m_LocalMatrix = AssimpToGlmMatrix(mat);
     MarkDirty();
 }
 
-const glm::mat4 &Model::GetWorldTransform() const {
+const glm::mat4& Model::GetWorldTransform() const {
     return m_WorldMatrix;
 }
 
@@ -63,7 +63,7 @@ void Model::RecomputeWorldMatrix() {
     m_WorldMatrix = parentWorld * m_LocalMatrix;
 }
 
-void Model::GetLocalTRS(glm::vec3 &outTranslation, glm::vec3 &outRotationEuler, glm::vec3 &outScale) const {
+void Model::GetLocalTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, glm::vec3& outScale) const {
     glm::vec3 skew;
     glm::vec4 perspective;
     glm::quat rotation;
@@ -72,7 +72,7 @@ void Model::GetLocalTRS(glm::vec3 &outTranslation, glm::vec3 &outRotationEuler, 
     outRotationEuler = glm::degrees(glm::eulerAngles(rotation));
 }
 
-void Model::GetWorldTRS(glm::vec3 &outTranslation, glm::vec3 &outRotationEuler, glm::vec3 &outScale) const {
+void Model::GetWorldTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, glm::vec3& outScale) const {
     glm::vec3 skew;
     glm::vec4 perspective;
     glm::quat rotation;

@@ -5,13 +5,13 @@
 #include <imgui.h>
 
 namespace RetroRenderer {
-SDL_Window *DisplaySystem::GetWindow() const {
+SDL_Window* DisplaySystem::GetWindow() const {
     return m_window_;
 }
 
 bool DisplaySystem::Init() {
-    auto const &p_config = Engine::Get().GetConfig();
-    auto const &p_stats = Engine::Get().GetStats();
+    auto const& p_config = Engine::Get().GetConfig();
+    auto const& p_stats = Engine::Get().GetStats();
 
     int screenWidth = p_config->window.size.x;
     int screenHeight = p_config->window.size.y;
@@ -24,13 +24,13 @@ bool DisplaySystem::Init() {
                                  // TODO: only enable GLAD extensions which are actually used
 #if defined(IMGUI_IMPL_OPENGL_ES2)
     // GL ES 2.0 + GLSL 100
-    const char *glslVersion = "#version 100";
+    const char* glslVersion = "#version 100";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #elif defined(__ANDROID_API__)
-    const char *glslVersion = "#version 300 es";
+    const char* glslVersion = "#version 300 es";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
@@ -38,13 +38,13 @@ bool DisplaySystem::Init() {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 #elif defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
-    const char *glslVersion = "#version 150";
+    const char* glslVersion = "#version 150";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #elif defined(__EMSCRIPTEN__)
-    const char *glslVersion = "#version 300 es";
+    const char* glslVersion = "#version 300 es";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
@@ -53,7 +53,7 @@ bool DisplaySystem::Init() {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 #else
     // Desktop: GL 4.3
-    const char *glslVersion = "#version 330 core";
+    const char* glslVersion = "#version 330 core";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);

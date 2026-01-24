@@ -54,18 +54,18 @@ class MaterialManager {
     MaterialManager() = default;
     ~MaterialManager() = default;
     bool Init();
-    void LoadTexture(const std::string &path);
-    void LoadTexture(const uint8_t *data, const size_t size);
+    void LoadTexture(const std::string& path);
+    void LoadTexture(const uint8_t* data, const size_t size);
     void RenderUI();
     void LoadDefaultShaders();
-    Material &GetCurrentMaterial() {
+    Material& GetCurrentMaterial() {
         return m_Materials[m_CurrentMaterialIndex];
     }
-    static ShaderProgram CreateShaderProgram(const std::string &vertexPath, const std::string &fragmentPath);
+    static ShaderProgram CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath);
 
   private:
-    static std::string ReadShaderFile(const std::string &path);
-    static void CheckShaderErrors(GLuint shader, const std::string &type);
+    static std::string ReadShaderFile(const std::string& path);
+    static void CheckShaderErrors(GLuint shader, const std::string& type);
 
   private:
     std::vector<Material> m_Materials;
@@ -74,7 +74,7 @@ class MaterialManager {
     char vertPathBuffer[256] = "";
     char fragPathBuffer[256] = "";
     int newShaderType = 0; // For UI combo box
-    const char *k_supportedTextures = ".png";
+    const char* k_supportedTextures = ".png";
 };
 
 } // namespace RetroRenderer

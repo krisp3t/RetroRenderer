@@ -6,12 +6,12 @@
 // TODO: possible parallel rasterizing?
 
 namespace RetroRenderer {
-glm::vec2 Rasterizer::NDCToViewport(const glm::vec2 &v, int width, int height) {
+glm::vec2 Rasterizer::NDCToViewport(const glm::vec2& v, int width, int height) {
     return {static_cast<int>((v.x + 1.0f) * 0.5f * width + 0.5f),
             static_cast<int>((1.0f - v.y) * 0.5f * height + 0.5f)};
 }
 
-void Rasterizer::DrawHLine(Buffer<Uint32> &framebuffer, int x0, int x1, int y, Uint32 color) {
+void Rasterizer::DrawHLine(Buffer<Uint32>& framebuffer, int x0, int x1, int y, Uint32 color) {
     assert(y >= 0 && x0 >= 0 && x1 >= 0);
     assert(framebuffer.height > static_cast<size_t>(y) && "Y out of bounds");
 
@@ -35,7 +35,7 @@ void Rasterizer::DrawHLine(Buffer<Uint32> &framebuffer, int x0, int x1, int y, U
  * @param p1 The end point in screen space
  * @param color The color of the line
  */
-void Rasterizer::DrawLine(Buffer<Uint32> &framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color) {
+void Rasterizer::DrawLine(Buffer<Uint32>& framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color) {
     switch (Engine::Get().GetConfig()->software.rasterizer.lineMode) {
     case Config::RasterizationLineMode::DDA:
         DrawLineDDA(framebuffer, p0, p1, color);
@@ -46,7 +46,7 @@ void Rasterizer::DrawLine(Buffer<Uint32> &framebuffer, glm::vec2 p0, glm::vec2 p
     }
 }
 
-void Rasterizer::DrawLineDDA(Buffer<Uint32> &framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color) {
+void Rasterizer::DrawLineDDA(Buffer<Uint32>& framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color) {
     float dx = p1.x - p0.x;
     float dy = p1.y - p0.y;
     float steps = std::max(std::abs(dx), std::abs(dy));
@@ -63,7 +63,7 @@ void Rasterizer::DrawLineDDA(Buffer<Uint32> &framebuffer, glm::vec2 p0, glm::vec
     }
 }
 
-void Rasterizer::DrawLineBresenham(Buffer<Uint32> &fb, glm::vec2 p0, glm::vec2 p1, Uint32 color) {
+void Rasterizer::DrawLineBresenham(Buffer<Uint32>& fb, glm::vec2 p0, glm::vec2 p1, Uint32 color) {
     // TODO: rasterization rules
     bool steep = false;
     if (std::abs(p0.x - p1.x) < std::abs(p0.y - p1.y)) {
@@ -90,8 +90,8 @@ void Rasterizer::DrawLineBresenham(Buffer<Uint32> &fb, glm::vec2 p0, glm::vec2 p
     }
 }
 
-void Rasterizer::DrawTriangle(Buffer<Uint32> &framebuffer, std::array<Vertex, 3> &vertices,
-                              const Config::SoftwareRasterizerSettings &cfg) {
+void Rasterizer::DrawTriangle(Buffer<Uint32>& framebuffer, std::array<Vertex, 3>& vertices,
+                              const Config::SoftwareRasterizerSettings& cfg) {
 
     // Convert vertices to viewport space
     std::array<glm::vec2, 3> viewportVertices{};
@@ -121,13 +121,13 @@ void Rasterizer::DrawTriangle(Buffer<Uint32> &framebuffer, std::array<Vertex, 3>
     }
 }
 
-void Rasterizer::DrawPointTriangle(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3> &viewportVertices) {
+void Rasterizer::DrawPointTriangle(Buffer<Uint32>& framebuffer, std::array<glm::vec2, 3>& viewportVertices) {
     DrawPixel(framebuffer, viewportVertices[0].x, viewportVertices[0].y, 0xFFFFFFFF);
     DrawPixel(framebuffer, viewportVertices[1].x, viewportVertices[1].y, 0xFFFFFFFF);
     DrawPixel(framebuffer, viewportVertices[2].x, viewportVertices[2].y, 0xFFFFFFFF);
 }
 
-void Rasterizer::DrawWireframeTriangle(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3> &verts) {
+void Rasterizer::DrawWireframeTriangle(Buffer<Uint32>& framebuffer, std::array<glm::vec2, 3>& verts) {
     // TODO: Add color selector
     DrawLine(framebuffer, verts[0], verts[1], 0xFF0000FF);
     DrawLine(framebuffer, verts[1], verts[2], 0x00FF00FF);
@@ -137,8 +137,8 @@ void Rasterizer::DrawWireframeTriangle(Buffer<Uint32> &framebuffer, std::array<g
 /**
  * @brief Check if point lies inside triangle (barycentric coords)
  */
-bool Rasterizer::PixelCullTriangle(const glm::vec2 &v0, const glm::vec2 &v1, const glm::vec2 &v2,
-                                   const glm::vec2 &testPoint) {
+bool Rasterizer::PixelCullTriangle(const glm::vec2& v0, const glm::vec2& v1, const glm::vec2& v2,
+                                   const glm::vec2& testPoint) {
     float areaTotal = (v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x);
 
     // Cull if the triangle is degenerate (zero area)
@@ -160,19 +160,19 @@ bool Rasterizer::PixelCullTriangle(const glm::vec2 &v0, const glm::vec2 &v1, con
 /**
  * @brief Check if the triangle is degenerate (zero area)
  */
-bool Rasterizer::IsTriangleDegenerate(std::array<glm::vec2, 3> &vertices) {
+bool Rasterizer::IsTriangleDegenerate(std::array<glm::vec2, 3>& vertices) {
     // Cross product is zero exactly when:
     // 1. Two vectors are parallel/anti-parallel (linearly dependent)
     // 2. One of the vectors is zero
     return glm::cross(glm::vec3(vertices[1] - vertices[0], 0.0f), glm::vec3(vertices[2] - vertices[0], 0.0f)).z == 0.0f;
 }
 
-void Rasterizer::DrawFlatTriangle(Buffer<Uint32> &framebuffer, std::array<glm::vec2, 3> &viewportVertices) {
-    auto &v0 = viewportVertices[0];
-    auto &v1 = viewportVertices[1];
-    auto &v2 = viewportVertices[2];
+void Rasterizer::DrawFlatTriangle(Buffer<Uint32>& framebuffer, std::array<glm::vec2, 3>& viewportVertices) {
+    auto& v0 = viewportVertices[0];
+    auto& v1 = viewportVertices[1];
+    auto& v2 = viewportVertices[2];
 
-    auto &p_Config = Engine::Get().GetConfig();
+    auto& p_Config = Engine::Get().GetConfig();
 
     // Sort vertices by y-coordinate
     if (v0.y > v1.y)
@@ -223,7 +223,7 @@ void Rasterizer::DrawFlatTriangle(Buffer<Uint32> &framebuffer, std::array<glm::v
 /**
  * @brief Rasterizes a flat-bottom triangle (flat side: v0-v1)
  */
-void Rasterizer::FillFlatBottomTri(Buffer<Uint32> &framebuffer, glm::vec2 &v0, glm::vec2 &v1, glm::vec2 &v2) {
+void Rasterizer::FillFlatBottomTri(Buffer<Uint32>& framebuffer, glm::vec2& v0, glm::vec2& v1, glm::vec2& v2) {
     // Calculate invslopes in screen space
     // Run over rise, because edges can be completely vertical (infinite slope)
     double invslope1 = (v1.x - v0.x) / (v1.y - v0.y);
@@ -256,7 +256,7 @@ void Rasterizer::FillFlatBottomTri(Buffer<Uint32> &framebuffer, glm::vec2 &v0, g
 /**
  * @brief Rasterizes a flat-top triangle (flat side: v1-v2)
  */
-void Rasterizer::FillFlatTopTri(Buffer<Uint32> &framebuffer, glm::vec2 &v0, glm::vec2 &v1, glm::vec2 &v2) {
+void Rasterizer::FillFlatTopTri(Buffer<Uint32>& framebuffer, glm::vec2& v0, glm::vec2& v1, glm::vec2& v2) {
     // Calculate invslopes in screen space
     // Run over rise, because edges can be completely vertical (infinite slope)
     double invslope1 = (v2.x - v0.x) / (v2.y - v0.y);
@@ -286,7 +286,7 @@ void Rasterizer::FillFlatTopTri(Buffer<Uint32> &framebuffer, glm::vec2 &v0, glm:
     }
 }
 
-void Rasterizer::DrawPixel(Buffer<Uint32> &framebuffer, float x, float y, Uint32 color) {
+void Rasterizer::DrawPixel(Buffer<Uint32>& framebuffer, float x, float y, Uint32 color) {
     if (x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height)
         return;
     // TODO: Rasterization rules

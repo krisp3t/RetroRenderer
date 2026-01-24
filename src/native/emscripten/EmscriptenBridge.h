@@ -7,7 +7,7 @@
 #include <emscripten.h>
 #include <vector>
 
-extern "C" EMSCRIPTEN_KEEPALIVE void OnWebFileSelected(uint8_t *data, int size) {
+extern "C" EMSCRIPTEN_KEEPALIVE void OnWebFileSelected(uint8_t* data, int size) {
     LOGD("OnWebFileSelected");
     if (!data || size <= 0) {
         return;

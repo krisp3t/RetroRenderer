@@ -13,7 +13,7 @@ bool InputSystem::Init() {
 }
 
 InputActionMask InputSystem::HandleInput() {
-    auto const &p_config = Engine::Get().GetConfig();
+    auto const& p_config = Engine::Get().GetConfig();
     m_inputState_ = static_cast<InputActionMask>(0);
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -40,7 +40,7 @@ InputActionMask InputSystem::HandleInput() {
     return m_inputState_;
 }
 
-void InputSystem::HandleKeyDown(SDL_Keycode key, Config &config) {
+void InputSystem::HandleKeyDown(SDL_Keycode key, Config& config) {
     switch (key) {
     case SDLK_w:
         m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_FORWARD);
@@ -82,7 +82,7 @@ void InputSystem::HandleKeyDown(SDL_Keycode key, Config &config) {
     }
 }
 
-void InputSystem::HandleMouseMotion(const SDL_MouseMotionEvent &event) {
+void InputSystem::HandleMouseMotion(const SDL_MouseMotionEvent& event) {
     // Currently handled in imgui
     /*
     if (!m_isDragging_)

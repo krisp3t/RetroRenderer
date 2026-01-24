@@ -70,12 +70,12 @@ ConfigPanel::~ConfigPanel() {
     Destroy();
 }
 
-bool ConfigPanel::Init(SDL_Window *window, SDL_GLContext glContext, std::shared_ptr<Config> config,
-                       const char *glslVersion, std::shared_ptr<Stats> stats) {
+bool ConfigPanel::Init(SDL_Window* window, SDL_GLContext glContext, std::shared_ptr<Config> config,
+                       const char* glslVersion, std::shared_ptr<Stats> stats) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
     (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_DockingEnable;
 #ifdef __EMSCRIPTEN__
@@ -91,7 +91,7 @@ bool ConfigPanel::Init(SDL_Window *window, SDL_GLContext glContext, std::shared_
 #endif
     StyleColorsEnemymouse();
 #ifdef __ANDROID__
-    AAsset *font_asset = AAssetManager_open(g_assetManager, "fonts/Tomorrow-Italic.ttf", AASSET_MODE_BUFFER);
+    AAsset* font_asset = AAssetManager_open(g_assetManager, "fonts/Tomorrow-Italic.ttf", AASSET_MODE_BUFFER);
     if (font_asset) {
         size_t fileSize = AAsset_getLength(font_asset);
         m_fontData_.resize(fileSize);
@@ -119,7 +119,7 @@ void ConfigPanel::StyleColorsEnemymouse() {
     // Theme from @enemymouse
     // https://gist.github.com/enemymouse/c8aa24e247a1d7b9fc33d45091cbb8f0
     // https://github.com/GraphicsProgramming/dear-imgui-styles
-    ImGuiStyle &style = ImGui::GetStyle();
+    ImGuiStyle& style = ImGui::GetStyle();
     style.Alpha = 1.0;
     // style.WindowFillAlpha = 0.83;
     style.ChildRounding = 3;
@@ -179,7 +179,7 @@ void ConfigPanel::DisplayGUI() {
         return;
     }
 
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
     if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
         ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
     }
@@ -221,7 +221,7 @@ void ConfigPanel::DisplayExamplesDialog() {
 }
 
 void ConfigPanel::DisplayWindowSettings() {
-    auto &w = p_config_->window;
+    auto& w = p_config_->window;
     ImGui::SeparatorText("Window settings");
     // ImGui::Checkbox("Show configuration panel", &w.showConfigPanel);
     ImGui::Checkbox("Show controls", &w.showControls);
@@ -233,8 +233,8 @@ void ConfigPanel::DisplayWindowSettings() {
 
 void ConfigPanel::DisplaySceneGraph() {
     ImGui::Begin("Scene Graph");
-    ImGuiIO &io = ImGui::GetIO();
-    ImFont *smallFont = io.Fonts->Fonts[0]; // base font (index 0)
+    ImGuiIO& io = ImGui::GetIO();
+    ImFont* smallFont = io.Fonts->Fonts[0]; // base font (index 0)
     constexpr float kScale = 0.8f;
     ImGui::PushFont(smallFont);
     ImGui::SetWindowFontScale(kScale);
@@ -268,7 +268,7 @@ void ConfigPanel::DisplayRenderedImage() {
 }
 
 void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture) {
-    auto &r = p_config_->renderer;
+    auto& r = p_config_->renderer;
     ImGui::Begin("Output");
     ImVec2 contentSize = ImGui::GetContentRegionAvail();
     glm::ivec2 displaySize = {contentSize.x * r.resolutionScale, contentSize.y * r.resolutionScale};
@@ -295,7 +295,7 @@ void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture) {
         }
     };
 
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
 
     // Get mouse position relative to the window's content area
     ImVec2 windowPos = ImGui::GetWindowPos();
@@ -335,7 +335,7 @@ void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture) {
 
             // Zoom camera (forward/backward along forward vector)
             if (ImGui::GetIO().MouseWheel != 0.0f) {
-                glm::vec3 &forward = cam->m_Direction;
+                glm::vec3& forward = cam->m_Direction;
                 cam->m_Position += forward * ImGui::GetIO().MouseWheel * 0.1f;
             }
         } else if (m_isDragging_) {
@@ -463,9 +463,9 @@ void ConfigPanel::DisplayPipelineWindow() {
     // TODO: disable resizing below min size?
     // TODO: open separate windows by clicking
     if (ImGui::Begin("Graphics pipeline")) {
-        ImDrawList *drawList = ImGui::GetWindowDrawList();
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-        static const char *stages[] = {"Input Assembler", "Vertex Shader",   "Tessellation",  "Geometry Shader",
+        static const char* stages[] = {"Input Assembler", "Vertex Shader",   "Tessellation",  "Geometry Shader",
                                        "Rasterization",   "Fragment Shader", "Color Blending"};
         int numStages = sizeof(stages) / sizeof(stages[0]);
 
@@ -507,7 +507,7 @@ void ConfigPanel::DisplayPipelineWindow() {
     ImGui::End();
 }
 
-void ConfigPanel::DisplayConfigWindow(Config &config) {
+void ConfigPanel::DisplayConfigWindow(Config& config) {
     if (ImGui::Begin("Configuration")) {
         if (ImGui::BeginTabBar("Camera")) {
             if (ImGui::BeginTabItem("Camera")) {
@@ -550,7 +550,7 @@ void ConfigPanel::DisplayCameraSettings() {
         ImGui::DragFloat3("Position", glm::value_ptr(cam->m_Position), 0.1f, 0.0f, 0.0f, "%.3f",
                           ImGuiSliderFlags_Logarithmic);
         ImGui::DragFloat3("Rotation", glm::value_ptr(cam->m_EulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
-        ImGui::Combo("Camera type", reinterpret_cast<int *>(&cam->m_Type), "Perspective\0Orthographic\0");
+        ImGui::Combo("Camera type", reinterpret_cast<int*>(&cam->m_Type), "Perspective\0Orthographic\0");
         switch (cam->m_Type) {
         case CameraType::PERSPECTIVE:
             ImGui::SliderFloat("Field of view", &cam->m_Fov, 1.0f, 179.0f);
@@ -567,7 +567,7 @@ void ConfigPanel::DisplayCameraSettings() {
 }
 
 void ConfigPanel::DisplayRendererSettings() {
-    auto &r = p_config_->renderer;
+    auto& r = p_config_->renderer;
     ImGui::SeparatorText("Renderer settings");
     if (ImGui::Button("Take screenshot")) {
         // TODO: implement screenshot
@@ -579,16 +579,16 @@ void ConfigPanel::DisplayRendererSettings() {
         LOGD("Sending to RenderDoc");
     }
 
-    ImGui::RadioButton("Software", reinterpret_cast<int *>(&r.selectedRenderer),
+    ImGui::RadioButton("Software", reinterpret_cast<int*>(&r.selectedRenderer),
                        static_cast<int>(Config::RendererType::SOFTWARE));
     ImGui::SameLine();
-    ImGui::RadioButton("OpenGL", reinterpret_cast<int *>(&r.selectedRenderer),
+    ImGui::RadioButton("OpenGL", reinterpret_cast<int*>(&r.selectedRenderer),
                        static_cast<int>(Config::RendererType::GL));
 
     ImGui::SeparatorText("Resolution");
     ImGui::Text("Render resolution: %d x %d (@ %.1f scale)", static_cast<int>(r.resolution.x),
                 static_cast<int>(r.resolution.y), r.resolutionScale);
-    if (ImGui::InputFloat("Render resolution scale", reinterpret_cast<float *>(&r.resolutionScale), 0.1f, 0.5f,
+    if (ImGui::InputFloat("Render resolution scale", reinterpret_cast<float*>(&r.resolutionScale), 0.1f, 0.5f,
                           "%.1f")) {
         r.resolutionScale = glm::clamp(r.resolutionScale, 0.1f, 4.0f);
         LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
@@ -599,9 +599,9 @@ void ConfigPanel::DisplayRendererSettings() {
 
     ImGui::SeparatorText("Scene");
     ImGui::Checkbox("Enable perspective-correct interpolation", &r.enablePerspectiveCorrect);
-    const char *aaItems[] = {"None", "MSAA", "FXAA"};
-    ImGui::Combo("Anti-aliasing", reinterpret_cast<int *>(&r.aaType), aaItems, IM_ARRAYSIZE(aaItems));
-    ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float *>(&r.clearColor),
+    const char* aaItems[] = {"None", "MSAA", "FXAA"};
+    ImGui::Combo("Anti-aliasing", reinterpret_cast<int*>(&r.aaType), aaItems, IM_ARRAYSIZE(aaItems));
+    ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float*>(&r.clearColor),
                       ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
     ImGui::SameLine();
     ImGui::Text("Background color:");
@@ -612,38 +612,38 @@ void ConfigPanel::DisplayRasterizerSettings() {
     ImGui::SeparatorText("Rasterizer settings");
 
     if (p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE) {
-        auto &r = p_config_->software.rasterizer;
-        const char *lineItems[] = {"DDA (slower)", "Bresenham (faster)"};
-        const char *polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
-        const char *fillItems[] = {"Scanline", "Barycentric", "Pineda (parallel)"};
-        ImGui::Combo("Polygon mode", reinterpret_cast<int *>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
+        auto& r = p_config_->software.rasterizer;
+        const char* lineItems[] = {"DDA (slower)", "Bresenham (faster)"};
+        const char* polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
+        const char* fillItems[] = {"Scanline", "Barycentric", "Pineda (parallel)"};
+        ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
 
         switch (r.polygonMode) {
         case Config::RasterizationPolygonMode::POINT:
             ImGui::SeparatorText("Point");
             ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
-            ImGui::ColorEdit4("Point color", reinterpret_cast<float *>(&r.lineColor));
+            ImGui::ColorEdit4("Point color", reinterpret_cast<float*>(&r.lineColor));
             break;
         case Config::RasterizationPolygonMode::LINE:
             ImGui::SeparatorText("Wireframe");
-            ImGui::Combo("Line mode", reinterpret_cast<int *>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
+            ImGui::Combo("Line mode", reinterpret_cast<int*>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
             ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
-            ImGui::ColorEdit4("Line color", reinterpret_cast<float *>(&r.lineColor));
+            ImGui::ColorEdit4("Line color", reinterpret_cast<float*>(&r.lineColor));
             ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
             break;
         case Config::RasterizationPolygonMode::FILL:
             ImGui::SeparatorText("Fill");
-            ImGui::Combo("Fill mode", reinterpret_cast<int *>(&r.fillMode), fillItems, IM_ARRAYSIZE(lineItems));
+            ImGui::Combo("Fill mode", reinterpret_cast<int*>(&r.fillMode), fillItems, IM_ARRAYSIZE(lineItems));
         }
     } else if (p_config_->renderer.selectedRenderer == Config::RendererType::GL) {
-        auto &r = p_config_->gl.rasterizer;
-        const char *polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
-        ImGui::Combo("Polygon mode", reinterpret_cast<int *>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
+        auto& r = p_config_->gl.rasterizer;
+        const char* polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
+        ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
     }
 }
 
 void ConfigPanel::DisplayCullSettings() {
-    auto &c = p_config_->cull;
+    auto& c = p_config_->cull;
     ImGui::SeparatorText("Cull settings");
     ImGui::Checkbox("Backface culling", &c.backfaceCulling);
     ImGui::Checkbox("Depth testing", &c.depthTest);
@@ -656,7 +656,7 @@ void ConfigPanel::DisplayCullSettings() {
 }
 
 void ConfigPanel::DisplayEnvironmentSettings() {
-    auto &e = p_config_->environment;
+    auto& e = p_config_->environment;
     ImGui::SeparatorText("Environment settings");
     ImGui::Checkbox("Show skybox", &e.showSkybox);
     ImGui::Checkbox("Show grid", &e.showGrid);
@@ -670,13 +670,13 @@ void ConfigPanel::DisplayControlsOverlay() {
         return;
     }
 
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                                    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
                                    ImGuiWindowFlags_NoNav;
     constexpr float kPadding = 10.0f;
 
-    const ImGuiViewport *viewport = ImGui::GetMainViewport();
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
     ImVec2 work_size = viewport->WorkSize;
     ImVec2 window_pos, window_pos_pivot;
@@ -700,12 +700,12 @@ void ConfigPanel::DisplayMetricsOverlay() {
         return;
 
     static int location = 0;
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                                    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
                                    ImGuiWindowFlags_NoNav;
     constexpr float kPadding = 10.0f;
-    ImFont *smallFont = io.Fonts->Fonts[0]; // base font (index 0)
+    ImFont* smallFont = io.Fonts->Fonts[0]; // base font (index 0)
     constexpr float kScale = 0.8f;
 
     static float frameTimes[100] = {0}; // Buffer for frame times
@@ -713,7 +713,7 @@ void ConfigPanel::DisplayMetricsOverlay() {
     frameTimes[frameIndex] = 1000.0f / io.Framerate; // Store current frame time in milliseconds
     frameIndex = (frameIndex + 1) % 100;             // Wrap index around when it reaches the buffer size
 
-    const ImGuiViewport *viewport = ImGui::GetMainViewport();
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
     ImVec2 work_size = viewport->WorkSize;
     ImVec2 window_pos, window_pos_pivot;
@@ -759,7 +759,7 @@ void ConfigPanel::DisplayMetricsOverlay() {
 }
 
 void ConfigPanel::DisplayJoysticks() {
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
     float moveSpeed = 0.005f;
     float rotateSpeed = 0.1f;
     float deltaTime = 5.0f; // TODO: actually pass
@@ -768,14 +768,14 @@ void ConfigPanel::DisplayJoysticks() {
     ImVec2 leftPos(20, io.DisplaySize.y - stickSize.y - 20);
     ImVec2 rightPos(io.DisplaySize.x - stickSize.x - 20, io.DisplaySize.y - stickSize.y - 20);
 
-    auto DrawJoystick = [&](const char *label, const ImVec2 &pos, VirtualStickState &state) {
+    auto DrawJoystick = [&](const char* label, const ImVec2& pos, VirtualStickState& state) {
         ImGui::SetNextWindowPos(pos);
         ImGui::SetNextWindowSize(stickSize);
         ImGui::Begin(label, nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground);
 
-        ImDrawList *drawList = ImGui::GetWindowDrawList();
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
         ImVec2 center = ImVec2(pos.x + stickSize.x * 0.5f, pos.y + stickSize.y * 0.5f);
         float radius = stickSize.x * 0.45f;
 
@@ -836,7 +836,7 @@ void ConfigPanel::DisplayJoysticks() {
 }
 
 void ConfigPanel::BeforeFrame() {
-    auto const &io = ImGui::GetIO();
+    auto const& io = ImGui::GetIO();
     glViewport(0, 0, (int)io.DisplaySize.x > 0 ? (int)io.DisplaySize.x : 0,
                (int)io.DisplaySize.y > 0 ? (int)io.DisplaySize.y : 0);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -851,7 +851,7 @@ void ConfigPanel::BeforeFrame() {
 
 void ConfigPanel::OnDraw() {
     ImGui::Render();
-    auto const &io = ImGui::GetIO();
+    auto const& io = ImGui::GetIO();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     // Multi-viewport support
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
@@ -871,7 +871,7 @@ void ConfigPanel::Destroy() {
 
 void ConfigPanel::OpenAndroidFilePicker() {
 #ifdef __ANDROID__
-    auto *env = static_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+    auto* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
     auto activity = static_cast<jobject>(SDL_AndroidGetActivity());
     jclass cls = env->GetObjectClass(activity);
     jmethodID mid = env->GetMethodID(cls, "openFilePicker", "()V");

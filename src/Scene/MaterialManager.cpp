@@ -17,7 +17,7 @@ bool MaterialManager::Init() {
     return true;
 }
 
-void MaterialManager::LoadTexture(const std::string &path) {
+void MaterialManager::LoadTexture(const std::string& path) {
     Texture texture;
     if (!texture.LoadFromFile(path.c_str())) {
         LOGE("Failed to load texture %s", path.c_str());
@@ -27,7 +27,7 @@ void MaterialManager::LoadTexture(const std::string &path) {
     // TODO: resource leak
 }
 
-void MaterialManager::LoadTexture(const uint8_t *data, const size_t size) {
+void MaterialManager::LoadTexture(const uint8_t* data, const size_t size) {
     Texture texture;
     if (!texture.LoadFromMemory(data, size)) {
         LOGE("Failed to load texture from memory");
@@ -56,7 +56,7 @@ void MaterialManager::LoadDefaultShaders() {
     m_Materials.emplace_back(std::move(phongVcMaterial));
 }
 
-ShaderProgram MaterialManager::CreateShaderProgram(const std::string &vertexPath, const std::string &fragmentPath) {
+ShaderProgram MaterialManager::CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath) {
     ShaderProgram shaderProgram;
     std::string rootPath = "assets/";
 #ifdef __ANDROID__
@@ -79,7 +79,7 @@ ShaderProgram MaterialManager::CreateShaderProgram(const std::string &vertexPath
     return shaderProgram;
 }
 
-std::string MaterialManager::ReadShaderFile(const std::string &path) {
+std::string MaterialManager::ReadShaderFile(const std::string& path) {
     std::ifstream file(path);
     if (!file.is_open()) {
         LOGE("Failed to open shader file %s", path.c_str());
@@ -92,7 +92,7 @@ std::string MaterialManager::ReadShaderFile(const std::string &path) {
     return buffer.str();
 }
 
-void MaterialManager::CheckShaderErrors(GLuint shader, const std::string &type) {
+void MaterialManager::CheckShaderErrors(GLuint shader, const std::string& type) {
 }
 
 void MaterialManager::RenderUI() {
@@ -100,10 +100,10 @@ void MaterialManager::RenderUI() {
         return;
     }
     ImGui::SeparatorText("Material");
-    const char *materialNames[] = {"Phong (texture color)", "Phong (vertex color)"};
+    const char* materialNames[] = {"Phong (texture color)", "Phong (vertex color)"};
     ImGui::Combo("Material Type", &m_CurrentMaterialIndex, materialNames, IM_ARRAYSIZE(materialNames));
 
-    Material &currentMat = GetCurrentMaterial();
+    Material& currentMat = GetCurrentMaterial();
 
     // Texture loading
     ImGui::SeparatorText("Texture");
@@ -111,7 +111,7 @@ void MaterialManager::RenderUI() {
         if (ImGui::Button("Load texture")) {
             // TODO: extract platform specific
 #ifdef __ANDROID__
-            auto *env = static_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+            auto* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
             auto activity = static_cast<jobject>(SDL_AndroidGetActivity());
             jclass cls = env->GetObjectClass(activity);
             jmethodID mid = env->GetMethodID(cls, "openTexturePicker", "()V");
@@ -132,7 +132,7 @@ void MaterialManager::RenderUI() {
         if (currentMat.texture->GetID()) {
             ImGui::Text("Current Texture: handle %d (%s)", currentMat.texture->GetID(),
                         currentMat.texture->GetPath().c_str());
-            ImGui::Image(ImTextureID((void *)(intptr_t)currentMat.texture->GetID()), ImVec2(128, 128));
+            ImGui::Image(ImTextureID((void*)(intptr_t)currentMat.texture->GetID()), ImVec2(128, 128));
         } else {
             ImGui::Text("Current Texture: none");
         }

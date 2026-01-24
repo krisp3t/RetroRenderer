@@ -3,8 +3,8 @@
 #include "../Base/Stats.h"
 #include "../Scene/Camera.h"
 #include "../include/kris_glheaders.h"
-#include <vector>
 #include <SDL.h>
+#include <vector>
 
 namespace RetroRenderer {
 struct VirtualStickState {
@@ -17,7 +17,7 @@ class ConfigPanel {
   public:
     ConfigPanel() = default;
     ~ConfigPanel();
-    bool Init(SDL_Window *window, SDL_GLContext glContext, std::shared_ptr<Config> config, const char *glslVersion,
+    bool Init(SDL_Window* window, SDL_GLContext glContext, std::shared_ptr<Config> config, const char* glslVersion,
               std::shared_ptr<Stats> stats);
     void Destroy();
     void BeforeFrame();
@@ -27,7 +27,7 @@ class ConfigPanel {
     void OnDraw(GLuint framebufferTexture);
 
   private:
-    SDL_Window *p_Window_ = nullptr;
+    SDL_Window* p_Window_ = nullptr;
     std::shared_ptr<Config> p_config_ = nullptr;
     std::shared_ptr<Stats> p_stats_ = nullptr;
     std::vector<uint8_t> m_fontData_ = {}; // keep font bytes alive for the lifetime of imgui
@@ -47,7 +47,7 @@ class ConfigPanel {
     void DisplayMaterialWindow();
     void DisplayInspectorWindow();
     void DisplayPipelineWindow();
-    void DisplayConfigWindow(Config &config);
+    void DisplayConfigWindow(Config& config);
     void DisplayControlsOverlay();
     void DisplayExamplesDialog();
     void DisplayWindowSettings();
@@ -55,7 +55,7 @@ class ConfigPanel {
     void OpenWebFilePicker();
     void OpenAndroidFilePicker();
 
-    const char *k_supportedModels = ".obj,.gltf,.glb,.fbx,.usd";
+    const char* k_supportedModels = ".obj,.gltf,.glb,.fbx,.usd";
     VirtualStickState moveStickState;
     VirtualStickState rotateStickState;
 };

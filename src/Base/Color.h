@@ -15,7 +15,7 @@ struct Color {
     // Default constructor
     Color() : r(0), g(0), b(0), a(255) {
     }
-    Color(const Color &c) : r(c.r), g(c.g), b(c.b), a(c.a) {
+    Color(const Color& c) : r(c.r), g(c.g), b(c.b), a(c.a) {
     }
     explicit Color(Uint8Tag, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha = 255)
         : r(red), g(green), b(blue), a(alpha) {
@@ -28,7 +28,7 @@ struct Color {
     }
     explicit Color(uint8_t gray, uint8_t alpha = 255) : r(gray), g(gray), b(gray), a(alpha) {
     }
-    explicit Color(const ImVec4 &c)
+    explicit Color(const ImVec4& c)
         : r(static_cast<uint8_t>(glm::clamp(c.x, 0.0f, 1.0f) * 255.0f)),
           g(static_cast<uint8_t>(glm::clamp(c.y, 0.0f, 1.0f) * 255.0f)),
           b(static_cast<uint8_t>(glm::clamp(c.z, 0.0f, 1.0f) * 255.0f)),
@@ -36,11 +36,11 @@ struct Color {
     }
 
     // Comparison operators
-    bool operator==(const Color &other) const {
+    bool operator==(const Color& other) const {
         return r == other.r && g == other.g && b == other.b && a == other.a;
     }
 
-    bool operator!=(const Color &other) const {
+    bool operator!=(const Color& other) const {
         return !(*this == other);
     }
 

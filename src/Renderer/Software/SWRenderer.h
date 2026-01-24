@@ -15,12 +15,12 @@ class SWRenderer : public IRenderer {
     ~SWRenderer() = default;
     bool Init(int w, int h);
     bool Resize(int w, int h);
-    void SetActiveCamera(const Camera &camera) override;
-    void DrawTriangularMesh(const Model *model) override;
+    void SetActiveCamera(const Camera& camera) override;
+    void DrawTriangularMesh(const Model* model) override;
     void DrawSkybox() override;
-    void BeforeFrame(const Color &clearColor) override;
+    void BeforeFrame(const Color& clearColor) override;
     GLuint EndFrame() override;
-    GLuint CompileShaders(const std::string &vertexCode, const std::string &fragmentCode) override {
+    GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override {
         // TODO: implement
         return 0;
     }
@@ -29,7 +29,7 @@ class SWRenderer : public IRenderer {
 
   private:
     std::unique_ptr<Buffer<uint32_t>> m_FrameBuffer = nullptr;
-    Camera *p_Camera = nullptr;
+    Camera* p_Camera = nullptr;
     std::unique_ptr<Rasterizer> m_Rasterizer = nullptr;
 };
 

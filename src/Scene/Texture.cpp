@@ -10,10 +10,10 @@ Texture::~Texture() {
         m_TextureID = 0;
     }
 }
-Texture::Texture(Texture &&other) noexcept : m_TextureID(other.m_TextureID), m_Path(std::move(other.m_Path)) {
+Texture::Texture(Texture&& other) noexcept : m_TextureID(other.m_TextureID), m_Path(std::move(other.m_Path)) {
     other.m_TextureID = 0; // Invalidate source object
 }
-Texture &Texture::operator=(Texture &&other) noexcept {
+Texture& Texture::operator=(Texture&& other) noexcept {
     if (this != &other) {
         if (m_TextureID) {
             glDeleteTextures(1, &m_TextureID);
@@ -26,9 +26,9 @@ Texture &Texture::operator=(Texture &&other) noexcept {
     return *this;
 }
 
-GLuint Texture::LoadTextureFromFile(const char *filePath) {
+GLuint Texture::LoadTextureFromFile(const char* filePath) {
     IMG_Init(IMG_INIT_PNG); // TODO: don't hardcode
-    SDL_Surface *surface = IMG_Load(filePath);
+    SDL_Surface* surface = IMG_Load(filePath);
     if (!surface) {
         LOGE("Failed to load texture file %s: %s", filePath, IMG_GetError());
         return 0;
@@ -72,7 +72,7 @@ GLuint Texture::LoadTextureFromFile(const char *filePath) {
     return textureID;
 }
 
-GLuint Texture::LoadTextureFromMemory(const uint8_t *data, const size_t size) {
+GLuint Texture::LoadTextureFromMemory(const uint8_t* data, const size_t size) {
     int flags = IMG_INIT_PNG;
     int initted = IMG_Init(flags);
     if ((initted & flags) != flags) {
@@ -80,14 +80,14 @@ GLuint Texture::LoadTextureFromMemory(const uint8_t *data, const size_t size) {
         return 0;
     }
 
-    SDL_RWops *rw = SDL_RWFromConstMem(data, static_cast<int>(size));
+    SDL_RWops* rw = SDL_RWFromConstMem(data, static_cast<int>(size));
     if (!rw) {
         LOGE("Failed to create RWops: %s", SDL_GetError());
         IMG_Quit();
         return 0;
     }
 
-    SDL_Surface *surface = IMG_Load_RW(rw, 1); // 1 = auto-close rw after loading
+    SDL_Surface* surface = IMG_Load_RW(rw, 1); // 1 = auto-close rw after loading
     if (!surface) {
         LOGE("Failed to load texture from memory: %s", IMG_GetError());
         IMG_Quit();
@@ -130,7 +130,7 @@ GLuint Texture::LoadTextureFromMemory(const uint8_t *data, const size_t size) {
     return textureID;
 }
 
-bool Texture::LoadFromFile(const char *filePath) {
+bool Texture::LoadFromFile(const char* filePath) {
     if (m_TextureID) {
         glDeleteTextures(1, &m_TextureID);
         m_TextureID = 0;
@@ -145,7 +145,7 @@ bool Texture::LoadFromFile(const char *filePath) {
     return true;
 }
 
-bool Texture::LoadFromMemory(const uint8_t *data, const size_t size) {
+bool Texture::LoadFromMemory(const uint8_t* data, const size_t size) {
     if (m_TextureID) {
         glDeleteTextures(1, &m_TextureID);
         m_TextureID = 0;

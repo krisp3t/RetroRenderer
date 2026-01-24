@@ -12,3 +12,5 @@ BraceWrapping:
   BeforeElse: false
   BeforeCatch: false
   IndentBraces: false
+PointerAlignment: Left
+ReferenceAlignment: Left

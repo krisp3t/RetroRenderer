@@ -13,7 +13,7 @@ enum class EventType {
     Texture_Load,
 };
 
-static constexpr const char *EventTypeToString(EventType type) {
+static constexpr const char* EventTypeToString(EventType type) {
     switch (type) {
     case EventType::Output_Image_Resize:
         return "Output_Image_Resize";
@@ -66,7 +66,7 @@ struct TextureLoadEvent : public Event {
 
 struct SceneLoadEvent : public Event {
     std::string scenePath;
-    const uint8_t *sceneData = nullptr;
+    const uint8_t* sceneData = nullptr;
     std::vector<uint8_t> sceneDataBuffer;
     size_t sceneDataSize = 0;
     bool loadFromMemory = false;
@@ -82,7 +82,7 @@ struct SceneLoadEvent : public Event {
         sceneDataSize = size;
         loadFromMemory = true;
     }
-    SceneLoadEvent(const uint8_t *data, size_t size) {
+    SceneLoadEvent(const uint8_t* data, size_t size) {
         // TODO: implement
         type = EventType::Scene_Load;
         sceneData = data;

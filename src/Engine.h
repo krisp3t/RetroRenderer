@@ -14,7 +14,7 @@ namespace RetroRenderer {
 
 class Engine {
   public:
-    static Engine &Get() {
+    static Engine& Get() {
         static Engine instance;
         return instance;
     }
@@ -25,16 +25,16 @@ class Engine {
     void Destroy();
 
     // Events
-    void DispatchImmediate(const Event &event);
-    void Dispatch(const Event &event);
+    void DispatchImmediate(const Event& event);
+    void Dispatch(const Event& event);
     void EnqueueEvent(std::unique_ptr<Event> event);
 
     [[nodiscard]] const std::shared_ptr<Config> GetConfig() const;
     [[nodiscard]] const std::shared_ptr<Stats> GetStats() const;
-    [[nodiscard]] Camera *GetCamera() const;
-    [[nodiscard]] MaterialManager &GetMaterialManager() const;
-    [[nodiscard]] RenderSystem &GetRenderSystem() const;
-    [[nodiscard]] SceneManager &GetSceneManager() const;
+    [[nodiscard]] Camera* GetCamera() const;
+    [[nodiscard]] MaterialManager& GetMaterialManager() const;
+    [[nodiscard]] RenderSystem& GetRenderSystem() const;
+    [[nodiscard]] SceneManager& GetSceneManager() const;
 
   private:
     Engine() = default;

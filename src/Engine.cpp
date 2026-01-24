@@ -5,7 +5,7 @@
 #include <emscripten/emscripten.h>
 
 namespace {
-RetroRenderer::Engine *g_Engine = nullptr;
+RetroRenderer::Engine* g_Engine = nullptr;
 
 extern "C" void MainLoopWrapper() {
     if (g_Engine) {
@@ -80,7 +80,7 @@ void Engine::ProcessFrame() {
     if (scene && camera) {
         m_DisplaySystem.BeforeFrame();
         p_RenderSystem->BeforeFrame(clearColor);
-        auto &queue = p_RenderSystem->BuildRenderQueue(*scene, *camera);
+        auto& queue = p_RenderSystem->BuildRenderQueue(*scene, *camera);
         GLuint fbTex = p_RenderSystem->Render(queue, scene->m_Models);
         m_DisplaySystem.DrawFrame(fbTex);
     } else {
@@ -112,7 +112,7 @@ void Engine::ProcessEventQueue() {
     }
     // Process outside of lock to avoid holding it during event handling
     while (!tempQueue.empty()) {
-        auto &event = *tempQueue.front();
+        auto& event = *tempQueue.front();
         Dispatch(event);
         tempQueue.pop();
     }
@@ -122,18 +122,18 @@ void Engine::ProcessEventQueue() {
  * Handle synchronous event (immediately, without queue).
  * Used for events that need to be handled immediately, like window resizing and scene reloading.
  */
-void Engine::DispatchImmediate(const Event &event) {
+void Engine::DispatchImmediate(const Event& event) {
     // map EventType enum to string
     // https://stackoverflow.com/questions/147267/easy-way-to-use-variables-of-enum-types-as-string-in-c
     LOGD("Dispatching immediate event (type: %s)", EventTypeToString(event.type));
     Dispatch(event);
 }
 
-void Engine::Dispatch(const Event &event) {
+void Engine::Dispatch(const Event& event) {
     LOGI("Handling event (type: %s)", EventTypeToString(event.type));
     switch (event.type) {
     case EventType::Texture_Load: {
-        const TextureLoadEvent &e = static_cast<const TextureLoadEvent &>(event);
+        const TextureLoadEvent& e = static_cast<const TextureLoadEvent&>(event);
         if (e.loadFromMemory) {
             p_MaterialManager->LoadTexture(e.textureDataBuffer.data(), e.textureDataSize);
         } else {
@@ -143,7 +143,7 @@ void Engine::Dispatch(const Event &event) {
         break;
     }
     case EventType::Scene_Load: {
-        const SceneLoadEvent &e = static_cast<const SceneLoadEvent &>(event);
+        const SceneLoadEvent& e = static_cast<const SceneLoadEvent&>(event);
         if (!e.loadFromMemory) {
             LOGD("Attempting to load scene from path: %s", e.scenePath.c_str());
             p_SceneManager->LoadScene(e.scenePath);
@@ -158,7 +158,7 @@ void Engine::Dispatch(const Event &event) {
         break;
     }
     case EventType::Output_Image_Resize: {
-        const OutputImageResizeEvent &e = static_cast<const OutputImageResizeEvent &>(event);
+        const OutputImageResizeEvent& e = static_cast<const OutputImageResizeEvent&>(event);
         if (e.resolution.x <= 0 || e.resolution.y <= 0) {
             break;
         }
@@ -166,12 +166,12 @@ void Engine::Dispatch(const Event &event) {
         break;
     }
     case EventType::Window_Resize: {
-        const WindowResizeEvent &e = static_cast<const WindowResizeEvent &>(event);
+        const WindowResizeEvent& e = static_cast<const WindowResizeEvent&>(event);
         LOGD("Window resized to %d x %d", e.resolution.x, e.resolution.y);
         if (e.resolution.x <= 0 || e.resolution.y <= 0) {
             break;
         }
-        auto &p_config = GetConfig();
+        auto& p_config = GetConfig();
         p_config->window.size.x = e.resolution.x;
         p_config->window.size.y = e.resolution.y;
         break;
@@ -189,19 +189,19 @@ const std::shared_ptr<Stats> Engine::GetStats() const {
     return p_stats_;
 }
 
-Camera *Engine::GetCamera() const {
+Camera* Engine::GetCamera() const {
     return p_SceneManager->GetCamera();
 }
 
-MaterialManager &Engine::GetMaterialManager() const {
+MaterialManager& Engine::GetMaterialManager() const {
     return *p_MaterialManager;
 }
 
-RenderSystem &Engine::GetRenderSystem() const {
+RenderSystem& Engine::GetRenderSystem() const {
     return *p_RenderSystem;
 }
 
-SceneManager &Engine::GetSceneManager() const {
+SceneManager& Engine::GetSceneManager() const {
     return *p_SceneManager;
 }
 } // namespace RetroRenderer

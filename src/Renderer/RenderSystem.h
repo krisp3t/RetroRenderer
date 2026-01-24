@@ -20,23 +20,23 @@ class RenderSystem {
 
     ~RenderSystem() = default;
 
-    static void CreateFramebufferTexture(GLuint &texId, int width, int height);
+    static void CreateFramebufferTexture(GLuint& texId, int width, int height);
 
-    bool Init(SDL_Window *window);
+    bool Init(SDL_Window* window);
 
-    void BeforeFrame(const Color &clearColor);
+    void BeforeFrame(const Color& clearColor);
 
-    [[nodiscard]] std::vector<int> &BuildRenderQueue(Scene &scene, const Camera &camera);
+    [[nodiscard]] std::vector<int>& BuildRenderQueue(Scene& scene, const Camera& camera);
 
-    GLuint Render(std::vector<int> &renderQueue, std::vector<Model> &models);
+    GLuint Render(std::vector<int>& renderQueue, std::vector<Model>& models);
 
-    void Resize(const glm::ivec2 &resolution);
+    void Resize(const glm::ivec2& resolution);
 
     void Destroy();
 
-    void OnLoadScene(const SceneLoadEvent &e);
+    void OnLoadScene(const SceneLoadEvent& e);
 
-    [[nodiscard]] GLuint CompileShaders(const std::string &vertexCode, const std::string &fragmentCode);
+    [[nodiscard]] GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode);
 
   private:
     std::unique_ptr<Scene> p_scene_ = nullptr;
@@ -46,7 +46,7 @@ class RenderSystem {
 #else
     std::unique_ptr<GLRenderer> p_GLRenderer_ = nullptr;
 #endif
-    IRenderer *p_activeRenderer_ = nullptr;
+    IRenderer* p_activeRenderer_ = nullptr;
 
     GLuint m_SWFramebufferTexture = 0;
     GLuint m_GLFramebufferTexture = 0;

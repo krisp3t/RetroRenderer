@@ -3,7 +3,7 @@
 
 namespace RetroRenderer {
 void Camera::UpdateViewMatrix() {
-    auto const &p_config = Engine::Get().GetConfig();
+    auto const& p_config = Engine::Get().GetConfig();
     m_AspectRatio =
         static_cast<float>(p_config->renderer.resolution.x) / static_cast<float>(p_config->renderer.resolution.y);
 

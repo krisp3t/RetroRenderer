@@ -18,29 +18,29 @@ class GLESRenderer : public IRenderer {
 
     void Destroy() override;
 
-    void SetActiveCamera(const Camera &camera) override;
+    void SetActiveCamera(const Camera& camera) override;
 
-    void DrawTriangularMesh(const Model *model) override;
+    void DrawTriangularMesh(const Model* model) override;
 
     void DrawSkybox() override;
 
-    void BeforeFrame(const Color &clearColor) override;
+    void BeforeFrame(const Color& clearColor) override;
 
     GLuint EndFrame() override;
 
     GLuint CreateShaderProgram();
-    GLuint CompileShaders(const std::string &vertexCode, const std::string &fragmentCode) override;
+    GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override;
 
   private:
     bool CreateFramebuffer(GLuint fbTex, int w, int h);
-    GLuint CompileShader(GLenum shaderType, const char *shaderSource);
-    void CheckShaderErrors(GLuint shader, const std::string &type);
+    GLuint CompileShader(GLenum shaderType, const char* shaderSource);
+    void CheckShaderErrors(GLuint shader, const std::string& type);
     void CreateFallbackTexture();
-    GLuint CreateCubemap(const std::string &path);
+    GLuint CreateCubemap(const std::string& path);
     GLuint CreateSkyboxVAO();
 
   private:
-    Camera *p_Camera = nullptr;
+    Camera* p_Camera = nullptr;
 
     GLuint p_FrameBufferTexture = 0;
     GLuint m_FrameBuffer = 0;

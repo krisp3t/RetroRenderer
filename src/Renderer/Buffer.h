@@ -6,7 +6,7 @@
 namespace RetroRenderer {
 template <typename T> struct Buffer {
     const size_t width, height, pitch;
-    T *data;
+    T* data;
 
     Buffer() : width(0), height(0), pitch(0) {
     }
@@ -19,11 +19,11 @@ template <typename T> struct Buffer {
         data = new T[w * h];
     }
 
-    T &operator()(size_t x, size_t y) {
+    T& operator()(size_t x, size_t y) {
         return data[y * pitch + x];
     }
 
-    const T &operator()(size_t x, size_t y) const {
+    const T& operator()(size_t x, size_t y) const {
         return data[y * pitch + x];
     }
 

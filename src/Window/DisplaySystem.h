@@ -28,7 +28,7 @@ class DisplaySystem {
 
     ~DisplaySystem() = default;
 
-    SDL_Window *GetWindow() const;
+    SDL_Window* GetWindow() const;
 
     bool Init();
 
@@ -45,7 +45,7 @@ class DisplaySystem {
     void ResetGlContext();
 
   private:
-    SDL_Window *m_window_ = nullptr;
+    SDL_Window* m_window_ = nullptr;
     SDL_GLContext m_glContext_ = nullptr;
     std::unique_ptr<ConfigPanel> m_configPanel_ = nullptr;
 };

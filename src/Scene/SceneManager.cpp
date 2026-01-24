@@ -14,7 +14,7 @@ void SceneManager::ResetScene() {
     p_Camera = nullptr;
 }
 
-bool SceneManager::LoadScene(const uint8_t *data, const size_t size) {
+bool SceneManager::LoadScene(const uint8_t* data, const size_t size) {
     ResetScene();
     p_Scene = std::make_shared<Scene>();
     p_Camera = std::make_unique<Camera>();
@@ -25,7 +25,7 @@ bool SceneManager::LoadScene(const uint8_t *data, const size_t size) {
     return true;
 }
 
-bool SceneManager::LoadScene(const std::string &path) {
+bool SceneManager::LoadScene(const std::string& path) {
     ResetScene();
     p_Scene = std::make_shared<Scene>();
     p_Camera = std::make_unique<Camera>();
@@ -94,7 +94,7 @@ void SceneManager::NewFrame() {
     p_Scene->FrustumCull(*p_Camera);
 }
 
-Camera *SceneManager::GetCamera() const {
+Camera* SceneManager::GetCamera() const {
     return p_Camera.get();
 }
 
@@ -128,7 +128,7 @@ void SceneManager::RenderUI() {
 }
 
 void SceneManager::RenderUIModelRecursive(int modelIndex) {
-    auto &model = p_Scene->m_Models[modelIndex];
+    auto& model = p_Scene->m_Models[modelIndex];
     constexpr ImGuiTreeNodeFlags nodeFlags =
         ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
     /*

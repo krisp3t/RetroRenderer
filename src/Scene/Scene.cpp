@@ -17,9 +17,9 @@
 #include "Vertex.h"
 
 namespace RetroRenderer {
-bool Scene::Load(const uint8_t *data, const size_t size) {
+bool Scene::Load(const uint8_t* data, const size_t size) {
     Assimp::Importer importer;
-    const aiScene *scene = nullptr;
+    const aiScene* scene = nullptr;
     scene = importer.ReadFileFromMemory(data, size, aiProcess_Triangulate | aiProcess_FlipUVs);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         LOGE("assimp: Failed to load scene: %s", importer.GetErrorString());
@@ -28,11 +28,11 @@ bool Scene::Load(const uint8_t *data, const size_t size) {
     return ProcessScene(scene);
 }
 
-bool Scene::Load(const std::string &path) {
+bool Scene::Load(const std::string& path) {
     Assimp::Importer importer;
-    const aiScene *scene = nullptr;
+    const aiScene* scene = nullptr;
 #ifdef __ANDROID__
-    AAsset *asset = AAssetManager_open(g_assetManager, path.c_str(), AASSET_MODE_BUFFER);
+    AAsset* asset = AAssetManager_open(g_assetManager, path.c_str(), AASSET_MODE_BUFFER);
     if (asset) {
         size_t fileSize = AAsset_getLength(asset);
         std::vector<uint8_t> buffer(fileSize);
@@ -51,7 +51,7 @@ bool Scene::Load(const std::string &path) {
     return ProcessScene(scene);
 }
 
-bool Scene::ProcessScene(const aiScene *scene) {
+bool Scene::ProcessScene(const aiScene* scene) {
     if (ProcessNode(scene->mRootNode, scene)) {
         // LOGI("Successfully processed scene: %s (%d meshes)", scene->mRootNode->mName.C_Str(), m_Meshes.size());
         LOGI("Successfully processed scene: %s", scene->mRootNode->mName.C_Str());
@@ -65,7 +65,7 @@ bool Scene::ProcessScene(const aiScene *scene) {
  * @param scene
  * @return true if successful
  */
-bool Scene::ProcessNode(aiNode *node, const aiScene *scene, int parentIndex) {
+bool Scene::ProcessNode(aiNode* node, const aiScene* scene, int parentIndex) {
     if (!node) {
         LOGE("assimp: Node is null");
         return false;
@@ -77,7 +77,7 @@ bool Scene::ProcessNode(aiNode *node, const aiScene *scene, int parentIndex) {
     newModel.Init(this, node->mName.C_Str(), node->mTransformation);
     // Process all meshes for this model
     for (size_t i = 0; i < node->mNumMeshes; i++) {
-        aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
+        aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
         if (mesh->mNumVertices > 0 && mesh->mNumFaces > 0) {
             ProcessMesh(mesh, scene, newModel.m_Meshes, node->mName);
             newModel.m_Meshes.back().Init();
@@ -103,16 +103,16 @@ bool Scene::ProcessNode(aiNode *node, const aiScene *scene, int parentIndex) {
  * @param scene
  * @return true if successful
  */
-bool Scene::ProcessNode(aiNode *node, const aiScene *scene) {
+bool Scene::ProcessNode(aiNode* node, const aiScene* scene) {
     return ProcessNode(node, scene, -1);
 }
 
-void Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene, std::vector<Mesh> &meshes, const aiString &modelName) {
+void Scene::ProcessMesh(aiMesh* mesh, const aiScene* scene, std::vector<Mesh>& meshes, const aiString& modelName) {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
     std::vector<Texture> textures;
 
-    aiMaterial *material;
+    aiMaterial* material;
     if (mesh->mMaterialIndex >= 0) {
         material = scene->mMaterials[mesh->mMaterialIndex];
     }
@@ -160,7 +160,7 @@ void Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene, std::vector<Mesh> &m
     }
 
     if (mesh->mMaterialIndex >= 0) {
-        aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
         LOGI("Processing material %s", material->GetName().C_Str());
         aiColor3D diffuseColor(0.f, 0.f, 0.f);
         material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
@@ -182,11 +182,11 @@ void Scene::ProcessMesh(aiMesh *mesh, const aiScene *scene, std::vector<Mesh> &m
     meshes.emplace_back(std::move(vertices), std::move(indices), std::move(textures));
 }
 
-std::vector<int> &Scene::GetVisibleModels() {
+std::vector<int>& Scene::GetVisibleModels() {
     return m_VisibleModels;
 }
 
-void Scene::FrustumCull(const Camera &camera) {
+void Scene::FrustumCull(const Camera& camera) {
     // TODO: actually implement frustum culling
     m_VisibleModels.clear();
     m_VisibleModels.reserve(m_Models.size());
@@ -195,7 +195,7 @@ void Scene::FrustumCull(const Camera &camera) {
     }
 }
 
-const glm::mat4 &Scene::GetModelWorldTransform(int index) const {
+const glm::mat4& Scene::GetModelWorldTransform(int index) const {
     assert(index >= 0 && index < m_Models.size() && "Invalid model index");
     return m_Models[index].GetWorldTransform();
 }

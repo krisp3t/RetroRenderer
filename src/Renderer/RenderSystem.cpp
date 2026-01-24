@@ -5,8 +5,8 @@
 #include <iostream>
 
 namespace RetroRenderer {
-bool RenderSystem::Init(SDL_Window *window) {
-    auto const &p_config = Engine::Get().GetConfig();
+bool RenderSystem::Init(SDL_Window* window) {
+    auto const& p_config = Engine::Get().GetConfig();
     p_SWRenderer_ = std::make_unique<SWRenderer>();
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
     p_GLRenderer_ = std::make_unique<GLESRenderer>();
@@ -15,7 +15,7 @@ bool RenderSystem::Init(SDL_Window *window) {
 #endif
 
     p_activeRenderer_ = p_GLRenderer_.get();
-    auto &fbResolution = p_config->renderer.resolution;
+    auto& fbResolution = p_config->renderer.resolution;
     assert(fbResolution.x > 0 && fbResolution.y > 0 && "Tried to initialize renderers with invalid resolution");
 
     CreateFramebufferTexture(m_SWFramebufferTexture, fbResolution.x, fbResolution.y);
@@ -33,7 +33,7 @@ bool RenderSystem::Init(SDL_Window *window) {
     return true;
 }
 
-void RenderSystem::CreateFramebufferTexture(GLuint &texId, int width, int height) {
+void RenderSystem::CreateFramebufferTexture(GLuint& texId, int width, int height) {
     glGenTextures(1, &texId);
     glBindTexture(GL_TEXTURE_2D, texId);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
@@ -43,8 +43,8 @@ void RenderSystem::CreateFramebufferTexture(GLuint &texId, int width, int height
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void RenderSystem::BeforeFrame(const Color &clearColor) {
-    auto &p_config = Engine::Get().GetConfig();
+void RenderSystem::BeforeFrame(const Color& clearColor) {
+    auto& p_config = Engine::Get().GetConfig();
     switch (p_config->renderer.selectedRenderer) {
     case Config::RendererType::SOFTWARE:
         p_activeRenderer_ = p_SWRenderer_.get();
@@ -61,14 +61,14 @@ void RenderSystem::BeforeFrame(const Color &clearColor) {
     p_activeRenderer_->BeforeFrame(clearColor);
 }
 
-std::vector<int> &RenderSystem::BuildRenderQueue(Scene &scene, const Camera &camera) {
+std::vector<int>& RenderSystem::BuildRenderQueue(Scene& scene, const Camera& camera) {
     p_activeRenderer_->SetActiveCamera(camera);
     return scene.GetVisibleModels(); // TODO: split into meshes?
 }
 
-GLuint RenderSystem::Render(std::vector<int> &renderQueue, std::vector<Model> &models) {
-    auto const &p_config = Engine::Get().GetConfig();
-    auto const &p_stats = Engine::Get().GetStats();
+GLuint RenderSystem::Render(std::vector<int>& renderQueue, std::vector<Model>& models) {
+    auto const& p_config = Engine::Get().GetConfig();
+    auto const& p_stats = Engine::Get().GetStats();
     assert(p_stats != nullptr && "Stats not initialized!");
     p_stats->Reset();
 
@@ -78,7 +78,7 @@ GLuint RenderSystem::Render(std::vector<int> &renderQueue, std::vector<Model> &m
 
     // LOGD("Render queue size: %d", renderQueue.size());
     for (int modelIx : renderQueue) {
-        const Model *model = &models[modelIx];
+        const Model* model = &models[modelIx];
         assert(model != nullptr && "Model is null");
         if (!model->GetMeshes().empty()) {
             p_activeRenderer_->DrawTriangularMesh(model);
@@ -87,17 +87,17 @@ GLuint RenderSystem::Render(std::vector<int> &renderQueue, std::vector<Model> &m
     if (p_activeRenderer_ == p_SWRenderer_.get()) {
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
         glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(buffer.width),
-                        static_cast<GLsizei>(buffer.height), GL_RGBA, GL_UNSIGNED_BYTE, buffer.data);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(buffer.width), static_cast<GLsizei>(buffer.height),
+                        GL_RGBA, GL_UNSIGNED_BYTE, buffer.data);
         glBindTexture(GL_TEXTURE_2D, 0);
         return m_SWFramebufferTexture;
     }
     return p_activeRenderer_->EndFrame();
 }
 
-void RenderSystem::Resize(const glm::ivec2 &resolution) {
+void RenderSystem::Resize(const glm::ivec2& resolution) {
     assert(resolution.x > 0 && resolution.y > 0 && "Tried to resize renderer with invalid resolution");
-    auto const &p_config = Engine::Get().GetConfig();
+    auto const& p_config = Engine::Get().GetConfig();
     p_config->renderer.resolution = resolution;
     CreateFramebufferTexture(m_SWFramebufferTexture, resolution.x, resolution.y);
     CreateFramebufferTexture(m_GLFramebufferTexture, resolution.x, resolution.y);
@@ -109,10 +109,10 @@ void RenderSystem::Resize(const glm::ivec2 &resolution) {
 void RenderSystem::Destroy() {
 }
 
-void RenderSystem::OnLoadScene(const SceneLoadEvent &e) {
+void RenderSystem::OnLoadScene(const SceneLoadEvent& e) {
 }
 
-GLuint RenderSystem::CompileShaders(const std::string &vertexCode, const std::string &fragmentCode) {
+GLuint RenderSystem::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
     return p_activeRenderer_->CompileShaders(vertexCode, fragmentCode);
 }
 } // namespace RetroRenderer

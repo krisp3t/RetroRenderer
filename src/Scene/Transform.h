@@ -13,12 +13,12 @@ struct Transform {
 
     bool m_IsDirty = true;
 
-    void SetPosition(const glm::vec3 &position);
-    void SetEulerRotation(const glm::vec3 &eulerRotation);
-    void SetQuaternionRotation(const glm::quat &quaternionRotation);
-    void SetScale(const glm::vec3 &scale);
+    void SetPosition(const glm::vec3& position);
+    void SetEulerRotation(const glm::vec3& eulerRotation);
+    void SetQuaternionRotation(const glm::quat& quaternionRotation);
+    void SetScale(const glm::vec3& scale);
 
-    glm::mat4 &GetModelMatrix() {
+    glm::mat4& GetModelMatrix() {
         if (m_IsDirty) {
             m_ModelMatrix = glm::mat4(1.0f);
             // TRS matrix

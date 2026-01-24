@@ -12,14 +12,14 @@ class SceneManager {
     SceneManager() = default;
     ~SceneManager();
     void ResetScene();
-    bool LoadScene(const uint8_t *data, const size_t size);
-    bool LoadScene(const std::string &path);
+    bool LoadScene(const uint8_t* data, const size_t size);
+    bool LoadScene(const std::string& path);
     bool ProcessInput(InputActionMask actions, unsigned int deltaTime);
     void Update(unsigned int deltaTime);
     void NewFrame();
     void RenderUI();
     [[nodiscard]] std::shared_ptr<Scene> GetScene() const;
-    [[nodiscard]] Camera *GetCamera() const;
+    [[nodiscard]] Camera* GetCamera() const;
 
   private:
     void RenderUIModelRecursive(int modelIndex);

@@ -5,9 +5,7 @@
 
 namespace RetroRenderer {
 bool SWRenderer::Init(int w, int h) {
-    auto fb = std::unique_ptr<Buffer<uint32_t>>(
-        new (std::nothrow) Buffer<uint32_t>(w, h)
-    );
+    auto fb = std::unique_ptr<Buffer<uint32_t>>(new (std::nothrow) Buffer<uint32_t>(w, h));
     if (!fb) {
         LOGE("Failed to create software framebuffer");
         return false;
@@ -18,9 +16,7 @@ bool SWRenderer::Init(int w, int h) {
 }
 
 bool SWRenderer::Resize(int w, int h) {
-    auto newBuffer = std::unique_ptr<Buffer<uint32_t>>(
-    new (std::nothrow) Buffer<uint32_t>(w, h)
-    );
+    auto newBuffer = std::unique_ptr<Buffer<uint32_t>>(new (std::nothrow) Buffer<uint32_t>(w, h));
     if (!newBuffer) {
         LOGE("Failed to resize software framebuffer");
         return false;
@@ -29,22 +25,22 @@ bool SWRenderer::Resize(int w, int h) {
     return true;
 }
 
-void SWRenderer::SetActiveCamera(const Camera &camera) {
-    p_Camera = const_cast<Camera *>(&camera);
+void SWRenderer::SetActiveCamera(const Camera& camera) {
+    p_Camera = const_cast<Camera*>(&camera);
 }
 
 /**
  * @brief Draw a model on the frame buffer. Must have triangulated meshes!
  * @param mesh
  */
-void SWRenderer::DrawTriangularMesh(const Model *model) {
+void SWRenderer::DrawTriangularMesh(const Model* model) {
     assert(p_Camera != nullptr && "No active camera set. Did you call SWRenderer::SetActiveCamera()?");
     assert(m_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
     assert(model != nullptr && "Tried to draw null model");
 
-    const glm::mat4 &modelMat = model->GetWorldTransform();
-    const glm::mat4 &viewMat = p_Camera->m_ViewMat;
-    const glm::mat4 &projMat = p_Camera->m_ProjMat;
+    const glm::mat4& modelMat = model->GetWorldTransform();
+    const glm::mat4& viewMat = p_Camera->m_ViewMat;
+    const glm::mat4& projMat = p_Camera->m_ProjMat;
     const glm::mat4 mv = viewMat * modelMat;
     const glm::mat4 mvp = projMat * mv;
     const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
@@ -59,33 +55,33 @@ void SWRenderer::DrawTriangularMesh(const Model *model) {
     LOGD("Normal matrix: %s", glm::to_string(n).c_str());
     */
 
-    for (const Mesh &mesh : model->m_Meshes) {
+    for (const Mesh& mesh : model->m_Meshes) {
         assert(mesh.m_Indices.size() % 3 == 0 && mesh.m_Indices.size() == mesh.m_numFaces * 3 &&
                "Mesh is not triangulated");
 
         for (unsigned int i = 0; i < mesh.m_numFaces; i++) {
             // Input Assembler
             unsigned int baseIndex = i * 3;
-            auto &v0 = mesh.m_Vertices[mesh.m_Indices[baseIndex]];
-            auto &v1 = mesh.m_Vertices[mesh.m_Indices[baseIndex + 1]];
-            auto &v2 = mesh.m_Vertices[mesh.m_Indices[baseIndex + 2]];
+            auto& v0 = mesh.m_Vertices[mesh.m_Indices[baseIndex]];
+            auto& v1 = mesh.m_Vertices[mesh.m_Indices[baseIndex + 1]];
+            auto& v2 = mesh.m_Vertices[mesh.m_Indices[baseIndex + 2]];
             std::array<Vertex, 3> vertices = {v0, v1, v2};
 
             // TODO: backface cull
 
             // Vertex Shader
-            for (auto &vertex : vertices) {
+            for (auto& vertex : vertices) {
                 vertex.position = mvp * vertex.position;
                 vertex.normal = glm::normalize(glm::vec3(n * glm::vec4(vertex.normal, 0.0f)));
             }
 
             // Perspective division
-            for (auto &vertex : vertices) {
+            for (auto& vertex : vertices) {
                 vertex.position /= vertex.position.w;
             }
 
             // Rasterizer
-            const auto &cfg = Engine::Get().GetConfig()->software.rasterizer;
+            const auto& cfg = Engine::Get().GetConfig()->software.rasterizer;
             m_Rasterizer->DrawTriangle(*m_FrameBuffer, vertices, cfg);
 
             // Stats
@@ -95,7 +91,7 @@ void SWRenderer::DrawTriangularMesh(const Model *model) {
     }
 }
 
-void SWRenderer::BeforeFrame(const Color &clearColor) {
+void SWRenderer::BeforeFrame(const Color& clearColor) {
     m_FrameBuffer->Clear(clearColor.ToRGBA());
 }
 
@@ -106,7 +102,7 @@ GLuint SWRenderer::EndFrame() {
 void SWRenderer::DrawSkybox() {
 }
 
-const Buffer<uint32_t> &SWRenderer::GetFrameBuffer() const {
+const Buffer<uint32_t>& SWRenderer::GetFrameBuffer() const {
     assert(m_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
     return *m_FrameBuffer;
 }

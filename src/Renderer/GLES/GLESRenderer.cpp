@@ -72,20 +72,20 @@ void GLESRenderer::Destroy() {
     // glDeleteRenderbuffers(1, &m_DepthBuffer);
 }
 
-void GLESRenderer::SetActiveCamera(const Camera &camera) {
-    p_Camera = const_cast<Camera *>(&camera);
+void GLESRenderer::SetActiveCamera(const Camera& camera) {
+    p_Camera = const_cast<Camera*>(&camera);
 }
 
-void GLESRenderer::DrawTriangularMesh(const Model *model) {
+void GLESRenderer::DrawTriangularMesh(const Model* model) {
     // TODO: Cache uniforms after shader compile?
-    MaterialManager::Material &mat = Engine::Get().GetMaterialManager().GetCurrentMaterial();
-    auto &config = Engine::Get().GetConfig();
+    MaterialManager::Material& mat = Engine::Get().GetMaterialManager().GetCurrentMaterial();
+    auto& config = Engine::Get().GetConfig();
     glUseProgram(mat.shaderProgram.id);
 
     const glm::vec3 lightPos = config->environment.lightPosition;
-    const glm::mat4 &modelMat = model->GetWorldTransform();
-    const glm::mat4 &viewMat = p_Camera->m_ViewMat;
-    const glm::mat4 &projMat = p_Camera->m_ProjMat;
+    const glm::mat4& modelMat = model->GetWorldTransform();
+    const glm::mat4& viewMat = p_Camera->m_ViewMat;
+    const glm::mat4& projMat = p_Camera->m_ProjMat;
 
     // Combined matrices
     glm::mat4 mv = viewMat * modelMat;
@@ -116,8 +116,8 @@ void GLESRenderer::DrawTriangularMesh(const Model *model) {
     glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
-    auto &meshes = model->GetMeshes();
-    for (const Mesh &mesh : meshes) {
+    auto& meshes = model->GetMeshes();
+    for (const Mesh& mesh : meshes) {
         // TODO: replace with per-mesh texture?
         if (!mat.texture.has_value() || mat.texture->GetID() == 0) {
             glActiveTexture(GL_TEXTURE0);
@@ -136,7 +136,7 @@ void GLESRenderer::DrawTriangularMesh(const Model *model) {
     glUseProgram(0);
 }
 
-void GLESRenderer::BeforeFrame(const Color &clearColor) {
+void GLESRenderer::BeforeFrame(const Color& clearColor) {
     auto c = clearColor.ToImVec4();
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
     glClearColor(c.x, c.y, c.z, c.w);
@@ -149,7 +149,7 @@ GLuint GLESRenderer::EndFrame() {
     return p_FrameBufferTexture;
 }
 
-void GLESRenderer::CheckShaderErrors(GLuint shader, const std::string &type) {
+void GLESRenderer::CheckShaderErrors(GLuint shader, const std::string& type) {
     GLint success;
     if (type == "PROGRAM") {
         glGetProgramiv(shader, GL_LINK_STATUS, &success);
@@ -172,10 +172,10 @@ void GLESRenderer::CheckShaderErrors(GLuint shader, const std::string &type) {
     }
 }
 
-GLuint GLESRenderer::CompileShader(GLenum shaderType, const char *shaderSource) {
+GLuint GLESRenderer::CompileShader(GLenum shaderType, const char* shaderSource) {
     constexpr std::string_view kShaderPrefix = "#version 300 es\nprecision highp float;\n";
     std::string appendStr = std::string(kShaderPrefix) + shaderSource;
-    const char *srcPtr = appendStr.c_str();
+    const char* srcPtr = appendStr.c_str();
 
     GLuint shader = glCreateShader(shaderType);
     if (shader == 0) {
@@ -200,7 +200,7 @@ GLuint GLESRenderer::CompileShader(GLenum shaderType, const char *shaderSource) 
     return shader;
 }
 
-GLuint GLESRenderer::CompileShaders(const std::string &vertexCode, const std::string &fragmentCode) {
+GLuint GLESRenderer::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
     GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexCode.c_str());
     if (vertexShader == 0) {
         return 0;
@@ -264,8 +264,8 @@ void GLESRenderer::CreateFallbackTexture() {
  * Create cubemap in horizontal strip format.
  * @param path Path of cubemap.
  */
-GLuint GLESRenderer::CreateCubemap(const std::string &path) {
-    SDL_Surface *surface = IMG_Load(path.c_str());
+GLuint GLESRenderer::CreateCubemap(const std::string& path) {
+    SDL_Surface* surface = IMG_Load(path.c_str());
     if (!surface) {
         LOGW("Could not load cubemap %s!", path.c_str());
         return 0;
@@ -286,7 +286,7 @@ GLuint GLESRenderer::CreateCubemap(const std::string &path) {
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTex);
 
     int bpp = surface->format->BytesPerPixel;
-    Uint8 *pixels = (Uint8 *)surface->pixels;
+    Uint8* pixels = (Uint8*)surface->pixels;
 
     struct Offset {
         int x, y;
@@ -304,7 +304,7 @@ GLuint GLESRenderer::CreateCubemap(const std::string &path) {
         int ox = faceOffsets[face].x * faceSize;
         int oy = faceOffsets[face].y * faceSize;
 
-        Uint8 *facePixels = new Uint8[faceSize * faceSize * bpp];
+        Uint8* facePixels = new Uint8[faceSize * faceSize * bpp];
 
         for (int row = 0; row < faceSize; ++row) {
             memcpy(facePixels + row * faceSize * bpp, pixels + (oy + row) * fullWidth * bpp + ox * bpp, faceSize * bpp);
@@ -383,7 +383,7 @@ GLuint GLESRenderer::CreateSkyboxVAO() {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(kSkyboxVerts), kSkyboxVerts, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glBindVertexArray(0);
     return vao;
 }

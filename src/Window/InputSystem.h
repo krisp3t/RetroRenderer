@@ -16,8 +16,8 @@ class InputSystem {
     void Destroy();
 
   private:
-    void HandleKeyDown(SDL_Keycode key, Config &config);
-    void HandleMouseMotion(const SDL_MouseMotionEvent &event);
+    void HandleKeyDown(SDL_Keycode key, Config& config);
+    void HandleMouseMotion(const SDL_MouseMotionEvent& event);
 
     InputActionMask m_inputState_ = 0;
     // bool m_isDragging_ = false;
