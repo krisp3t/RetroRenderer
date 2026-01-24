@@ -10,6 +10,3 @@
 [submodule "assets/shader-examples"]
 	path = assets/shader-examples
 	url = https://github.com/krisp3t/shader-examples.git
-[submodule "assets/tests-visual"]
-	path = assets/tests-visual
-	url = https://github.com/krisp3t/shader-examples.git
