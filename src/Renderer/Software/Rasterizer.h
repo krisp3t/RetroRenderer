@@ -25,6 +25,11 @@ public:
     static void DrawPixel(Buffer<Pixel>& framebuffer, float x, float y, Pixel color);
 
 private:
+    static void DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
+                                        Buffer<float>& depthBuffer,
+                                        std::array<glm::vec3, 3>& viewportVertices,
+                                        Config& cfg,
+                                        Pixel fillColor);
     // Line drawing algos
     static void DrawLineDDA(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, Pixel color);
     static void DrawLineBresenham(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, Pixel color);

@@ -137,11 +137,94 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
         DrawWireframeTriangle(framebuffer, viewportVertices);
         break;
     case Config::RasterizationPolygonMode::FILL:
-        DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
+        switch (cfg.software.rasterizer.fillMode) {
+        case Config::RasterizationFillMode::BARYCENTRIC:
+            DrawBarycentricTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
+            break;
+        default:
+            DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
+            break;
+        }
         break;
     default:
         LOGW("Invalid polygon mode");
         break;
+    }
+}
+
+static float EdgeFunction(const glm::vec2& a, const glm::vec2& b, const glm::vec2& p) {
+    return (p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x);
+}
+
+static bool IsTopLeftEdge(const glm::vec2& a, const glm::vec2& b) {
+    const float dy = b.y - a.y;
+    const float dx = b.x - a.x;
+    return (dy < 0.0f) || (dy == 0.0f && dx > 0.0f);
+}
+
+void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
+                                         Buffer<float>& depthBuffer,
+                                         std::array<glm::vec3, 3>& viewportVertices,
+                                         Config& cfg,
+                                         Pixel fillColor) {
+    glm::vec2 v0 = {viewportVertices[0].x, viewportVertices[0].y};
+    glm::vec2 v1 = {viewportVertices[1].x, viewportVertices[1].y};
+    glm::vec2 v2 = {viewportVertices[2].x, viewportVertices[2].y};
+
+    float area = EdgeFunction(v0, v1, v2);
+    if (area == 0.0f) {
+        return;
+    }
+    if (area < 0.0f) {
+        std::swap(v1, v2);
+        std::swap(viewportVertices[1], viewportVertices[2]);
+        area = -area;
+    }
+
+    const bool rasterClip = cfg.cull.rasterClip;
+    int minX = static_cast<int>(std::floor(std::min({v0.x, v1.x, v2.x}) - 0.5f));
+    int minY = static_cast<int>(std::floor(std::min({v0.y, v1.y, v2.y}) - 0.5f));
+    int maxX = static_cast<int>(std::ceil(std::max({v0.x, v1.x, v2.x}) - 0.5f));
+    int maxY = static_cast<int>(std::ceil(std::max({v0.y, v1.y, v2.y}) - 0.5f));
+    if (rasterClip) {
+        minX = std::max(0, minX);
+        minY = std::max(0, minY);
+        maxX = std::min(maxX, static_cast<int>(framebuffer.width - 1));
+        maxY = std::min(maxY, static_cast<int>(framebuffer.height - 1));
+    }
+
+    const bool e0TopLeft = IsTopLeftEdge(v1, v2);
+    const bool e1TopLeft = IsTopLeftEdge(v2, v0);
+    const bool e2TopLeft = IsTopLeftEdge(v0, v1);
+    const float invArea = 1.0f / area;
+
+    for (int y = minY; y <= maxY; y++) {
+        for (int x = minX; x <= maxX; x++) {
+            const glm::vec2 p = {static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f};
+            float w0 = EdgeFunction(v1, v2, p);
+            float w1 = EdgeFunction(v2, v0, p);
+            float w2 = EdgeFunction(v0, v1, p);
+
+            const bool inside =
+                (w0 > 0.0f || (w0 == 0.0f && e0TopLeft)) &&
+                (w1 > 0.0f || (w1 == 0.0f && e1TopLeft)) &&
+                (w2 > 0.0f || (w2 == 0.0f && e2TopLeft));
+            if (!inside) {
+                continue;
+            }
+
+            const float b0 = w0 * invArea;
+            const float b1 = w1 * invArea;
+            const float b2 = w2 * invArea;
+            const float z = viewportVertices[0].z * b0 + viewportVertices[1].z * b1 + viewportVertices[2].z * b2;
+
+            if (!cfg.cull.depthTest || z < depthBuffer.data[y * depthBuffer.width + x]) {
+                if (cfg.cull.depthTest) {
+                    depthBuffer.data[y * depthBuffer.width + x] = z;
+                }
+                DrawPixel(framebuffer, x, y, fillColor);
+            }
+        }
     }
 }
 
