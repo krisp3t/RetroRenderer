@@ -2,8 +2,70 @@
 #include "../../Engine.h"
 #include <KrisLogger/Logger.h>
 #include <glm/gtx/string_cast.hpp>
+#include <vector>
 
 namespace RetroRenderer {
+namespace {
+struct ClipPlane {
+    glm::vec3 normal;
+    float d;
+};
+
+float PlaneDistance(const ClipPlane& plane, const Vertex& v) {
+    return glm::dot(plane.normal, glm::vec3(v.position)) + plane.d;
+}
+
+Vertex LerpVertex(const Vertex& a, const Vertex& b, float t) {
+    Vertex out;
+    out.position = glm::mix(a.position, b.position, t);
+    out.normal = glm::normalize(glm::mix(a.normal, b.normal, t));
+    out.texCoords = glm::mix(a.texCoords, b.texCoords, t);
+    out.color = glm::mix(a.color, b.color, t);
+    return out;
+}
+
+// TODO: Geometric clipping is in NDC (not homogeneous clip space); good for now but edge cases near w=0 will still be imperfect.
+std::vector<Vertex> ClipPolygonNdc(const std::vector<Vertex>& input) {
+    static const ClipPlane kPlanes[] = {
+        {{1.0f, 0.0f, 0.0f}, 1.0f}, // x >= -1
+        {{-1.0f, 0.0f, 0.0f}, 1.0f}, // x <= 1
+        {{0.0f, 1.0f, 0.0f}, 1.0f}, // y >= -1
+        {{0.0f, -1.0f, 0.0f}, 1.0f}, // y <= 1
+        {{0.0f, 0.0f, 1.0f}, 1.0f}, // z >= -1
+        {{0.0f, 0.0f, -1.0f}, 1.0f}, // z <= 1
+    };
+
+    std::vector<Vertex> poly = input;
+    std::vector<Vertex> output;
+    for (const auto& plane : kPlanes) {
+        if (poly.empty()) {
+            break;
+        }
+        output.clear();
+        Vertex prev = poly.back();
+        float prevDist = PlaneDistance(plane, prev);
+        bool prevInside = prevDist >= 0.0f;
+
+        for (const auto& curr : poly) {
+            float currDist = PlaneDistance(plane, curr);
+            bool currInside = currDist >= 0.0f;
+
+            if (currInside != prevInside) {
+                float t = prevDist / (prevDist - currDist);
+                output.push_back(LerpVertex(prev, curr, t));
+            }
+            if (currInside) {
+                output.push_back(curr);
+            }
+            prev = curr;
+            prevDist = currDist;
+            prevInside = currInside;
+        }
+        poly = output;
+    }
+    return poly;
+}
+} // namespace
 bool SWRenderer::Init(int w, int h) {
     auto fb = std::unique_ptr<Buffer<Pixel>>(new(std::nothrow) Buffer<Pixel>(w, h));
     if (!fb) {
@@ -95,7 +157,19 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
 
             // Rasterizer
             const auto& cfg = Engine::Get().GetConfig();
-            Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, *cfg, lit.ToPixel());
+            if (cfg->cull.geometricClip) {
+                std::vector<Vertex> poly = {vertices[0], vertices[1], vertices[2]};
+                std::vector<Vertex> clipped = ClipPolygonNdc(poly);
+                if (clipped.size() < 3) {
+                    continue;
+                }
+                for (size_t t = 1; t + 1 < clipped.size(); t++) {
+                    std::array<Vertex, 3> tri = {clipped[0], clipped[t], clipped[t + 1]};
+                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, tri, *cfg, lit.ToPixel());
+                }
+            } else {
+                Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, *cfg, lit.ToPixel());
+            }
 
             // Stats
             // p_stats_->renderedVerts += mesh->m_numVertices;

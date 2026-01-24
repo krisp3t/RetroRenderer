@@ -62,6 +62,7 @@ struct Config {
         bool depthTest = true;
         bool rasterClip = true;
         bool geometricClip = true;
+        bool frustumCull = true;
     };
 
     // Rasterizer

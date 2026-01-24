@@ -13,18 +13,25 @@ glm::vec2 Rasterizer::NDCToViewport(const glm::vec2& v, size_t width, size_t hei
 }
 
 void Rasterizer::DrawHLine(Buffer<Pixel>& framebuffer, int x0, int x1, int y, Pixel color) {
-    assert(y >= 0 && x0 >= 0 && x1 >= 0);
-    assert(framebuffer.height > static_cast<size_t>(y) && "Y out of bounds");
+    const bool rasterClip = Engine::Get().GetConfig()->cull.rasterClip;
+    if (rasterClip) {
+        if (y < 0 || x0 < 0 || x1 < 0 || static_cast<size_t>(y) >= framebuffer.height) {
+            return;
+        }
+    }
 
     if (x0 > x1)
         std::swap(x0, x1);
+    if (rasterClip) {
+        x0 = std::max(0, x0);
+        x1 = std::min(static_cast<int>(framebuffer.width - 1), x1);
+    }
     int startIndex = y * framebuffer.width + x0;
     int length = x1 - x0 + 1;
 
-    assert(static_cast<size_t>(x0) < framebuffer.width && "X0 out of bounds");
-    assert(static_cast<size_t>(x1) < framebuffer.width && "X1 out of bounds");
-    assert(startIndex >= 0 && static_cast<size_t>(startIndex) < framebuffer.GetSize() && "Start index out of bounds");
-    assert(static_cast<size_t>(startIndex + length) <= framebuffer.GetSize() && "End index out of bounds");
+    if (rasterClip && length <= 0) {
+        return;
+    }
 
     std::fill_n(&framebuffer.data[startIndex], length, color);
 }
@@ -56,8 +63,11 @@ void Rasterizer::DrawLineDDA(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2
     float x = p0.x;
     float y = p0.y;
     for (int i = 0; i <= steps; i++) {
-        if (x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height)
-            break;
+        if (Engine::Get().GetConfig()->cull.rasterClip) {
+            if (x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height) {
+                break;
+            }
+        }
         DrawPixel(framebuffer, x, y, color);
         x += xInc;
         y += yInc;
@@ -257,9 +267,13 @@ void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer,
     double invslopez2 = (v2.z - v0.z) / (v2.y - v0.y);
 
     // Start/end scanlines using top-left rule (center sampling, right/bottom exclusive).
-    const int yStart = std::max(0, static_cast<int>(std::ceil(v0.y - 0.5f)));
-    const int yEnd =
-        std::min(static_cast<int>(std::ceil(v2.y - 0.5f)) - 1, static_cast<int>(framebuffer.height - 1));
+    const bool rasterClip = cfg.cull.rasterClip;
+    int yStart = static_cast<int>(std::ceil(v0.y - 0.5f));
+    int yEnd = static_cast<int>(std::ceil(v2.y - 0.5f)) - 1;
+    if (rasterClip) {
+        yStart = std::max(0, yStart);
+        yEnd = std::min(yEnd, static_cast<int>(framebuffer.height - 1));
+    }
     // Initialize edge intersections at the first covered pixel center.
     const float yStartCenter = static_cast<float>(yStart) + 0.5f;
     float currentX1 = v0.x + static_cast<float>(invslope1) * (yStartCenter - v0.y);
@@ -275,9 +289,12 @@ void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer,
         const float maxX = std::max(currentX1, currentX2);
         const float minZ = (currentX1 <= currentX2) ? currentZ1 : currentZ2;
         const float maxZ = (currentX1 <= currentX2) ? currentZ2 : currentZ1;
-        const int xStart = std::max(0, static_cast<int>(std::ceil(minX - 0.5f)));
-        const int xEnd =
-            std::min(static_cast<int>(std::ceil(maxX - 0.5f)) - 1, static_cast<int>(framebuffer.width - 1));
+        int xStart = static_cast<int>(std::ceil(minX - 0.5f));
+        int xEnd = static_cast<int>(std::ceil(maxX - 0.5f)) - 1;
+        if (rasterClip) {
+            xStart = std::max(0, xStart);
+            xEnd = std::min(xEnd, static_cast<int>(framebuffer.width - 1));
+        }
 
         const float denom = (xEnd - xStart) != 0 ? 1.0f / static_cast<float>(xEnd - xStart) : 0.0f;
         for (int x = xStart; x <= xEnd; x++) {
@@ -316,9 +333,13 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
     double invslopez2 = (v2.z - v1.z) / (v2.y - v1.y);
 
     // Start/end scanlines using top-left rule (center sampling, right/bottom exclusive).
-    const int yStart =
-        std::min(static_cast<int>(std::ceil(v2.y - 0.5f)) - 1, static_cast<int>(framebuffer.height - 1));
-    const int yEnd = std::max(0, static_cast<int>(std::ceil(v0.y - 0.5f)));
+    const bool rasterClip = cfg.cull.rasterClip;
+    int yStart = static_cast<int>(std::ceil(v2.y - 0.5f)) - 1;
+    int yEnd = static_cast<int>(std::ceil(v0.y - 0.5f));
+    if (rasterClip) {
+        yStart = std::min(yStart, static_cast<int>(framebuffer.height - 1));
+        yEnd = std::max(0, yEnd);
+    }
     // Initialize edge intersections at the first covered pixel center.
     const float yStartCenter = static_cast<float>(yStart) + 0.5f;
     float currentX1 = v2.x + static_cast<float>(invslope1) * (yStartCenter - v2.y);
@@ -334,9 +355,12 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
         const float maxX = std::max(currentX1, currentX2);
         const float minZ = (currentX1 <= currentX2) ? currentZ1 : currentZ2;
         const float maxZ = (currentX1 <= currentX2) ? currentZ2 : currentZ1;
-        const int xStart = std::max(0, static_cast<int>(std::ceil(minX - 0.5f)));
-        const int xEnd =
-            std::min(static_cast<int>(std::ceil(maxX - 0.5f)) - 1, static_cast<int>(framebuffer.width - 1));
+        int xStart = static_cast<int>(std::ceil(minX - 0.5f));
+        int xEnd = static_cast<int>(std::ceil(maxX - 0.5f)) - 1;
+        if (rasterClip) {
+            xStart = std::max(0, xStart);
+            xEnd = std::min(xEnd, static_cast<int>(framebuffer.width - 1));
+        }
 
         const float denom = (xEnd - xStart) != 0 ? 1.0f / static_cast<float>(xEnd - xStart) : 0.0f;
         for (int x = xStart; x <= xEnd; x++) {
@@ -357,8 +381,11 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
 }
 
 void Rasterizer::DrawPixel(Buffer<Pixel>& framebuffer, float x, float y, Pixel color) {
-    if (x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height)
-        return;
+    if (Engine::Get().GetConfig()->cull.rasterClip) {
+        if (x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height) {
+            return;
+        }
+    }
     framebuffer.Set(static_cast<int>(x), static_cast<int>(y), color);
 }
 } // namespace RetroRenderer

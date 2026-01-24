@@ -10,6 +10,7 @@
 
 #include "Scene.h"
 #include <KrisLogger/Logger.h>
+#include "../Engine.h"
 
 #include <filesystem>
 #include <format>
@@ -186,11 +187,33 @@ std::vector<int>& Scene::GetVisibleModels() {
     return m_VisibleModels;
 }
 
+// TODO: current implementation uses the model origin only (no bounds)
+// TODO: mesh AABB?
 void Scene::FrustumCull(const Camera& camera) {
-    // TODO: actually implement frustum culling
     m_VisibleModels.clear();
     m_VisibleModels.reserve(m_Models.size());
+
+    const auto& cfg = Engine::Get().GetConfig()->cull;
+    if (!cfg.frustumCull) {
+        for (size_t i = 0; i < m_Models.size(); i++) {
+            m_VisibleModels.push_back(i);
+        }
+        return;
+    }
+
+    const glm::mat4 vp = camera.m_ProjMat * camera.m_ViewMat;
     for (size_t i = 0; i < m_Models.size(); i++) {
+        const glm::mat4 modelMat = m_Models[i].GetWorldTransform();
+        const glm::vec4 clipPos = vp * modelMat * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        if (clipPos.w == 0.0f) {
+            continue;
+        }
+        const float w = clipPos.w;
+        if (clipPos.x < -w || clipPos.x > w ||
+            clipPos.y < -w || clipPos.y > w ||
+            clipPos.z < -w || clipPos.z > w) {
+            continue;
+        }
         m_VisibleModels.push_back(i);
     }
 }

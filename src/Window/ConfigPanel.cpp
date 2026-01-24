@@ -653,6 +653,7 @@ void ConfigPanel::DisplayCullSettings() {
                        "Disabling clipping will produce graphical errors, assert fails and undefined behavior.");
     ImGui::Checkbox("Raster clip", &c.rasterClip);
     ImGui::Checkbox("Geometric clip", &c.geometricClip);
+    ImGui::Checkbox("Frustum cull", &c.frustumCull);
 }
 
 void ConfigPanel::DisplayEnvironmentSettings() {
