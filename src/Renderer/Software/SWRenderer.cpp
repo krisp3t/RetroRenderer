@@ -5,7 +5,7 @@
 
 namespace RetroRenderer {
 bool SWRenderer::Init(int w, int h) {
-    auto fb = std::unique_ptr<Buffer<uint32_t>>(new (std::nothrow) Buffer<uint32_t>(w, h));
+    auto fb = std::unique_ptr<Buffer<uint32_t>>(new(std::nothrow) Buffer<uint32_t>(w, h));
     if (!fb) {
         LOGE("Failed to create software framebuffer");
         return false;
@@ -16,7 +16,7 @@ bool SWRenderer::Init(int w, int h) {
 }
 
 bool SWRenderer::Resize(int w, int h) {
-    auto newBuffer = std::unique_ptr<Buffer<uint32_t>>(new (std::nothrow) Buffer<uint32_t>(w, h));
+    auto newBuffer = std::unique_ptr<Buffer<uint32_t>>(new(std::nothrow) Buffer<uint32_t>(w, h));
     if (!newBuffer) {
         LOGE("Failed to resize software framebuffer");
         return false;
@@ -30,7 +30,7 @@ void SWRenderer::SetActiveCamera(const Camera& camera) {
 }
 
 /**
- * @brief Draw a model on the frame buffer. Must have triangulated meshes!
+ * @brief Draw a model on the framebuffer. Must have triangulated meshes!
  * @param mesh
  */
 void SWRenderer::DrawTriangularMesh(const Model* model) {
@@ -57,7 +57,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
 
     for (const Mesh& mesh : model->m_Meshes) {
         assert(mesh.m_Indices.size() % 3 == 0 && mesh.m_Indices.size() == mesh.m_numFaces * 3 &&
-               "Mesh is not triangulated");
+            "Mesh is not triangulated");
 
         for (unsigned int i = 0; i < mesh.m_numFaces; i++) {
             // Input Assembler

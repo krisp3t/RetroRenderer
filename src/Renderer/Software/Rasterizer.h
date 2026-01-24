@@ -9,11 +9,11 @@
 namespace RetroRenderer {
 
 class Rasterizer {
-  public:
+public:
     Rasterizer() = default;
     ~Rasterizer() = default;
     // TODO: replace uint32 with color struct
-    static glm::vec2 NDCToViewport(const glm::vec2& v, int width, int height);
+    static glm::vec2 NDCToViewport(const glm::vec2& v, size_t width, size_t height);
     static void DrawTriangle(Buffer<Uint32>& framebuffer, std::array<Vertex, 3>& vertices,
                              const Config::SoftwareRasterizerSettings& cfg);
     static void DrawQuad(Buffer<Uint32>& framebuffer, std::array<Vertex, 3>& vertices);
@@ -21,7 +21,7 @@ class Rasterizer {
     static void DrawHLine(Buffer<Uint32>& framebuffer, int x0, int x1, int y, Uint32 color);
     static void DrawPixel(Buffer<Uint32>& framebuffer, float x, float y, Uint32 color);
 
-  private:
+private:
     // Line drawing algos
     static void DrawLineDDA(Buffer<Uint32>& framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color);
     static void DrawLineBresenham(Buffer<Uint32>& framebuffer, glm::vec2 p0, glm::vec2 p1, Uint32 color);

@@ -49,8 +49,10 @@ struct Color {
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
     [[nodiscard]] uint32_t ToRGBA() const {
-        return (static_cast<uint32_t>(r) << 24) | (static_cast<uint32_t>(g) << 16) | (static_cast<uint32_t>(b) << 8) |
-               static_cast<uint32_t>(a);
+        return static_cast<uint32_t>(r) |
+               (static_cast<uint32_t>(g) << 8) |
+               (static_cast<uint32_t>(b) << 16) |
+               (static_cast<uint32_t>(a) << 24);
     }
     [[nodiscard]] ImVec4 ToImVec4() const {
         return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);

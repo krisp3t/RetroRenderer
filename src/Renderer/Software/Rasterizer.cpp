@@ -6,7 +6,7 @@
 // TODO: possible parallel rasterizing?
 
 namespace RetroRenderer {
-glm::vec2 Rasterizer::NDCToViewport(const glm::vec2& v, int width, int height) {
+glm::vec2 Rasterizer::NDCToViewport(const glm::vec2& v, size_t width, size_t height) {
     return {static_cast<int>((v.x + 1.0f) * 0.5f * width + 0.5f),
             static_cast<int>((1.0f - v.y) * 0.5f * height + 0.5f)};
 }
