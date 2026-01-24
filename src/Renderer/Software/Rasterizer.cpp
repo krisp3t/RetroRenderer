@@ -237,12 +237,14 @@ void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer, glm::vec2& v0, gl
     float currentX1 = v0.x;
     float currentX2 = v0.x;
 
-    for (int y = yStart; y < yEnd && currentX1 <= currentX2; y++) {
+    for (int y = yStart; y < yEnd; y++) {
         // TODO: add raster clip toggle
 
         // Raster clipping
-        const int xStart = std::max(0, static_cast<int>(currentX1));
-        const int xEnd = std::min(static_cast<int>(currentX2), static_cast<int>(framebuffer.width - 1));
+        const float minX = std::min(currentX1, currentX2);
+        const float maxX = std::max(currentX1, currentX2);
+        const int xStart = std::max(0, static_cast<int>(minX));
+        const int xEnd = std::min(static_cast<int>(maxX), static_cast<int>(framebuffer.width - 1));
 
         for (int x = xStart; x <= xEnd; x++) {
             // TODO: depth test
@@ -263,19 +265,21 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer, glm::vec2& v0, glm::
     double invslope2 = (v2.x - v1.x) / (v2.y - v1.y);
 
     // Start and end scanlines
-    const int yStart = std::min(static_cast<int>(ceil(v0.y - 0.5f)), static_cast<int>(framebuffer.height - 1));
-    const int yEnd = std::max(0, static_cast<int>(ceil(v2.y - 0.5f)));
+    const int yStart = std::min(static_cast<int>(ceil(v2.y - 0.5f)), static_cast<int>(framebuffer.height - 1));
+    const int yEnd = std::max(0, static_cast<int>(ceil(v0.y - 0.5f)));
     const Pixel color{255, 255, 255, 255};
 
     float currentX1 = v2.x;
     float currentX2 = v2.x;
 
-    for (int y = yStart; y > yEnd && currentX1 <= currentX2; y--) {
+    for (int y = yStart; y > yEnd; y--) {
         // TODO: add raster clip toggle
 
         // Raster clipping
-        const int xStart = std::max(0, static_cast<int>(currentX1));
-        const int xEnd = std::min(static_cast<int>(currentX2), static_cast<int>(framebuffer.width - 1));
+        const float minX = std::min(currentX1, currentX2);
+        const float maxX = std::max(currentX1, currentX2);
+        const int xStart = std::max(0, static_cast<int>(minX));
+        const int xEnd = std::min(static_cast<int>(maxX), static_cast<int>(framebuffer.width - 1));
 
         for (int x = xStart; x <= xEnd; x++) {
             // TODO: depth test
