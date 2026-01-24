@@ -91,12 +91,19 @@ void Rasterizer::DrawLineBresenham(Buffer<Pixel>& fb, glm::vec2 p0, glm::vec2 p1
     }
 }
 
-void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>& vertices, Config& cfg) {
+void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
+                              Buffer<float>& depthBuffer,
+                              std::array<Vertex, 3>& vertices,
+                              Config& cfg,
+                              Pixel fillColor) {
 
-    // Convert vertices to viewport space
-    std::array<glm::vec2, 3> viewportVertices{};
+    // Convert vertices to viewport space.
+    std::array<glm::vec3, 3> viewportVertices{};
     for (int i = 0; i < 3; i++) {
-        viewportVertices[i] = NDCToViewport(vertices[i].position, framebuffer.width, framebuffer.height);
+        const glm::vec2 viewportPos = NDCToViewport(vertices[i].position, framebuffer.width, framebuffer.height);
+        // Map NDC z [-1, 1] into depth [0, 1].
+        const float depth = vertices[i].position.z * 0.5f + 0.5f;
+        viewportVertices[i] = glm::vec3(viewportPos.x, viewportPos.y, depth);
     }
 
     // Backface cull in screen space (front face = clockwise, D3D-style).
@@ -120,7 +127,7 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>&
         DrawWireframeTriangle(framebuffer, viewportVertices);
         break;
     case Config::RasterizationPolygonMode::FILL:
-        DrawFlatTriangle(framebuffer, viewportVertices);
+        DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
         break;
     default:
         LOGW("Invalid polygon mode");
@@ -128,18 +135,18 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>&
     }
 }
 
-void Rasterizer::DrawPointTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec2, 3>& viewportVertices) {
+void Rasterizer::DrawPointTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec3, 3>& viewportVertices) {
     const Pixel white{255, 255, 255, 255};
     DrawPixel(framebuffer, viewportVertices[0].x, viewportVertices[0].y, white);
     DrawPixel(framebuffer, viewportVertices[1].x, viewportVertices[1].y, white);
     DrawPixel(framebuffer, viewportVertices[2].x, viewportVertices[2].y, white);
 }
 
-void Rasterizer::DrawWireframeTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec2, 3>& verts) {
+void Rasterizer::DrawWireframeTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec3, 3>& verts) {
     // TODO: Add color selector
-    DrawLine(framebuffer, verts[0], verts[1], Pixel{255, 0, 0, 255});
-    DrawLine(framebuffer, verts[1], verts[2], Pixel{0, 255, 0, 255});
-    DrawLine(framebuffer, verts[2], verts[0], Pixel{0, 0, 255, 255});
+    DrawLine(framebuffer, glm::vec2(verts[0].x, verts[0].y), glm::vec2(verts[1].x, verts[1].y), Pixel{255, 0, 0, 255});
+    DrawLine(framebuffer, glm::vec2(verts[1].x, verts[1].y), glm::vec2(verts[2].x, verts[2].y), Pixel{0, 255, 0, 255});
+    DrawLine(framebuffer, glm::vec2(verts[2].x, verts[2].y), glm::vec2(verts[0].x, verts[0].y), Pixel{0, 0, 255, 255});
 }
 
 /**
@@ -168,14 +175,14 @@ bool Rasterizer::PixelCullTriangle(const glm::vec2& v0, const glm::vec2& v1, con
 /**
  * @brief Check if the triangle is degenerate (zero area)
  */
-bool Rasterizer::IsTriangleDegenerate(std::array<glm::vec2, 3>& vertices) {
+bool Rasterizer::IsTriangleDegenerate(std::array<glm::vec3, 3>& vertices) {
     // Cross product is zero exactly when:
     // 1. Two vectors are parallel/anti-parallel (linearly dependent)
     // 2. One of the vectors is zero
-    return glm::cross(glm::vec3(vertices[1] - vertices[0], 0.0f), glm::vec3(vertices[2] - vertices[0], 0.0f)).z == 0.0f;
+    return glm::cross(glm::vec3(vertices[1] - vertices[0]), glm::vec3(vertices[2] - vertices[0])).z == 0.0f;
 }
 
-bool Rasterizer::IsBackface(std::array<glm::vec2, 3>& vertices) {
+bool Rasterizer::IsBackface(std::array<glm::vec3, 3>& vertices) {
     const glm::vec2& v0 = vertices[0];
     const glm::vec2& v1 = vertices[1];
     const glm::vec2& v2 = vertices[2];
@@ -183,7 +190,11 @@ bool Rasterizer::IsBackface(std::array<glm::vec2, 3>& vertices) {
     return area <= 0.0f;
 }
 
-void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec2, 3>& viewportVertices) {
+void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer,
+                                  Buffer<float>& depthBuffer,
+                                  std::array<glm::vec3, 3>& viewportVertices,
+                                  Config& cfg,
+                                  Pixel fillColor) {
     auto& v0 = viewportVertices[0];
     auto& v1 = viewportVertices[1];
     auto& v2 = viewportVertices[2];
@@ -196,60 +207,65 @@ void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer, std::array<glm::ve
     if (v1.y > v2.y)
         std::swap(v1, v2);
 
-    // Skip degenerate triangles when culling is off.
-    if (IsTriangleDegenerate(viewportVertices))
-        return;
-
     // Flat-bottom triangle
     if (v1.y == v2.y) {
         if (v2.x < v1.x)
             std::swap(v2, v1); // Ensure v1 is leftmost
-        FillFlatBottomTri(framebuffer, v0, v1, v2);
+        FillFlatBottomTri(framebuffer, depthBuffer, v0, v1, v2, cfg, fillColor);
         return;
     }
     // Flat-top triangle
     if (v0.y == v1.y) {
         if (v1.x < v0.x)
             std::swap(v1, v0); // Ensure v2 is rightmost
-        FillFlatTopTri(framebuffer, v0, v1, v2);
+        FillFlatTopTri(framebuffer, depthBuffer, v0, v1, v2, cfg, fillColor);
         return;
     }
     // Neither, need to split triangle
     // Find midpoint with linear interpolation
     const float alpha = (v1.y - v0.y) / (v2.y - v0.y);
-    glm::vec2 mid = {v0.x + alpha * (v2.x - v0.x), v1.y};
+    // Split point along v0->v2 at v1.y (interpolate z too).
+    glm::vec3 mid = {v0.x + alpha * (v2.x - v0.x), v1.y, v0.z + alpha * (v2.z - v0.z)};
 
     // Split into a flat-bottom and flat-top triangle
     if (v1.x < mid.x) // Major-right triangle
     {
-        FillFlatBottomTri(framebuffer, v0, v1, mid);
-        FillFlatTopTri(framebuffer, v1, mid, v2);
+        FillFlatBottomTri(framebuffer, depthBuffer, v0, v1, mid, cfg, fillColor);
+        FillFlatTopTri(framebuffer, depthBuffer, v1, mid, v2, cfg, fillColor);
     } else // Major-left triangle
     {
-        FillFlatBottomTri(framebuffer, v0, mid, v1);
-        FillFlatTopTri(framebuffer, mid, v1, v2);
+        FillFlatBottomTri(framebuffer, depthBuffer, v0, mid, v1, cfg, fillColor);
+        FillFlatTopTri(framebuffer, depthBuffer, mid, v1, v2, cfg, fillColor);
     }
 }
 
 /**
  * @brief Rasterizes a flat-bottom triangle (flat side: v0-v1)
  */
-void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer, glm::vec2& v0, glm::vec2& v1, glm::vec2& v2) {
+void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer,
+                                   Buffer<float>& depthBuffer,
+                                   glm::vec3& v0,
+                                   glm::vec3& v1,
+                                   glm::vec3& v2,
+                                   Config& cfg,
+                                   Pixel fillColor) {
     // Calculate invslopes in screen space
     // Run over rise, because edges can be completely vertical (infinite slope)
     double invslope1 = (v1.x - v0.x) / (v1.y - v0.y);
     double invslope2 = (v2.x - v0.x) / (v2.y - v0.y);
+    double invslopez1 = (v1.z - v0.z) / (v1.y - v0.y);
+    double invslopez2 = (v2.z - v0.z) / (v2.y - v0.y);
 
     // Start/end scanlines using top-left rule (center sampling, right/bottom exclusive).
     const int yStart = std::max(0, static_cast<int>(std::ceil(v0.y - 0.5f)));
     const int yEnd =
         std::min(static_cast<int>(std::ceil(v2.y - 0.5f)) - 1, static_cast<int>(framebuffer.height - 1));
-    const Pixel color{255, 255, 255, 255};
-
     // Initialize edge intersections at the first covered pixel center.
     const float yStartCenter = static_cast<float>(yStart) + 0.5f;
     float currentX1 = v0.x + static_cast<float>(invslope1) * (yStartCenter - v0.y);
     float currentX2 = v0.x + static_cast<float>(invslope2) * (yStartCenter - v0.y);
+    float currentZ1 = v0.z + static_cast<float>(invslopez1) * (yStartCenter - v0.y);
+    float currentZ2 = v0.z + static_cast<float>(invslopez2) * (yStartCenter - v0.y);
 
     for (int y = yStart; y <= yEnd; y++) {
         // TODO: add raster clip toggle
@@ -257,38 +273,58 @@ void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer, glm::vec2& v0, gl
         // Raster clipping with top-left rule.
         const float minX = std::min(currentX1, currentX2);
         const float maxX = std::max(currentX1, currentX2);
+        const float minZ = (currentX1 <= currentX2) ? currentZ1 : currentZ2;
+        const float maxZ = (currentX1 <= currentX2) ? currentZ2 : currentZ1;
         const int xStart = std::max(0, static_cast<int>(std::ceil(minX - 0.5f)));
         const int xEnd =
             std::min(static_cast<int>(std::ceil(maxX - 0.5f)) - 1, static_cast<int>(framebuffer.width - 1));
 
+        const float denom = (xEnd - xStart) != 0 ? 1.0f / static_cast<float>(xEnd - xStart) : 0.0f;
         for (int x = xStart; x <= xEnd; x++) {
-            // TODO: depth test
-            DrawPixel(framebuffer, x, y, color);
+            const float t = (xEnd == xStart) ? 0.0f : (x - xStart) * denom;
+            const float z = minZ + (maxZ - minZ) * t;
+            // Depth test (lower z is closer).
+            if (!cfg.cull.depthTest || z < depthBuffer.data[y * depthBuffer.width + x]) {
+                if (cfg.cull.depthTest) {
+                    depthBuffer.data[y * depthBuffer.width + x] = z;
+                }
+                DrawPixel(framebuffer, x, y, fillColor);
+            }
         }
         currentX1 += invslope1;
         currentX2 += invslope2;
+        currentZ1 += invslopez1;
+        currentZ2 += invslopez2;
     }
 }
 
 /**
  * @brief Rasterizes a flat-top triangle (flat side: v1-v2)
  */
-void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer, glm::vec2& v0, glm::vec2& v1, glm::vec2& v2) {
+void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
+                                Buffer<float>& depthBuffer,
+                                glm::vec3& v0,
+                                glm::vec3& v1,
+                                glm::vec3& v2,
+                                Config& cfg,
+                                Pixel fillColor) {
     // Calculate invslopes in screen space
     // Run over rise, because edges can be completely vertical (infinite slope)
     double invslope1 = (v2.x - v0.x) / (v2.y - v0.y);
     double invslope2 = (v2.x - v1.x) / (v2.y - v1.y);
+    double invslopez1 = (v2.z - v0.z) / (v2.y - v0.y);
+    double invslopez2 = (v2.z - v1.z) / (v2.y - v1.y);
 
     // Start/end scanlines using top-left rule (center sampling, right/bottom exclusive).
     const int yStart =
         std::min(static_cast<int>(std::ceil(v2.y - 0.5f)) - 1, static_cast<int>(framebuffer.height - 1));
     const int yEnd = std::max(0, static_cast<int>(std::ceil(v0.y - 0.5f)));
-    const Pixel color{255, 255, 255, 255};
-
     // Initialize edge intersections at the first covered pixel center.
     const float yStartCenter = static_cast<float>(yStart) + 0.5f;
     float currentX1 = v2.x + static_cast<float>(invslope1) * (yStartCenter - v2.y);
     float currentX2 = v2.x + static_cast<float>(invslope2) * (yStartCenter - v2.y);
+    float currentZ1 = v2.z + static_cast<float>(invslopez1) * (yStartCenter - v2.y);
+    float currentZ2 = v2.z + static_cast<float>(invslopez2) * (yStartCenter - v2.y);
 
     for (int y = yStart; y >= yEnd; y--) {
         // TODO: add raster clip toggle
@@ -296,23 +332,33 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer, glm::vec2& v0, glm::
         // Raster clipping with top-left rule.
         const float minX = std::min(currentX1, currentX2);
         const float maxX = std::max(currentX1, currentX2);
+        const float minZ = (currentX1 <= currentX2) ? currentZ1 : currentZ2;
+        const float maxZ = (currentX1 <= currentX2) ? currentZ2 : currentZ1;
         const int xStart = std::max(0, static_cast<int>(std::ceil(minX - 0.5f)));
         const int xEnd =
             std::min(static_cast<int>(std::ceil(maxX - 0.5f)) - 1, static_cast<int>(framebuffer.width - 1));
 
+        const float denom = (xEnd - xStart) != 0 ? 1.0f / static_cast<float>(xEnd - xStart) : 0.0f;
         for (int x = xStart; x <= xEnd; x++) {
-            // TODO: depth test
-            DrawPixel(framebuffer, x, y, color);
+            const float t = (xEnd == xStart) ? 0.0f : (x - xStart) * denom;
+            const float z = minZ + (maxZ - minZ) * t;
+            if (!cfg.cull.depthTest || z < depthBuffer.data[y * depthBuffer.width + x]) {
+                if (cfg.cull.depthTest) {
+                    depthBuffer.data[y * depthBuffer.width + x] = z;
+                }
+                DrawPixel(framebuffer, x, y, fillColor);
+            }
         }
         currentX1 -= invslope1;
         currentX2 -= invslope2;
+        currentZ1 -= invslopez1;
+        currentZ2 -= invslopez2;
     }
 }
 
 void Rasterizer::DrawPixel(Buffer<Pixel>& framebuffer, float x, float y, Pixel color) {
     if (x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height)
         return;
-    // TODO: Rasterization rules
     framebuffer.Set(static_cast<int>(x), static_cast<int>(y), color);
 }
 } // namespace RetroRenderer

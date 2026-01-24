@@ -29,6 +29,7 @@ class SWRenderer : public IRenderer {
 
   private:
     std::unique_ptr<Buffer<Pixel>> m_FrameBuffer = nullptr;
+    std::unique_ptr<Buffer<float>> m_DepthBuffer = nullptr;
     Camera* p_Camera = nullptr;
     std::unique_ptr<Rasterizer> m_Rasterizer = nullptr;
 };
