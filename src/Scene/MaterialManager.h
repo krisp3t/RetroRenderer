@@ -1,28 +1,25 @@
 #pragma once
+#include <glm/vec3.hpp>
 #include <optional>
 #include <string>
 #include <vector>
-#include <glm/vec3.hpp>
 
-#include "Texture.h"
 #include "../include/kris_glheaders.h"
+#include "Texture.h"
 
-namespace RetroRenderer
-{
-    struct ShaderProgram
-    {
-        GLuint id = 0;
-        std::string name;
-        std::string vertexPath;
-        std::string fragmentPath;
-        // time_t lastModified = 0;
-    };
+namespace RetroRenderer {
+struct ShaderProgram {
+    GLuint id = 0;
+    std::string name;
+    std::string vertexPath;
+    std::string fragmentPath;
+    // time_t lastModified = 0;
+};
 
-class MaterialManager
-{
-public:
+class MaterialManager {
+  public:
     struct alignas(16) LightingParamsUBO {
-        int lightingModel;   // 0 = none, 1 = Phong, 2 = Blinn-Phong, 3 = PBR
+        int lightingModel; // 0 = none, 1 = Phong, 2 = Blinn-Phong, 3 = PBR
         float padding1, padding2, padding3;
 
         float phongAmbient;
@@ -41,14 +38,12 @@ public:
         float padding6;
     };
 
-    struct PhongParams
-    {
+    struct PhongParams {
         float ambientStrength = 0.3f;
         float specularStrength = 0.3f;
         float shininess = 32.0f;
     };
-    struct Material
-    {
+    struct Material {
         ShaderProgram shaderProgram;
         std::optional<Texture> texture;
         std::string name;
@@ -60,24 +55,26 @@ public:
     ~MaterialManager() = default;
     bool Init();
     void LoadTexture(const std::string &path);
-    void LoadTexture(const uint8_t* data, const size_t size);
+    void LoadTexture(const uint8_t *data, const size_t size);
     void RenderUI();
     void LoadDefaultShaders();
-    Material& GetCurrentMaterial() { return m_Materials[m_CurrentMaterialIndex]; }
-    static ShaderProgram CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath);
+    Material &GetCurrentMaterial() {
+        return m_Materials[m_CurrentMaterialIndex];
+    }
+    static ShaderProgram CreateShaderProgram(const std::string &vertexPath, const std::string &fragmentPath);
 
-private:
-    static std::string ReadShaderFile(const std::string& path);
-    static void CheckShaderErrors(GLuint shader, const std::string& type);
-private:
+  private:
+    static std::string ReadShaderFile(const std::string &path);
+    static void CheckShaderErrors(GLuint shader, const std::string &type);
+
+  private:
     std::vector<Material> m_Materials;
     int m_CurrentMaterialIndex = 0;
     char m_TexturePathBuffer[256] = "";
     char vertPathBuffer[256] = "";
     char fragPathBuffer[256] = "";
     int newShaderType = 0; // For UI combo box
-    const char* k_supportedTextures = ".png";
-
+    const char *k_supportedTextures = ".png";
 };
 
-}
+} // namespace RetroRenderer

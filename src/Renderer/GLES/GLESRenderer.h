@@ -1,56 +1,53 @@
 #pragma once
+#include "../../Base/Color.h"
 #include "../../Scene/Camera.h"
+#include "../../Scene/MaterialManager.h"
 #include "../../Scene/Scene.h"
 #include "../IRenderer.h"
-#include "../../Base/Color.h"
-#include "../../Scene/MaterialManager.h"
 
+namespace RetroRenderer {
+class GLESRenderer : public IRenderer {
+  public:
+    GLESRenderer() = default;
 
-namespace RetroRenderer
-{
-    class GLESRenderer : public IRenderer
-    {
-    public:
-        GLESRenderer() = default;
+    ~GLESRenderer() = default;
 
-        ~GLESRenderer() = default;
+    bool Init(GLuint fbTex, int w, int h);
 
-        bool Init(GLuint fbTex, int w, int h);
+    void Resize(GLuint newFbTex, int w, int h);
 
-        void Resize(GLuint newFbTex, int w, int h);
+    void Destroy() override;
 
-        void Destroy() override;
+    void SetActiveCamera(const Camera &camera) override;
 
-        void SetActiveCamera(const Camera& camera) override;
+    void DrawTriangularMesh(const Model *model) override;
 
-        void DrawTriangularMesh(const Model* model) override;
+    void DrawSkybox() override;
 
-        void DrawSkybox() override;
+    void BeforeFrame(const Color &clearColor) override;
 
-        void BeforeFrame(const Color& clearColor) override;
+    GLuint EndFrame() override;
 
-        GLuint EndFrame() override;
+    GLuint CreateShaderProgram();
+    GLuint CompileShaders(const std::string &vertexCode, const std::string &fragmentCode) override;
 
-        GLuint CreateShaderProgram();
-        GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override;
+  private:
+    bool CreateFramebuffer(GLuint fbTex, int w, int h);
+    GLuint CompileShader(GLenum shaderType, const char *shaderSource);
+    void CheckShaderErrors(GLuint shader, const std::string &type);
+    void CreateFallbackTexture();
+    GLuint CreateCubemap(const std::string &path);
+    GLuint CreateSkyboxVAO();
 
-    private:
-        bool CreateFramebuffer(GLuint fbTex, int w, int h);
-        GLuint CompileShader(GLenum shaderType, const char *shaderSource);
-        void CheckShaderErrors(GLuint shader, const std::string &type);
-        void CreateFallbackTexture();
-        GLuint CreateCubemap(const std::string& path);
-        GLuint CreateSkyboxVAO();
+  private:
+    Camera *p_Camera = nullptr;
 
-    private:
-        Camera* p_Camera = nullptr;
-
-        GLuint p_FrameBufferTexture = 0;
-        GLuint m_FrameBuffer = 0;
-        GLuint m_DepthBuffer = 0;
-        GLuint m_FallbackTexture = 0;
-        GLuint m_SkyboxTexture = 0;
-        GLuint m_SkyboxVAO = 0;
-        ShaderProgram m_SkyboxProgram;
-    };
-}
+    GLuint p_FrameBufferTexture = 0;
+    GLuint m_FrameBuffer = 0;
+    GLuint m_DepthBuffer = 0;
+    GLuint m_FallbackTexture = 0;
+    GLuint m_SkyboxTexture = 0;
+    GLuint m_SkyboxVAO = 0;
+    ShaderProgram m_SkyboxProgram;
+};
+} // namespace RetroRenderer

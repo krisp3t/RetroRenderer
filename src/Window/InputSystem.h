@@ -1,13 +1,11 @@
 #pragma once
-#include "../Window/DisplaySystem.h"
 #include "../Base/InputActions.h"
+#include "../Window/DisplaySystem.h"
 
-namespace RetroRenderer
-{
+namespace RetroRenderer {
 
-class InputSystem
-{
-public:
+class InputSystem {
+  public:
     InputSystem() = default;
     ~InputSystem() = default;
 
@@ -16,13 +14,13 @@ public:
     [[nodiscard]] InputActionMask HandleInput();
 
     void Destroy();
-private:
-    void HandleKeyDown(SDL_Keycode key, Config& config);
-    void HandleMouseMotion(const SDL_MouseMotionEvent& event);
+
+  private:
+    void HandleKeyDown(SDL_Keycode key, Config &config);
+    void HandleMouseMotion(const SDL_MouseMotionEvent &event);
 
     InputActionMask m_inputState_ = 0;
     // bool m_isDragging_ = false;
 };
 
-}
-
+} // namespace RetroRenderer

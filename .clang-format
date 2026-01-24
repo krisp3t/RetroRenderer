@@ -1,0 +1,14 @@
+BasedOnStyle: Microsoft
+
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterControlStatement: false
+  AfterFunction: false
+  AfterClass: false
+  AfterStruct: false
+  AfterEnum: false
+  AfterNamespace: false
+  BeforeElse: false
+  BeforeCatch: false
+  IndentBraces: false
