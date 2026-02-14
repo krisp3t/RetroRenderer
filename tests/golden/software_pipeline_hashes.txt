@@ -1,5 +1,10 @@
 # Software renderer golden framebuffer hashes
 # Update with RETRO_UPDATE_GOLDENS=1 when expected visuals intentionally change.
+integration_backface_culling=5475615050202794935
 integration_clipping=538673567564504162
+integration_degenerate_face=16282818373258382236
 integration_depth=11812963564769870889
+integration_face_fan=3219005191954343998
+integration_painter_no_depth=14520236844297711353
+integration_partial_clipping=5223333331095221486
 integration_triangle=16667970275735921412
