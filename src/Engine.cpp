@@ -27,7 +27,7 @@ bool Engine::Init() {
         return false;
     }
     p_RenderSystem = std::make_unique<RenderSystem>();
-    if (!p_RenderSystem->Init(m_DisplaySystem.GetWindow())) {
+    if (!p_RenderSystem->Init()) {
         return false;
     }
     p_SceneManager = std::make_unique<SceneManager>();
@@ -81,7 +81,7 @@ void Engine::ProcessFrame() {
         m_DisplaySystem.BeforeFrame();
         p_RenderSystem->BeforeFrame(clearColor);
         auto& queue = p_RenderSystem->BuildRenderQueue(*scene, *camera);
-        GLuint fbTex = p_RenderSystem->Render(queue, scene->m_Models);
+        GLuint fbTex = p_RenderSystem->Render(scene, *camera, queue);
         m_DisplaySystem.DrawFrame(fbTex);
     } else {
         p_stats_->Reset();
@@ -93,7 +93,10 @@ void Engine::ProcessFrame() {
 }
 
 void Engine::Destroy() {
-
+    if (p_RenderSystem) {
+        p_RenderSystem->Destroy();
+        p_RenderSystem.reset();
+    }
     m_DisplaySystem.Destroy();
 }
 
