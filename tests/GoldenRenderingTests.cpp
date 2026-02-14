@@ -33,11 +33,11 @@ std::string PlatformKey(const std::string& baseKey) {
 }
 
 bool IsTruthyEnv(const char* name) {
-    const char* env = std::getenv(name);
-    if (!env) {
+    const std::string env = TestGolden::GetEnvValue(name);
+    if (env.empty()) {
         return false;
     }
-    const std::string value = TestGolden::Trim(std::string(env));
+    const std::string value = TestGolden::Trim(env);
     return value == "1" || value == "true" || value == "TRUE" || value == "on" || value == "ON";
 }
 

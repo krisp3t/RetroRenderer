@@ -95,6 +95,7 @@ bool ParseFaceVertexToken(std::string_view token,
         return true;
     }
 
+
     const std::string_view normalPart = token.substr(secondSlash + 1);
     if (!normalPart.empty()) {
         int rawNormal = 0;

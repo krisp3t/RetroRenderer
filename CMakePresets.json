@@ -38,7 +38,8 @@
                 "VCPKG_TARGET_TRIPLET": "x64-windows",
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "RETRO_BUILD_TESTS": "ON"
+                "RETRO_BUILD_TESTS": "ON",
+                "RETRO_REQUIRE_CLANG": "ON"
             }
         },
         {
@@ -47,7 +48,8 @@
             "cacheVariables": {
                 "VCPKG_TARGET_TRIPLET": "x64-windows",
                 "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++"
+                "CMAKE_CXX_COMPILER": "clang++",
+                "RETRO_REQUIRE_CLANG": "ON"
             }
         },
         {
@@ -73,12 +75,47 @@
             "inherits": "debug-x64-windows-no-assimp"
         },
         {
+            "name": "debug-x64-windows-asan",
+            "inherits": "debug-x64-windows-no-assimp",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "RETRO_SANITIZERS": "address"
+            }
+        },
+        {
             "name": "debug-x64-linux",
             "inherits": "debug",
             "cacheVariables": {
                 "VCPKG_TARGET_TRIPLET": "x64-linux",
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "debug-x64-linux-asan",
+            "inherits": "debug-x64-linux",
+            "cacheVariables": {
+                "RETRO_BUILD_TESTS": "ON",
+                "RETRO_ENABLE_ASSIMP": "OFF",
+                "RETRO_SANITIZERS": "address"
+            }
+        },
+        {
+            "name": "debug-x64-linux-ubsan",
+            "inherits": "debug-x64-linux",
+            "cacheVariables": {
+                "RETRO_BUILD_TESTS": "ON",
+                "RETRO_ENABLE_ASSIMP": "OFF",
+                "RETRO_SANITIZERS": "undefined"
+            }
+        },
+        {
+            "name": "debug-x64-linux-tsan",
+            "inherits": "debug-x64-linux",
+            "cacheVariables": {
+                "RETRO_BUILD_TESTS": "ON",
+                "RETRO_ENABLE_ASSIMP": "OFF",
+                "RETRO_SANITIZERS": "thread"
             }
         },
         {
@@ -185,6 +222,26 @@
             "name": "build-debug-x64-windows-tests-no-assimp",
             "configurePreset": "debug-x64-windows-no-assimp",
             "targets": [ "retrorenderer_tests" ]
+        },
+        {
+            "name": "build-debug-x64-windows-asan-tests",
+            "configurePreset": "debug-x64-windows-asan",
+            "targets": [ "retrorenderer_tests" ]
+        },
+        {
+            "name": "build-debug-x64-linux-asan-tests",
+            "configurePreset": "debug-x64-linux-asan",
+            "targets": [ "retrorenderer_tests" ]
+        },
+        {
+            "name": "build-debug-x64-linux-ubsan-tests",
+            "configurePreset": "debug-x64-linux-ubsan",
+            "targets": [ "retrorenderer_tests" ]
+        },
+        {
+            "name": "build-debug-x64-linux-tsan-tests",
+            "configurePreset": "debug-x64-linux-tsan",
+            "targets": [ "retrorenderer_tests" ]
         }
     ],
     "testPresets": [
@@ -232,6 +289,59 @@
             "configurePreset": "debug-x64-windows-no-assimp",
             "environment": {
                 "RETRO_RUN_GOLDEN_WINDOWS": "1"
+            },
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "noTestsAction": "error"
+            }
+        },
+        {
+            "name": "test-debug-x64-windows-asan",
+            "configurePreset": "debug-x64-windows-asan",
+            "environment": {
+                "ASAN_OPTIONS": "halt_on_error=1:symbolize=1",
+                "ASAN_SYMBOLIZER_PATH": "C:/Program Files/LLVM/bin/llvm-symbolizer.exe"
+            },
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "noTestsAction": "error"
+            }
+        },
+        {
+            "name": "test-debug-x64-linux-asan",
+            "configurePreset": "debug-x64-linux-asan",
+            "environment": {
+                "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1"
+            },
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "noTestsAction": "error"
+            }
+        },
+        {
+            "name": "test-debug-x64-linux-ubsan",
+            "configurePreset": "debug-x64-linux-ubsan",
+            "environment": {
+                "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+            },
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "noTestsAction": "error"
+            }
+        },
+        {
+            "name": "test-debug-x64-linux-tsan",
+            "configurePreset": "debug-x64-linux-tsan",
+            "environment": {
+                "TSAN_OPTIONS": "halt_on_error=1:second_deadlock_stack=1"
             },
             "output": {
                 "outputOnFailure": true

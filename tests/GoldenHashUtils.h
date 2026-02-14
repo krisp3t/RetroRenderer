@@ -11,6 +11,22 @@
 
 namespace RetroRenderer::TestGolden {
 
+inline std::string GetEnvValue(const char* name) {
+#if defined(_WIN32)
+    char* valueBuffer = nullptr;
+    size_t valueSize = 0;
+    if (_dupenv_s(&valueBuffer, &valueSize, name) != 0 || valueBuffer == nullptr) {
+        return {};
+    }
+    std::string value(valueBuffer);
+    free(valueBuffer);
+    return value;
+#else
+    const char* env = std::getenv(name);
+    return env ? std::string(env) : std::string{};
+#endif
+}
+
 inline std::string Trim(std::string value) {
     value.erase(value.begin(),
                 std::find_if(value.begin(), value.end(), [](unsigned char c) { return !std::isspace(c); }));
@@ -20,11 +36,11 @@ inline std::string Trim(std::string value) {
 }
 
 inline bool ShouldUpdateGoldens() {
-    const char* env = std::getenv("RETRO_UPDATE_GOLDENS");
-    if (!env) {
+    const std::string env = GetEnvValue("RETRO_UPDATE_GOLDENS");
+    if (env.empty()) {
         return false;
     }
-    const std::string value = Trim(std::string(env));
+    const std::string value = Trim(env);
     return value == "1" || value == "true" || value == "TRUE" || value == "on" || value == "ON";
 }
 
@@ -75,4 +91,3 @@ inline bool SaveGoldenHashes(const std::string& filePath, const std::map<std::st
 }
 
 } // namespace RetroRenderer::TestGolden
-

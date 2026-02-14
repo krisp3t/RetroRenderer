@@ -2,6 +2,16 @@
 project(retrorenderer VERSION 1.0 LANGUAGES C CXX)
 option(RETRO_ENABLE_ASSIMP "Enable Assimp scene importer backend" ON)
 option(RETRO_BUILD_TESTS "Build Catch2 unit tests" OFF)
+option(RETRO_REQUIRE_CLANG "Fail configure if Clang is not the active compiler" OFF)
+set(RETRO_SANITIZERS "" CACHE STRING "Semicolon-separated sanitizers for Clang/GCC (address;undefined;thread;leak)")
+
+if(RETRO_REQUIRE_CLANG)
+    if(NOT CMAKE_C_COMPILER_ID STREQUAL "Clang" OR NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(FATAL_ERROR
+            "RETRO_REQUIRE_CLANG=ON but active compilers are C='${CMAKE_C_COMPILER_ID}', "
+            "CXX='${CMAKE_CXX_COMPILER_ID}'. Configure with clang/clang++.")
+    endif()
+endif()
 
 # -----------------------------------------------------------------------------
 # Android toolchain (Gradle will inject ANDROID_ABI, ANDROID_PLATFORM)
@@ -93,6 +103,120 @@ foreach (dir ${SOURCE_ROOT_DIRS})
 endforeach ()
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib/KrisLogger)
 
+add_library(retro_sanitizers INTERFACE)
+set(RETRO_WINDOWS_ASAN_RUNTIME_DLL "")
+if(RETRO_SANITIZERS)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        message(FATAL_ERROR "RETRO_SANITIZERS requires a Clang or GCC toolchain.")
+    endif()
+
+    set(RETRO_SANITIZER_FLAGS "")
+    set(RETRO_HAS_THREAD_SAN OFF)
+    set(RETRO_HAS_ADDRESS_SAN OFF)
+    set(RETRO_SANITIZER_COUNT 0)
+    foreach(RETRO_SANITIZER IN LISTS RETRO_SANITIZERS)
+        string(TOLOWER "${RETRO_SANITIZER}" RETRO_SANITIZER_LOWER)
+        if(NOT RETRO_SANITIZER_LOWER MATCHES "^(address|undefined|thread|leak)$")
+            message(FATAL_ERROR "Unsupported sanitizer '${RETRO_SANITIZER}'. Allowed values: address;undefined;thread;leak")
+        endif()
+        if(RETRO_SANITIZER_LOWER STREQUAL "thread")
+            set(RETRO_HAS_THREAD_SAN ON)
+        endif()
+        if(RETRO_SANITIZER_LOWER STREQUAL "address")
+            set(RETRO_HAS_ADDRESS_SAN ON)
+        endif()
+        math(EXPR RETRO_SANITIZER_COUNT "${RETRO_SANITIZER_COUNT} + 1")
+        list(APPEND RETRO_SANITIZER_FLAGS "-fsanitize=${RETRO_SANITIZER_LOWER}")
+    endforeach()
+
+    if(RETRO_HAS_THREAD_SAN AND RETRO_SANITIZER_COUNT GREATER 1)
+        message(FATAL_ERROR "ThreadSanitizer cannot be combined with other sanitizers in RETRO_SANITIZERS.")
+    endif()
+
+    target_compile_options(retro_sanitizers INTERFACE
+        -fno-omit-frame-pointer
+        ${RETRO_SANITIZER_FLAGS}
+    )
+    target_link_options(retro_sanitizers INTERFACE
+        ${RETRO_SANITIZER_FLAGS}
+    )
+
+    if(WIN32 AND RETRO_HAS_ADDRESS_SAN)
+        # Prebuilt third-party Windows libs are commonly non-ASan.
+        # Disable STL container/string annotations to avoid /failifmismatch
+        # while keeping core ASan instrumentation enabled.
+        target_compile_definitions(retro_sanitizers INTERFACE
+            _DISABLE_VECTOR_ANNOTATION
+            _DISABLE_STRING_ANNOTATION
+        )
+
+        execute_process(
+            COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=clang_rt.asan_dynamic-x86_64.dll
+            OUTPUT_VARIABLE RETRO_CLANG_ASAN_DLL_PATH
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(RETRO_CLANG_ASAN_DLL_PATH AND EXISTS "${RETRO_CLANG_ASAN_DLL_PATH}")
+            set(RETRO_WINDOWS_ASAN_RUNTIME_DLL "${RETRO_CLANG_ASAN_DLL_PATH}")
+        endif()
+
+        if(NOT RETRO_WINDOWS_ASAN_RUNTIME_DLL)
+            execute_process(
+                COMMAND ${CMAKE_CXX_COMPILER} --print-runtime-dir
+                OUTPUT_VARIABLE RETRO_CLANG_RUNTIME_DIR
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(RETRO_CLANG_RUNTIME_DIR)
+                find_file(RETRO_WINDOWS_ASAN_RUNTIME_DLL
+                    NAMES clang_rt.asan_dynamic-x86_64.dll
+                    PATHS "${RETRO_CLANG_RUNTIME_DIR}"
+                    NO_DEFAULT_PATH
+                )
+            endif()
+        endif()
+        if(NOT RETRO_WINDOWS_ASAN_RUNTIME_DLL)
+            get_filename_component(RETRO_CLANG_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+            find_file(RETRO_WINDOWS_ASAN_RUNTIME_DLL
+                NAMES clang_rt.asan_dynamic-x86_64.dll
+                PATHS "${RETRO_CLANG_BIN_DIR}"
+                NO_DEFAULT_PATH
+            )
+        endif()
+        if(NOT RETRO_WINDOWS_ASAN_RUNTIME_DLL)
+            get_filename_component(RETRO_CLANG_ROOT_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+            get_filename_component(RETRO_CLANG_ROOT_DIR "${RETRO_CLANG_ROOT_DIR}" DIRECTORY)
+            file(GLOB RETRO_CLANG_ASAN_DLL_CANDIDATES
+                "${RETRO_CLANG_ROOT_DIR}/lib/clang/*/lib/windows/clang_rt.asan_dynamic-x86_64.dll"
+            )
+            list(LENGTH RETRO_CLANG_ASAN_DLL_CANDIDATES RETRO_CLANG_ASAN_DLL_COUNT)
+            if(RETRO_CLANG_ASAN_DLL_COUNT GREATER 0)
+                list(SORT RETRO_CLANG_ASAN_DLL_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
+                list(GET RETRO_CLANG_ASAN_DLL_CANDIDATES 0 RETRO_WINDOWS_ASAN_RUNTIME_DLL)
+            endif()
+        endif()
+        if(NOT RETRO_WINDOWS_ASAN_RUNTIME_DLL)
+            message(WARNING "Windows ASan enabled, but clang_rt.asan_dynamic-x86_64.dll was not found. Tests may fail with 0xc0000135.")
+        else()
+            message(STATUS "Windows ASan runtime: ${RETRO_WINDOWS_ASAN_RUNTIME_DLL}")
+        endif()
+    endif()
+
+    message(STATUS "Enabled sanitizers: ${RETRO_SANITIZERS}")
+endif()
+target_link_libraries(KrisLogger PUBLIC retro_sanitizers)
+
+function(retro_copy_windows_asan_runtime target_name)
+    if(WIN32 AND RETRO_WINDOWS_ASAN_RUNTIME_DLL)
+        add_custom_command(TARGET ${target_name} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${RETRO_WINDOWS_ASAN_RUNTIME_DLL}"
+                "$<TARGET_FILE_DIR:${target_name}>"
+            VERBATIM
+        )
+    endif()
+endfunction()
+
 # -----------------------------------------------------------------------------
 # Native glue for Android
 # -----------------------------------------------------------------------------
@@ -111,6 +235,7 @@ if(ANDROID)
     add_library(${PROJECT_NAME} SHARED ${SOURCES} ${RENDERER_BACKENDS} ${NATIVE_FILES})
 else()
     add_executable(${PROJECT_NAME} ${SOURCES} ${RENDERER_BACKENDS} ${NATIVE_FILES})
+    retro_copy_windows_asan_runtime(${PROJECT_NAME})
 endif()
 
 # -----------------------------------------------------------------------------
@@ -163,6 +288,7 @@ target_link_libraries(${PROJECT_NAME}
         glm::glm
         glad::glad
         KrisLogger
+        retro_sanitizers
 )
 if(RETRO_ENABLE_ASSIMP)
     target_link_libraries(${PROJECT_NAME}
