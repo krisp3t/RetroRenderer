@@ -1,5 +1,4 @@
 #include "Rasterizer.h"
-#include "../../Engine.h"
 #include <KrisLogger/Logger.h>
 #include <algorithm>
 #include <cmath>
@@ -12,8 +11,8 @@ glm::vec2 Rasterizer::NDCToViewport(const glm::vec2& v, size_t width, size_t hei
     return {(v.x + 1.0f) * 0.5f * width + 0.5f, (1.0f - v.y) * 0.5f * height + 0.5f};
 }
 
-void Rasterizer::DrawHLine(Buffer<Pixel>& framebuffer, int x0, int x1, int y, Pixel color) {
-    const bool rasterClip = Engine::Get().GetConfig()->cull.rasterClip;
+void Rasterizer::DrawHLine(Buffer<Pixel>& framebuffer, int x0, int x1, int y, const Config& cfg, Pixel color) {
+    const bool rasterClip = cfg.cull.rasterClip;
     if (rasterClip) {
         if (y < 0 || x0 < 0 || x1 < 0 || static_cast<size_t>(y) >= framebuffer.height) {
             return;
@@ -43,18 +42,18 @@ void Rasterizer::DrawHLine(Buffer<Pixel>& framebuffer, int x0, int x1, int y, Pi
  * @param p1 The end point in screen space
  * @param color The color of the line
  */
-void Rasterizer::DrawLine(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, Pixel color) {
-    switch (Engine::Get().GetConfig()->software.rasterizer.lineMode) {
+void Rasterizer::DrawLine(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color) {
+    switch (cfg.software.rasterizer.lineMode) {
     case Config::RasterizationLineMode::DDA:
-        DrawLineDDA(framebuffer, p0, p1, color);
+        DrawLineDDA(framebuffer, p0, p1, cfg, color);
         break;
     case Config::RasterizationLineMode::BRESENHAM:
-        DrawLineBresenham(framebuffer, p0, p1, color);
+        DrawLineBresenham(framebuffer, p0, p1, cfg, color);
         break;
     }
 }
 
-void Rasterizer::DrawLineDDA(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, Pixel color) {
+void Rasterizer::DrawLineDDA(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color) {
     float dx = p1.x - p0.x;
     float dy = p1.y - p0.y;
     float steps = std::max(std::abs(dx), std::abs(dy));
@@ -62,19 +61,20 @@ void Rasterizer::DrawLineDDA(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2
     float yInc = dy / steps;
     float x = p0.x;
     float y = p0.y;
+    const bool rasterClip = cfg.cull.rasterClip;
     for (int i = 0; i <= steps; i++) {
-        if (Engine::Get().GetConfig()->cull.rasterClip) {
+        if (rasterClip) {
             if (x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height) {
                 break;
             }
         }
-        DrawPixel(framebuffer, x, y, color);
+        DrawPixel(framebuffer, x, y, rasterClip, color);
         x += xInc;
         y += yInc;
     }
 }
 
-void Rasterizer::DrawLineBresenham(Buffer<Pixel>& fb, glm::vec2 p0, glm::vec2 p1, Pixel color) {
+void Rasterizer::DrawLineBresenham(Buffer<Pixel>& fb, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color) {
     // TODO: rasterization rules
     bool steep = false;
     if (std::abs(p0.x - p1.x) < std::abs(p0.y - p1.y)) {
@@ -92,7 +92,7 @@ void Rasterizer::DrawLineBresenham(Buffer<Pixel>& fb, glm::vec2 p0, glm::vec2 p1
     int error2 = 0;
     int y = p0.y;
     for (int x = p0.x; x <= p1.x; x++) {
-        steep ? DrawPixel(fb, y, x, color) : DrawPixel(fb, x, y, color);
+        steep ? DrawPixel(fb, y, x, cfg.cull.rasterClip, color) : DrawPixel(fb, x, y, cfg.cull.rasterClip, color);
         error2 += derror2;
         if (error2 > dx) {
             y += (p1.y > p0.y ? 1 : -1);
@@ -104,7 +104,7 @@ void Rasterizer::DrawLineBresenham(Buffer<Pixel>& fb, glm::vec2 p0, glm::vec2 p1
 void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
                               Buffer<float>& depthBuffer,
                               std::array<Vertex, 3>& vertices,
-                              Config& cfg,
+                              const Config& cfg,
                               Pixel fillColor) {
 
     // Convert vertices to viewport space.
@@ -126,7 +126,7 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
     // TODO: add cfg.lineColor
     switch (cfg.software.rasterizer.polygonMode) {
     case Config::RasterizationPolygonMode::POINT:
-        DrawPointTriangle(framebuffer, viewportVertices);
+        DrawPointTriangle(framebuffer, viewportVertices, cfg);
         break;
     case Config::RasterizationPolygonMode::LINE:
         /*
@@ -134,7 +134,7 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
             DrawWireframeTriangle(framebuffer, viewportVertices) :
             DrawWireframeTriangle(framebuffer, viewportVertices, cfg.lineColor);
             */
-        DrawWireframeTriangle(framebuffer, viewportVertices);
+        DrawWireframeTriangle(framebuffer, viewportVertices, cfg);
         break;
     case Config::RasterizationPolygonMode::FILL:
         switch (cfg.software.rasterizer.fillMode) {
@@ -165,7 +165,7 @@ static bool IsTopLeftEdge(const glm::vec2& a, const glm::vec2& b) {
 void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                          Buffer<float>& depthBuffer,
                                          std::array<glm::vec3, 3>& viewportVertices,
-                                         Config& cfg,
+                                         const Config& cfg,
                                          Pixel fillColor) {
     glm::vec2 v0 = {viewportVertices[0].x, viewportVertices[0].y};
     glm::vec2 v1 = {viewportVertices[1].x, viewportVertices[1].y};
@@ -222,24 +222,25 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                 if (cfg.cull.depthTest) {
                     depthBuffer.data[y * depthBuffer.width + x] = z;
                 }
-                DrawPixel(framebuffer, x, y, fillColor);
+                DrawPixel(framebuffer, x, y, rasterClip, fillColor);
             }
         }
     }
 }
 
-void Rasterizer::DrawPointTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec3, 3>& viewportVertices) {
+void Rasterizer::DrawPointTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec3, 3>& viewportVertices, const Config& cfg) {
     const Pixel white{255, 255, 255, 255};
-    DrawPixel(framebuffer, viewportVertices[0].x, viewportVertices[0].y, white);
-    DrawPixel(framebuffer, viewportVertices[1].x, viewportVertices[1].y, white);
-    DrawPixel(framebuffer, viewportVertices[2].x, viewportVertices[2].y, white);
+    const bool rasterClip = cfg.cull.rasterClip;
+    DrawPixel(framebuffer, viewportVertices[0].x, viewportVertices[0].y, rasterClip, white);
+    DrawPixel(framebuffer, viewportVertices[1].x, viewportVertices[1].y, rasterClip, white);
+    DrawPixel(framebuffer, viewportVertices[2].x, viewportVertices[2].y, rasterClip, white);
 }
 
-void Rasterizer::DrawWireframeTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec3, 3>& verts) {
+void Rasterizer::DrawWireframeTriangle(Buffer<Pixel>& framebuffer, std::array<glm::vec3, 3>& verts, const Config& cfg) {
     // TODO: Add color selector
-    DrawLine(framebuffer, glm::vec2(verts[0].x, verts[0].y), glm::vec2(verts[1].x, verts[1].y), Pixel{255, 0, 0, 255});
-    DrawLine(framebuffer, glm::vec2(verts[1].x, verts[1].y), glm::vec2(verts[2].x, verts[2].y), Pixel{0, 255, 0, 255});
-    DrawLine(framebuffer, glm::vec2(verts[2].x, verts[2].y), glm::vec2(verts[0].x, verts[0].y), Pixel{0, 0, 255, 255});
+    DrawLine(framebuffer, glm::vec2(verts[0].x, verts[0].y), glm::vec2(verts[1].x, verts[1].y), cfg, Pixel{255, 0, 0, 255});
+    DrawLine(framebuffer, glm::vec2(verts[1].x, verts[1].y), glm::vec2(verts[2].x, verts[2].y), cfg, Pixel{0, 255, 0, 255});
+    DrawLine(framebuffer, glm::vec2(verts[2].x, verts[2].y), glm::vec2(verts[0].x, verts[0].y), cfg, Pixel{0, 0, 255, 255});
 }
 
 /**
@@ -286,7 +287,7 @@ bool Rasterizer::IsBackface(std::array<glm::vec3, 3>& vertices) {
 void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer,
                                   Buffer<float>& depthBuffer,
                                   std::array<glm::vec3, 3>& viewportVertices,
-                                  Config& cfg,
+                                  const Config& cfg,
                                   Pixel fillColor) {
     auto& v0 = viewportVertices[0];
     auto& v1 = viewportVertices[1];
@@ -340,7 +341,7 @@ void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer,
                                    glm::vec3& v0,
                                    glm::vec3& v1,
                                    glm::vec3& v2,
-                                   Config& cfg,
+                                   const Config& cfg,
                                    Pixel fillColor) {
     // Calculate invslopes in screen space
     // Run over rise, because edges can be completely vertical (infinite slope)
@@ -388,7 +389,7 @@ void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer,
                 if (cfg.cull.depthTest) {
                     depthBuffer.data[y * depthBuffer.width + x] = z;
                 }
-                DrawPixel(framebuffer, x, y, fillColor);
+                DrawPixel(framebuffer, x, y, rasterClip, fillColor);
             }
         }
         currentX1 += invslope1;
@@ -406,7 +407,7 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
                                 glm::vec3& v0,
                                 glm::vec3& v1,
                                 glm::vec3& v2,
-                                Config& cfg,
+                                const Config& cfg,
                                 Pixel fillColor) {
     // Calculate invslopes in screen space
     // Run over rise, because edges can be completely vertical (infinite slope)
@@ -453,7 +454,7 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
                 if (cfg.cull.depthTest) {
                     depthBuffer.data[y * depthBuffer.width + x] = z;
                 }
-                DrawPixel(framebuffer, x, y, fillColor);
+                DrawPixel(framebuffer, x, y, rasterClip, fillColor);
             }
         }
         currentX1 -= invslope1;
@@ -463,8 +464,8 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
     }
 }
 
-void Rasterizer::DrawPixel(Buffer<Pixel>& framebuffer, float x, float y, Pixel color) {
-    if (Engine::Get().GetConfig()->cull.rasterClip) {
+void Rasterizer::DrawPixel(Buffer<Pixel>& framebuffer, float x, float y, bool rasterClip, Pixel color) {
+    if (rasterClip) {
         if (x < 0 || x >= framebuffer.width || y < 0 || y >= framebuffer.height) {
             return;
         }

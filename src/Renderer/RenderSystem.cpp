@@ -216,8 +216,8 @@ void RenderSystem::SubmitSoftwareJob(const std::shared_ptr<Scene>& scene,
     job.scene = scene;
     job.camera = std::make_shared<Camera>(camera);
     job.renderQueue = renderQueue;
+    job.configSnapshot = *Engine::Get().GetConfig();
     job.clearColor = m_SoftwareClearColor;
-    job.showSkybox = Engine::Get().GetConfig()->environment.showSkybox;
     {
         std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
         m_PendingSoftwareJob = std::move(job); // Keep only the latest job.
@@ -269,12 +269,13 @@ void RenderSystem::SoftwareWorkerLoop() {
         }
 
         p_SWRenderer_->BeforeFrame(job.clearColor);
+        p_SWRenderer_->SetFrameConfig(job.configSnapshot);
         if (job.camera) {
             p_SWRenderer_->SetActiveCamera(*job.camera);
         } else {
             continue;
         }
-        if (job.showSkybox) {
+        if (job.configSnapshot.environment.showSkybox) {
             p_SWRenderer_->DrawSkybox();
         }
 
@@ -311,10 +312,11 @@ void RenderSystem::SoftwareWorkerLoop() {
 GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
                                         const Camera& camera,
                                         const std::vector<int>& renderQueue) {
-    auto const& p_config = Engine::Get().GetConfig();
+    const Config configSnapshot = *Engine::Get().GetConfig();
     p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
+    p_SWRenderer_->SetFrameConfig(configSnapshot);
     p_SWRenderer_->SetActiveCamera(camera);
-    if (p_config->environment.showSkybox) {
+    if (configSnapshot.environment.showSkybox) {
         p_SWRenderer_->DrawSkybox();
     }
     if (scene) {

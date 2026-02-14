@@ -49,8 +49,8 @@ class RenderSystem {
         std::shared_ptr<Scene> scene = nullptr;
         std::shared_ptr<Camera> camera = nullptr;
         std::vector<int> renderQueue;
+        Config configSnapshot{};
         Color clearColor{};
-        bool showSkybox = false;
     };
 
     void StartSoftwareWorker();

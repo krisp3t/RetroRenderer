@@ -1,5 +1,4 @@
 #include "SWRenderer.h"
-#include "../../Engine.h"
 #include <KrisLogger/Logger.h>
 #include <glm/gtx/string_cast.hpp>
 #include <vector>
@@ -93,6 +92,10 @@ void SWRenderer::SetActiveCamera(const Camera& camera) {
     p_Camera = const_cast<Camera*>(&camera);
 }
 
+void SWRenderer::SetFrameConfig(const Config& config) {
+    m_FrameConfigSnapshot = config;
+}
+
 /**
  * @brief Draw a model on the framebuffer. Must have triangulated meshes!
  * @param mesh
@@ -146,7 +149,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             const glm::vec3 worldPos2 = glm::vec3(modelMat * v2.position);
             const glm::vec3 worldPos = (worldPos0 + worldPos1 + worldPos2) / 3.0f;
             const glm::vec3 normal = glm::normalize(v0.normal + v1.normal + v2.normal);
-            const glm::vec3 lightDir = glm::normalize(Engine::Get().GetConfig()->environment.lightPosition - worldPos);
+            const glm::vec3 lightDir = glm::normalize(m_FrameConfigSnapshot.environment.lightPosition - worldPos);
             const float ndotl = std::max(glm::dot(normal, lightDir), 0.0f);
             const Color lit(Color::FloatTag{}, ndotl, ndotl, ndotl, 1.0f);
 
@@ -156,9 +159,9 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             }
 
             // Rasterizer
-            const auto& cfg = Engine::Get().GetConfig();
+            const auto& cfg = m_FrameConfigSnapshot;
             // Early-reject in NDC
-            if (cfg->cull.rasterClip) {
+            if (cfg.cull.rasterClip) {
                 bool allOutside = true;
                 for (const auto& v : vertices) {
                     if (v.position.x >= -1.0f && v.position.x <= 1.0f &&
@@ -172,7 +175,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                     continue;
                 }
             }
-            if (cfg->cull.geometricClip) {
+            if (cfg.cull.geometricClip) {
                 std::vector<Vertex> poly = {vertices[0], vertices[1], vertices[2]};
                 std::vector<Vertex> clipped = ClipPolygonNdc(poly);
                 if (clipped.size() < 3) {
@@ -180,10 +183,10 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                 }
                 for (size_t t = 1; t + 1 < clipped.size(); t++) {
                     std::array<Vertex, 3> tri = {clipped[0], clipped[t], clipped[t + 1]};
-                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, tri, *cfg, lit.ToPixel());
+                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, tri, cfg, lit.ToPixel());
                 }
             } else {
-                Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, *cfg, lit.ToPixel());
+                Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, cfg, lit.ToPixel());
             }
 
             // Stats
