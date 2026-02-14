@@ -191,6 +191,9 @@
         {
             "name": "test-debug-x64-windows",
             "configurePreset": "debug-x64-windows",
+            "environment": {
+                "RETRO_RUN_GOLDEN_WINDOWS": "1"
+            },
             "output": {
                 "outputOnFailure": true
             },
@@ -201,6 +204,9 @@
         {
             "name": "test-debug-x64-windows-no-assimp",
             "configurePreset": "debug-x64-windows-no-assimp",
+            "environment": {
+                "RETRO_RUN_GOLDEN_WINDOWS": "1"
+            },
             "output": {
                 "outputOnFailure": true
             },
@@ -211,6 +217,9 @@
         {
             "name": "test-debug-x64-windows-tests",
             "configurePreset": "debug-x64-windows",
+            "environment": {
+                "RETRO_RUN_GOLDEN_WINDOWS": "1"
+            },
             "output": {
                 "outputOnFailure": true
             },
@@ -221,6 +230,9 @@
         {
             "name": "test-debug-x64-windows-tests-no-assimp",
             "configurePreset": "debug-x64-windows-no-assimp",
+            "environment": {
+                "RETRO_RUN_GOLDEN_WINDOWS": "1"
+            },
             "output": {
                 "outputOnFailure": true
             },
