@@ -9,10 +9,10 @@ Model::Model() {
     m_Meshes = std::vector<Mesh>();
 }
 
-void Model::Init(Scene* scene, const std::string& name, const aiMatrix4x4& localMatrix) {
+void Model::Init(Scene* scene, const std::string& name, const glm::mat4& localMatrix) {
     p_Scene = scene;
     m_Name = name;
-    m_LocalMatrix = AssimpToGlmMatrix(localMatrix);
+    m_LocalMatrix = localMatrix;
 }
 
 const std::vector<Mesh>& Model::GetMeshes() const {
@@ -23,13 +23,8 @@ const std::string& Model::GetName() const {
     return m_Name;
 }
 
-void Model::SetName(const aiString& name) {
-    m_Name = name.C_Str();
-}
-
-glm::mat4 Model::AssimpToGlmMatrix(const aiMatrix4x4& mat) {
-    return glm::mat4(mat[0][0], mat[1][0], mat[2][0], mat[3][0], mat[0][1], mat[1][1], mat[2][1], mat[3][1], mat[0][2],
-                     mat[1][2], mat[2][2], mat[3][2], mat[0][3], mat[1][3], mat[2][3], mat[3][3]);
+void Model::SetName(const std::string& name) {
+    m_Name = name;
 }
 
 void Model::MarkDirty() {
@@ -45,8 +40,8 @@ void Model::SetParent(int parent) {
     MarkDirty();
 }
 
-void Model::SetLocalTransform(const aiMatrix4x4& mat) {
-    m_LocalMatrix = AssimpToGlmMatrix(mat);
+void Model::SetLocalTransform(const glm::mat4& mat) {
+    m_LocalMatrix = mat;
     MarkDirty();
 }
 

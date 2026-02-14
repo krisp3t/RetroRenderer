@@ -1,6 +1,5 @@
 #pragma once
 
-#include <assimp/Importer.hpp>
 #include <glm/glm.hpp>
 #include <memory>
 #include <optional>
@@ -22,11 +21,11 @@ class Model {
     Model(Model&&) noexcept = default;
     Model& operator=(Model&&) noexcept = default;
 
-    void Init(Scene* scene, const std::string& name, const aiMatrix4x4& localMatrix);
+    void Init(Scene* scene, const std::string& name, const glm::mat4& localMatrix);
     const std::vector<Mesh>& GetMeshes() const;
     const std::string& GetName() const;
-    void SetName(const aiString& name);
-    void SetLocalTransform(const aiMatrix4x4& mat);
+    void SetName(const std::string& name);
+    void SetLocalTransform(const glm::mat4& mat);
     void SetParent(int parent);
     const glm::mat4& GetWorldTransform() const;
     void MarkDirty();
@@ -38,7 +37,6 @@ class Model {
     std::vector<Mesh> m_Meshes;
 
   private:
-    glm::mat4 AssimpToGlmMatrix(const aiMatrix4x4& mat);
     void RecomputeWorldMatrix();
 
     Scene* p_Scene = nullptr;

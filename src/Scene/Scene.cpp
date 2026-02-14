@@ -1,185 +1,120 @@
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp/scene.h>
-
-#ifdef __ANDROID__
-#include "../native/AndroidBridge.h"
-#include <android/asset_manager.h>
-#include <android/asset_manager_jni.h>
-#endif
-
 #include "Scene.h"
-#include <KrisLogger/Logger.h>
+#include "ISceneImporter.h"
 #include "../Engine.h"
-
-#include <filesystem>
-#include <format>
-
-#include "Vertex.h"
+#include <KrisLogger/Logger.h>
+#include <utility>
 
 namespace RetroRenderer {
+Scene::Scene() : p_SceneImporter(CreateDefaultSceneImporter()) {
+}
+
+Scene::~Scene() = default;
+
+void Scene::SetImporter(std::unique_ptr<ISceneImporter> importer) {
+    if (!importer) {
+        LOGW("Scene::SetImporter received null importer, keeping current importer");
+        return;
+    }
+    p_SceneImporter = std::move(importer);
+}
+
 bool Scene::Load(const uint8_t* data, const size_t size) {
-    Assimp::Importer importer;
-    const aiScene* scene = nullptr;
-    scene = importer.ReadFileFromMemory(data, size, aiProcess_Triangulate | aiProcess_FlipUVs);
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-        LOGE("assimp: Failed to load scene: %s", importer.GetErrorString());
+    if (!p_SceneImporter) {
+        LOGE("Scene has no importer configured");
         return false;
     }
-    return ProcessScene(scene);
+    ImportedSceneData sceneData{};
+    if (!p_SceneImporter->LoadFromMemory(data, size, sceneData)) {
+        return false;
+    }
+    return ProcessImportedScene(sceneData);
 }
 
 bool Scene::Load(const std::string& path) {
-    Assimp::Importer importer;
-    const aiScene* scene = nullptr;
-#ifdef __ANDROID__
-    AAsset* asset = AAssetManager_open(g_assetManager, path.c_str(), AASSET_MODE_BUFFER);
-    if (asset) {
-        size_t fileSize = AAsset_getLength(asset);
-        std::vector<uint8_t> buffer(fileSize);
-        AAsset_read(asset, buffer.data(), fileSize);
-        AAsset_close(asset);
-
-        scene = importer.ReadFileFromMemory(buffer.data(), fileSize, aiProcess_Triangulate | aiProcess_FlipUVs);
-    }
-#else
-    scene = importer.ReadFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
-#endif
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-        LOGE("assimp: Failed to load scene: %s", importer.GetErrorString());
+    if (!p_SceneImporter) {
+        LOGE("Scene has no importer configured");
         return false;
     }
-    return ProcessScene(scene);
-}
-
-bool Scene::ProcessScene(const aiScene* scene) {
-    if (ProcessNode(scene->mRootNode, scene)) {
-        // LOGI("Successfully processed scene: %s (%d meshes)", scene->mRootNode->mName.C_Str(), m_Meshes.size());
-        LOGI("Successfully processed scene: %s", scene->mRootNode->mName.C_Str());
-    }
-    return true;
-}
-
-/**
- * Recursively process each node in the scene. One node will map to one model, which can have multiple meshes.
- * @param node
- * @param scene
- * @return true if successful
- */
-bool Scene::ProcessNode(aiNode* node, const aiScene* scene, int parentIndex) {
-    if (!node) {
-        LOGE("assimp: Node is null");
+    ImportedSceneData sceneData{};
+    if (!p_SceneImporter->LoadFromFile(path, sceneData)) {
         return false;
     }
-    LOGD("Processing node: %s (%d meshes), parent index: %d", node->mName.C_Str(), node->mNumMeshes, parentIndex);
+    return ProcessImportedScene(sceneData);
+}
 
-    // Create a model for this aiNode
+bool Scene::ProcessImportedScene(const ImportedSceneData& sceneData) {
+    m_Models.clear();
+    m_VisibleModels.clear();
+
+    if (sceneData.rootNodeIndex < 0 || sceneData.rootNodeIndex >= static_cast<int>(sceneData.nodes.size())) {
+        LOGE("Imported scene has invalid root node index: %d", sceneData.rootNodeIndex);
+        return false;
+    }
+
+    if (ProcessImportedNode(sceneData.rootNodeIndex, sceneData, -1)) {
+        LOGI("Successfully processed scene: %s", sceneData.nodes[sceneData.rootNodeIndex].name.c_str());
+        return true;
+    }
+    return false;
+}
+
+bool Scene::ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneData, int parentIndex) {
+    if (nodeIndex < 0 || nodeIndex >= static_cast<int>(sceneData.nodes.size())) {
+        LOGE("Imported scene node index %d is out of range", nodeIndex);
+        return false;
+    }
+    const ImportedNode& node = sceneData.nodes[nodeIndex];
+    LOGD("Processing node: %s (%d meshes), parent index: %d",
+         node.name.c_str(),
+         static_cast<int>(node.meshIndices.size()),
+         parentIndex);
+
     Model newModel{};
-    newModel.Init(this, node->mName.C_Str(), node->mTransformation);
-    // Process all meshes for this model
-    for (size_t i = 0; i < node->mNumMeshes; i++) {
-        aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-        if (mesh->mNumVertices > 0 && mesh->mNumFaces > 0) {
-            ProcessMesh(mesh, scene, newModel.m_Meshes, node->mName);
+    newModel.Init(this, node.name, node.localTransform);
+    for (int meshIndex : node.meshIndices) {
+        if (meshIndex < 0 || meshIndex >= static_cast<int>(sceneData.meshes.size())) {
+            LOGW("Skipping invalid imported mesh index %d in node %s", meshIndex, node.name.c_str());
+            continue;
+        }
+        const ImportedMesh& mesh = sceneData.meshes[meshIndex];
+        if (!mesh.vertices.empty() && !mesh.indices.empty()) {
+            ProcessImportedMesh(mesh, sceneData, newModel.m_Meshes, node.name);
             newModel.m_Meshes.back().Init();
         }
     }
-    int currentNodeIndex = m_Models.size();
+
+    const int currentNodeIndex = static_cast<int>(m_Models.size());
     if (parentIndex != -1) {
         newModel.SetParent(parentIndex);
         m_Models[parentIndex].m_Children.push_back(currentNodeIndex);
     }
     m_Models.emplace_back(std::move(newModel));
 
-    // Recursively process children
-    for (unsigned int i = 0; i < node->mNumChildren; i++) {
-        ProcessNode(node->mChildren[i], scene, currentNodeIndex);
+    for (int childNodeIndex : node.childNodeIndices) {
+        if (!ProcessImportedNode(childNodeIndex, sceneData, currentNodeIndex)) {
+            return false;
+        }
     }
     return true;
 }
 
-/**
- * Process a root node in the scene
- * @param node
- * @param scene
- * @return true if successful
- */
-bool Scene::ProcessNode(aiNode* node, const aiScene* scene) {
-    return ProcessNode(node, scene, -1);
-}
-
-void Scene::ProcessMesh(aiMesh* mesh, const aiScene* scene, std::vector<Mesh>& meshes, const aiString& modelName) {
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
+void Scene::ProcessImportedMesh(const ImportedMesh& mesh,
+                                const ImportedSceneData& sceneData,
+                                std::vector<Mesh>& meshes,
+                                const std::string& modelName) {
+    std::vector<Vertex> vertices = mesh.vertices;
+    std::vector<unsigned int> indices = mesh.indices;
     std::vector<Texture> textures;
 
-    aiMaterial* material;
-    if (mesh->mMaterialIndex >= 0) {
-        material = scene->mMaterials[mesh->mMaterialIndex];
-    }
-
-    for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
-        Vertex vertex{};
-        if (mesh->HasPositions()) {
-            vertex.position.x = mesh->mVertices[i].x;
-            vertex.position.y = mesh->mVertices[i].y;
-            vertex.position.z = mesh->mVertices[i].z;
-            vertex.position.w = 1.0f;
-        }
-        if (mesh->HasNormals()) {
-            vertex.normal.x = mesh->mNormals[i].x;
-            vertex.normal.y = mesh->mNormals[i].y;
-            vertex.normal.z = mesh->mNormals[i].z;
-            // TODO: w?
-        }
-        if (mesh->mTextureCoords[0]) {
-            glm::vec2 vec{};
-            vec.x = mesh->mTextureCoords[0][i].x;
-            vec.y = mesh->mTextureCoords[0][i].y;
-            vertex.texCoords = vec;
-        } else {
-            vertex.texCoords = glm::vec2(0.0f, 0.0f);
-        }
-        if (material) {
-            aiColor3D diffuseColor(0.f, 0.f, 0.f);
-            material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
-            vertex.color = glm::vec3(diffuseColor.r, diffuseColor.g, diffuseColor.b);
-        } else {
-            vertex.color = glm::vec3(1.0f, 1.0f, 1.0f);
-        }
-        vertices.push_back(vertex);
-    }
-    for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-        aiFace face = mesh->mFaces[i];
-        if (face.mNumIndices != 3) {
-            LOGW("Skipping face that doesn't have exactly 3 indices.");
-            continue;
-        }
-        for (unsigned int j = 0; j < 3; j++) {
-            indices.push_back(face.mIndices[j]);
+    if (mesh.materialIndex.has_value()) {
+        const int materialIndex = mesh.materialIndex.value();
+        if (materialIndex >= 0 && materialIndex < static_cast<int>(sceneData.materials.size())) {
+            LOGI("Processing material %d for model %s", materialIndex, modelName.c_str());
+            const ImportedMaterial& material = sceneData.materials[materialIndex];
+            (void)material; // TODO: process material
         }
     }
 
-    if (mesh->mMaterialIndex >= 0) {
-        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-        LOGI("Processing material %s", material->GetName().C_Str());
-        aiColor3D diffuseColor(0.f, 0.f, 0.f);
-        material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
-        aiColor3D specularColor(0.f, 0.f, 0.f);
-        material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
-        // TODO: process material
-    }
-
-    // TODO: do not hardcode like this
-    /*
-    Texture texture;
-    std::string texPath = std::format("{}.png", modelName.C_Str());
-    std::filesystem::path fullPath = std::filesystem::absolute(texPath);
-    if (texture.LoadFromFile(fullPath.string().c_str()))
-    {
-        textures.emplace_back(std::move(texture));
-    }
-    */
     meshes.emplace_back(std::move(vertices), std::move(indices), std::move(textures));
 }
 
