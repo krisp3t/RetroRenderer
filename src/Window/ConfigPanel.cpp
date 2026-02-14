@@ -735,6 +735,19 @@ void ConfigPanel::DisplayMetricsOverlay() {
                     p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE ? "software" : "OpenGL");
         ImGui::Text("%d verts, %d tris", p_stats_->renderedVerts, p_stats_->renderedTris);
         ImGui::Text("0 draw calls");
+        ImGui::SeparatorText("Memory");
+        if (p_stats_->processMemorySupported) {
+            const double currentMiB = static_cast<double>(p_stats_->processResidentBytes) / (1024.0 * 1024.0);
+            const double peakMiB = static_cast<double>(p_stats_->processResidentPeakBytes) / (1024.0 * 1024.0);
+            ImGui::Text("RSS: %.2f MiB", currentMiB);
+            ImGui::Text("Peak RSS (app): %.2f MiB", peakMiB);
+            if (p_stats_->processResidentPeakOsBytes > 0) {
+                const double peakOsMiB = static_cast<double>(p_stats_->processResidentPeakOsBytes) / (1024.0 * 1024.0);
+                ImGui::Text("Peak RSS (OS): %.2f MiB", peakOsMiB);
+            }
+        } else {
+            ImGui::Text("Process memory sampling unavailable on this platform");
+        }
         if (p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE) {
             const uint64_t swJobsSubmitted = p_stats_->swJobsSubmitted.load(std::memory_order_relaxed);
             const uint64_t swJobsCompleted = p_stats_->swJobsCompleted.load(std::memory_order_relaxed);

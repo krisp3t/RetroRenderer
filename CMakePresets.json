@@ -50,6 +50,20 @@
             }
         },
         {
+            "name": "debug-x64-windows-no-assimp",
+            "inherits": "debug-x64-windows",
+            "cacheVariables": {
+                "RETRO_ENABLE_ASSIMP": "OFF"
+            }
+        },
+        {
+            "name": "release-x64-windows-no-assimp",
+            "inherits": "release-x64-windows",
+            "cacheVariables": {
+                "RETRO_ENABLE_ASSIMP": "OFF"
+            }
+        },
+        {
             "name": "debug-x64-linux",
             "inherits": "debug",
             "cacheVariables": {

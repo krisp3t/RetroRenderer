@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "Base/MemoryProfiler.h"
 #include <KrisLogger/Logger.h>
 
 #ifdef __EMSCRIPTEN__
@@ -73,6 +74,11 @@ void Engine::ProcessFrame() {
     p_SceneManager->ProcessInput(inputActions, delta);
     p_SceneManager->Update(delta);
     p_SceneManager->NewFrame();
+
+    const ProcessMemorySnapshot memorySnapshot = MemoryProfiler::SampleProcessMemory();
+    if (memorySnapshot.supported) {
+        p_stats_->UpdateProcessMemory(memorySnapshot.residentBytes, memorySnapshot.peakResidentBytes);
+    }
 
     Color clearColor = Color{p_config_->renderer.clearColor};
     auto scene = p_SceneManager->GetScene();

@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <mutex>
+#include <queue>
 
 #include "Base/Event.h"
 #include "Base/Stats.h"

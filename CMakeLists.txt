@@ -1,5 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.18)
 project(retrorenderer VERSION 1.0 LANGUAGES C CXX)
+option(RETRO_ENABLE_ASSIMP "Enable Assimp scene importer backend" ON)
 
 # -----------------------------------------------------------------------------
 # Android toolchain (Gradle will inject ANDROID_ABI, ANDROID_PLATFORM)
@@ -61,7 +62,12 @@ find_package(SDL2_image CONFIG REQUIRED)
 endif ()
 find_package(glm       CONFIG REQUIRED)
 find_package(imgui     CONFIG REQUIRED)
-find_package(assimp    CONFIG REQUIRED)
+if(RETRO_ENABLE_ASSIMP)
+    find_package(assimp CONFIG REQUIRED)
+    set(RETRO_WITH_ASSIMP_VALUE 1)
+else()
+    set(RETRO_WITH_ASSIMP_VALUE 0)
+endif()
 find_package(glad      CONFIG REQUIRED)
 
 # -----------------------------------------------------------------------------
@@ -126,7 +132,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
 )
-target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL=0)
+target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL=0 RETRO_WITH_ASSIMP=${RETRO_WITH_ASSIMP_VALUE})
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -pedantic>
 )
@@ -154,10 +160,15 @@ target_link_libraries(${PROJECT_NAME}
         PRIVATE
         imgui::imgui
         glm::glm
-        assimp::assimp
         glad::glad
         KrisLogger
 )
+if(RETRO_ENABLE_ASSIMP)
+    target_link_libraries(${PROJECT_NAME}
+            PRIVATE
+            assimp::assimp
+    )
+endif()
 # -----------------------------------------------------------------------------
 # Android-specific system libs
 # -----------------------------------------------------------------------------
@@ -170,5 +181,11 @@ if(ANDROID)
             GLESv3
             jnigraphics
             native_app_glue
+    )
+endif()
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME}
+            PRIVATE
+            psapi
     )
 endif()
