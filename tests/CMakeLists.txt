@@ -1,8 +1,10 @@
 find_package(Catch2 CONFIG REQUIRED)
 
 add_executable(retrorenderer_tests
-    LightweightObjSceneImporterTests.cpp
-    RasterizerTests.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/ConcurrencyTests.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/IntegrationTests.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/LightweightObjSceneImporterTests.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/RasterizerTests.cpp
     ${CMAKE_SOURCE_DIR}/src/Renderer/Software/Rasterizer.cpp
     ${CMAKE_SOURCE_DIR}/src/Scene/LightweightObjSceneImporter.cpp
 )
