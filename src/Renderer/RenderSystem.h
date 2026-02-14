@@ -7,10 +7,12 @@
 #include "Software/SWRenderer.h"
 #if !defined(__EMSCRIPTEN__)
 #include <condition_variable>
+#include <deque>
 #include <mutex>
 #include <optional>
 #include <thread>
 #endif
+#include <cstdint>
 #include <memory>
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 #include "GLES/GLESRenderer.h"
@@ -41,6 +43,7 @@ class RenderSystem {
     void Destroy();
 
     void OnLoadScene(const SceneLoadEvent& e);
+    void OnResetScene();
 
     [[nodiscard]] GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode);
 
@@ -51,6 +54,14 @@ class RenderSystem {
         std::vector<int> renderQueue;
         Config configSnapshot{};
         Color clearColor{};
+        uint64_t jobId = 0;
+    };
+
+    struct SoftwareCompletedFrame {
+        std::vector<Pixel> pixels;
+        size_t width = 0;
+        size_t height = 0;
+        uint64_t jobId = 0;
     };
 
     void StartSoftwareWorker();
@@ -59,6 +70,8 @@ class RenderSystem {
     void UploadSoftwareFrameToTexture();
     void SoftwareWorkerLoop();
     GLuint RenderSoftwareSync(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
+    void ClearSoftwareWorkerFrameState();
+    void SyncSoftwareWorkerForSceneMutation();
 
   private:
     std::unique_ptr<Scene> p_scene_ = nullptr;
@@ -73,17 +86,17 @@ class RenderSystem {
     GLuint m_SWFramebufferTexture = 0;
     GLuint m_GLFramebufferTexture = 0;
     Color m_SoftwareClearColor = Color::DefaultBackground();
+    bool m_IsDestroyed = false;
 
 #if !defined(__EMSCRIPTEN__)
     std::thread m_SoftwareWorkerThread;
     std::condition_variable m_SoftwareWorkerCv;
     std::mutex m_SoftwareWorkerMutex;
     std::optional<SoftwareRenderJob> m_PendingSoftwareJob;
-    std::vector<Pixel> m_CompletedSoftwareFrame;
-    size_t m_CompletedSoftwareFrameWidth = 0;
-    size_t m_CompletedSoftwareFrameHeight = 0;
+    std::deque<SoftwareCompletedFrame> m_CompletedSoftwareFrames;
+    uint64_t m_NextSoftwareJobId = 0;
     bool m_SoftwareWorkerStopRequested = false;
-    bool m_HasCompletedSoftwareFrame = false;
+    static constexpr size_t kMaxBufferedSoftwareFrames = 3;
 #endif
 };
 

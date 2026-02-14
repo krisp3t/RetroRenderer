@@ -10,6 +10,7 @@ RenderSystem::~RenderSystem() {
 }
 
 bool RenderSystem::Init() {
+    m_IsDestroyed = false;
     auto const& p_config = Engine::Get().GetConfig();
     p_SWRenderer_ = std::make_unique<SWRenderer>();
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
@@ -139,18 +140,17 @@ void RenderSystem::Resize(const glm::ivec2& resolution) {
     p_GLRenderer_->Resize(m_GLFramebufferTexture, resolution.x, resolution.y);
 
 #if !defined(__EMSCRIPTEN__)
-    {
-        std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
-        m_CompletedSoftwareFrame.clear();
-        m_CompletedSoftwareFrameWidth = 0;
-        m_CompletedSoftwareFrameHeight = 0;
-        m_HasCompletedSoftwareFrame = false;
-    }
+    ClearSoftwareWorkerFrameState();
     StartSoftwareWorker();
 #endif
 }
 
 void RenderSystem::Destroy() {
+    if (m_IsDestroyed) {
+        return;
+    }
+    m_IsDestroyed = true;
+
     StopSoftwareWorker();
     if (m_SWFramebufferTexture != 0) {
         glDeleteTextures(1, &m_SWFramebufferTexture);
@@ -169,10 +169,40 @@ void RenderSystem::Destroy() {
 }
 
 void RenderSystem::OnLoadScene(const SceneLoadEvent& e) {
+    (void)e;
+    SyncSoftwareWorkerForSceneMutation();
+}
+
+void RenderSystem::OnResetScene() {
+    SyncSoftwareWorkerForSceneMutation();
 }
 
 GLuint RenderSystem::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
     return p_activeRenderer_->CompileShaders(vertexCode, fragmentCode);
+}
+
+void RenderSystem::ClearSoftwareWorkerFrameState() {
+#if !defined(__EMSCRIPTEN__)
+    std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
+    m_PendingSoftwareJob.reset();
+    m_CompletedSoftwareFrames.clear();
+#endif
+}
+
+void RenderSystem::SyncSoftwareWorkerForSceneMutation() {
+#if !defined(__EMSCRIPTEN__)
+    StopSoftwareWorker();
+    ClearSoftwareWorkerFrameState();
+    if (p_SWRenderer_ && m_SWFramebufferTexture != 0) {
+        p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
+        const auto& buffer = p_SWRenderer_->GetFrameBuffer();
+        glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(buffer.width), static_cast<GLsizei>(buffer.height),
+                        GL_RGBA, GL_UNSIGNED_BYTE, buffer.data);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    StartSoftwareWorker();
+#endif
 }
 
 void RenderSystem::StartSoftwareWorker() {
@@ -201,6 +231,7 @@ void RenderSystem::StopSoftwareWorker() {
         std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
         m_SoftwareWorkerStopRequested = false;
         m_PendingSoftwareJob.reset();
+        m_CompletedSoftwareFrames.clear();
     }
 #endif
 }
@@ -212,6 +243,9 @@ void RenderSystem::SubmitSoftwareJob(const std::shared_ptr<Scene>& scene,
     if (!scene) {
         return;
     }
+    auto const& p_stats = Engine::Get().GetStats();
+    assert(p_stats != nullptr && "Stats not initialized!");
+
     SoftwareRenderJob job;
     job.scene = scene;
     job.camera = std::make_shared<Camera>(camera);
@@ -220,42 +254,61 @@ void RenderSystem::SubmitSoftwareJob(const std::shared_ptr<Scene>& scene,
     job.clearColor = m_SoftwareClearColor;
     {
         std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
+        job.jobId = ++m_NextSoftwareJobId;
+        if (m_PendingSoftwareJob.has_value()) {
+            p_stats->swJobsDroppedPending.fetch_add(1, std::memory_order_relaxed);
+        }
         m_PendingSoftwareJob = std::move(job); // Keep only the latest job.
     }
+    p_stats->swJobsSubmitted.fetch_add(1, std::memory_order_relaxed);
     m_SoftwareWorkerCv.notify_one();
 #endif
 }
 
 void RenderSystem::UploadSoftwareFrameToTexture() {
 #if !defined(__EMSCRIPTEN__)
-    std::vector<Pixel> frame;
+    auto const& p_stats = Engine::Get().GetStats();
+    assert(p_stats != nullptr && "Stats not initialized!");
+
+    SoftwareCompletedFrame completedFrame;
+    size_t droppedReadyFrames = 0;
+    bool hasFrame = false;
     size_t width = 0;
     size_t height = 0;
     {
         std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
-        if (!m_HasCompletedSoftwareFrame) {
+        if (m_CompletedSoftwareFrames.empty()) {
             return;
         }
-        frame = std::move(m_CompletedSoftwareFrame);
-        width = m_CompletedSoftwareFrameWidth;
-        height = m_CompletedSoftwareFrameHeight;
-        m_HasCompletedSoftwareFrame = false;
-        m_CompletedSoftwareFrameWidth = 0;
-        m_CompletedSoftwareFrameHeight = 0;
+        // Present newest finished frame and drop older stale ones.
+        completedFrame = std::move(m_CompletedSoftwareFrames.back());
+        droppedReadyFrames = m_CompletedSoftwareFrames.size() - 1;
+        m_CompletedSoftwareFrames.clear();
+        hasFrame = true;
+        width = completedFrame.width;
+        height = completedFrame.height;
     }
-    if (frame.empty() || width == 0 || height == 0) {
+    if (!hasFrame || completedFrame.pixels.empty() || width == 0 || height == 0) {
         return;
     }
 
     glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height), GL_RGBA,
-                    GL_UNSIGNED_BYTE, frame.data());
+                    GL_UNSIGNED_BYTE, completedFrame.pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (droppedReadyFrames > 0) {
+        p_stats->swFramesDroppedReady.fetch_add(droppedReadyFrames, std::memory_order_relaxed);
+    }
+    p_stats->swFramesUploaded.fetch_add(1, std::memory_order_relaxed);
 #endif
 }
 
 void RenderSystem::SoftwareWorkerLoop() {
 #if !defined(__EMSCRIPTEN__)
+    auto const& p_stats = Engine::Get().GetStats();
+    assert(p_stats != nullptr && "Stats not initialized!");
+
     while (true) {
         SoftwareRenderJob job;
         {
@@ -279,9 +332,23 @@ void RenderSystem::SoftwareWorkerLoop() {
             p_SWRenderer_->DrawSkybox();
         }
 
+        bool cancelled = false;
         if (job.scene) {
             auto& models = job.scene->m_Models;
             for (int modelIx : job.renderQueue) {
+                {
+                    std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
+                    if (m_SoftwareWorkerStopRequested) {
+                        return;
+                    }
+                    if (m_PendingSoftwareJob.has_value() && m_PendingSoftwareJob->jobId > job.jobId) {
+                        cancelled = true;
+                    }
+                }
+                if (cancelled) {
+                    p_stats->swJobsCancelled.fetch_add(1, std::memory_order_relaxed);
+                    break;
+                }
                 if (modelIx < 0 || static_cast<size_t>(modelIx) >= models.size()) {
                     continue;
                 }
@@ -291,20 +358,29 @@ void RenderSystem::SoftwareWorkerLoop() {
                 }
             }
         }
+        if (cancelled) {
+            continue;
+        }
 
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
-        std::vector<Pixel> finishedFrame(buffer.GetCount());
-        if (!finishedFrame.empty()) {
-            std::memcpy(finishedFrame.data(), buffer.data, finishedFrame.size() * sizeof(Pixel));
+        SoftwareCompletedFrame finishedFrame{};
+        finishedFrame.width = buffer.width;
+        finishedFrame.height = buffer.height;
+        finishedFrame.jobId = job.jobId;
+        finishedFrame.pixels.resize(buffer.GetCount());
+        if (!finishedFrame.pixels.empty()) {
+            std::memcpy(finishedFrame.pixels.data(), buffer.data, finishedFrame.pixels.size() * sizeof(Pixel));
         }
 
         {
             std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
-            m_CompletedSoftwareFrame = std::move(finishedFrame);
-            m_CompletedSoftwareFrameWidth = buffer.width;
-            m_CompletedSoftwareFrameHeight = buffer.height;
-            m_HasCompletedSoftwareFrame = true;
+            if (m_CompletedSoftwareFrames.size() >= kMaxBufferedSoftwareFrames) {
+                m_CompletedSoftwareFrames.pop_front();
+                p_stats->swFramesDroppedReady.fetch_add(1, std::memory_order_relaxed);
+            }
+            m_CompletedSoftwareFrames.push_back(std::move(finishedFrame));
         }
+        p_stats->swJobsCompleted.fetch_add(1, std::memory_order_relaxed);
     }
 #endif
 }

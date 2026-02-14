@@ -18,6 +18,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui_impl_opengl3.h>
 #include <utility>
+#include <cinttypes>
 
 #ifdef __ANDROID__
 #include "../native/AndroidBridge.h"
@@ -734,6 +735,20 @@ void ConfigPanel::DisplayMetricsOverlay() {
                     p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE ? "software" : "OpenGL");
         ImGui::Text("%d verts, %d tris", p_stats_->renderedVerts, p_stats_->renderedTris);
         ImGui::Text("0 draw calls");
+        if (p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE) {
+            const uint64_t swJobsSubmitted = p_stats_->swJobsSubmitted.load(std::memory_order_relaxed);
+            const uint64_t swJobsCompleted = p_stats_->swJobsCompleted.load(std::memory_order_relaxed);
+            const uint64_t swJobsCancelled = p_stats_->swJobsCancelled.load(std::memory_order_relaxed);
+            const uint64_t swJobsDroppedPending = p_stats_->swJobsDroppedPending.load(std::memory_order_relaxed);
+            const uint64_t swFramesUploaded = p_stats_->swFramesUploaded.load(std::memory_order_relaxed);
+            const uint64_t swFramesDroppedReady = p_stats_->swFramesDroppedReady.load(std::memory_order_relaxed);
+            ImGui::SeparatorText("SW Async");
+            ImGui::Text("Jobs: submitted=%" PRIu64 " completed=%" PRIu64, swJobsSubmitted, swJobsCompleted);
+            ImGui::Text("Jobs: cancelled=%" PRIu64 " dropped(pending)=%" PRIu64, swJobsCancelled,
+                        swJobsDroppedPending);
+            ImGui::Text("Frames: uploaded=%" PRIu64 " dropped(ready)=%" PRIu64, swFramesUploaded,
+                        swFramesDroppedReady);
+        }
         if (auto cam = Engine::Get().GetCamera()) {
             ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", cam->m_Position.x, cam->m_Position.y, cam->m_Position.z);
         }

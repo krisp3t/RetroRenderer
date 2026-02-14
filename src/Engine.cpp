@@ -158,6 +158,7 @@ void Engine::Dispatch(const Event& event) {
     }
     case EventType::Scene_Reset: {
         p_SceneManager->ResetScene();
+        p_RenderSystem->OnResetScene();
         break;
     }
     case EventType::Output_Image_Resize: {
