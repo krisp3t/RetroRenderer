@@ -1,6 +1,7 @@
 ﻿cmake_minimum_required(VERSION 3.18)
 project(retrorenderer VERSION 1.0 LANGUAGES C CXX)
 option(RETRO_ENABLE_ASSIMP "Enable Assimp scene importer backend" ON)
+option(RETRO_BUILD_TESTS "Build Catch2 unit tests" OFF)
 
 # -----------------------------------------------------------------------------
 # Android toolchain (Gradle will inject ANDROID_ABI, ANDROID_PLATFORM)
@@ -188,4 +189,16 @@ if(WIN32)
             PRIVATE
             psapi
     )
+endif()
+
+# -----------------------------------------------------------------------------
+# Tests
+# -----------------------------------------------------------------------------
+if(RETRO_BUILD_TESTS)
+    if(ANDROID OR CMAKE_SYSTEM_NAME MATCHES "Emscripten")
+        message(WARNING "RETRO_BUILD_TESTS is only supported on desktop platforms. Skipping tests.")
+    else()
+        enable_testing()
+        add_subdirectory(tests)
+    endif()
 endif()

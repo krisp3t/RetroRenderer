@@ -55,7 +55,11 @@
             ],
             "platform": "!emscripten"
         },
-        "assimp"
+        "assimp",
+        {
+            "name": "catch2",
+            "platform": "!android & !emscripten"
+        }
     ],
     "version": "1.0",
     "name": "retrorenderer"
