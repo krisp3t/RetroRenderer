@@ -83,6 +83,14 @@
             }
         },
         {
+            "name": "debug-x64-windows-ubsan",
+            "inherits": "debug-x64-windows-no-assimp",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "RETRO_SANITIZERS": "undefined"
+            }
+        },
+        {
             "name": "debug-x64-linux",
             "inherits": "debug",
             "cacheVariables": {
@@ -229,6 +237,11 @@
             "targets": [ "retrorenderer_tests" ]
         },
         {
+            "name": "build-debug-x64-windows-ubsan-tests",
+            "configurePreset": "debug-x64-windows-ubsan",
+            "targets": [ "retrorenderer_tests" ]
+        },
+        {
             "name": "build-debug-x64-linux-asan-tests",
             "configurePreset": "debug-x64-linux-asan",
             "targets": [ "retrorenderer_tests" ]
@@ -303,6 +316,20 @@
             "environment": {
                 "ASAN_OPTIONS": "halt_on_error=1:symbolize=1",
                 "ASAN_SYMBOLIZER_PATH": "C:/Program Files/LLVM/bin/llvm-symbolizer.exe"
+            },
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "noTestsAction": "error"
+            }
+        },
+        {
+            "name": "test-debug-x64-windows-ubsan",
+            "configurePreset": "debug-x64-windows-ubsan",
+            "environment": {
+                "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1",
+                "UBSAN_SYMBOLIZER_PATH": "C:/Program Files/LLVM/bin/llvm-symbolizer.exe"
             },
             "output": {
                 "outputOnFailure": true

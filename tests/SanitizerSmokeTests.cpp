@@ -17,6 +17,20 @@ namespace {
 #if !defined(RETRO_COMPILED_WITH_ASAN)
 #define RETRO_COMPILED_WITH_ASAN 0
 #endif
+
+#if defined(__has_feature)
+#if __has_feature(undefined_behavior_sanitizer)
+#define RETRO_COMPILED_WITH_UBSAN 1
+#endif
+#endif
+
+#if !defined(RETRO_COMPILED_WITH_UBSAN) && defined(__SANITIZE_UNDEFINED__)
+#define RETRO_COMPILED_WITH_UBSAN 1
+#endif
+
+#if !defined(RETRO_COMPILED_WITH_UBSAN)
+#define RETRO_COMPILED_WITH_UBSAN 0
+#endif
 } // namespace
 
 TEST_CASE("Sanitizer smoke: ASan instrumentation status", "[sanitizer][asan]") {
@@ -25,6 +39,16 @@ TEST_CASE("Sanitizer smoke: ASan instrumentation status", "[sanitizer][asan]") {
     REQUIRE(RETRO_COMPILED_WITH_ASAN == 1);
 #else
     std::cout << "[sanitizer-smoke] RETRO_EXPECT_ASAN=0 (ASan not requested for this build)\n";
+    SUCCEED();
+#endif
+}
+
+TEST_CASE("Sanitizer smoke: UBSan instrumentation status", "[sanitizer][ubsan]") {
+#if defined(RETRO_EXPECT_UBSAN)
+    std::cout << "[sanitizer-smoke] RETRO_EXPECT_UBSAN=1, compiled_with_ubsan=" << RETRO_COMPILED_WITH_UBSAN << '\n';
+    REQUIRE(RETRO_COMPILED_WITH_UBSAN == 1);
+#else
+    std::cout << "[sanitizer-smoke] RETRO_EXPECT_UBSAN=0 (UBSan not requested for this build)\n";
     SUCCEED();
 #endif
 }

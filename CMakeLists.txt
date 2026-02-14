@@ -105,6 +105,63 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/lib/KrisLogger)
 
 add_library(retro_sanitizers INTERFACE)
 set(RETRO_WINDOWS_ASAN_RUNTIME_DLL "")
+set(RETRO_WINDOWS_UBSAN_RUNTIME_DLL "")
+set(RETRO_WINDOWS_SANITIZER_RUNTIME_DLLS "")
+
+function(retro_find_windows_clang_runtime_dll runtime_name out_var)
+    set(retro_runtime_dll_path "")
+
+    execute_process(
+        COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=${runtime_name}
+        OUTPUT_VARIABLE RETRO_CLANG_RUNTIME_PRINT_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(RETRO_CLANG_RUNTIME_PRINT_PATH AND EXISTS "${RETRO_CLANG_RUNTIME_PRINT_PATH}")
+        set(retro_runtime_dll_path "${RETRO_CLANG_RUNTIME_PRINT_PATH}")
+    endif()
+
+    if(NOT retro_runtime_dll_path)
+        execute_process(
+            COMMAND ${CMAKE_CXX_COMPILER} --print-runtime-dir
+            OUTPUT_VARIABLE RETRO_CLANG_RUNTIME_DIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(RETRO_CLANG_RUNTIME_DIR)
+            find_file(retro_runtime_dll_path
+                NAMES ${runtime_name}
+                PATHS "${RETRO_CLANG_RUNTIME_DIR}"
+                NO_DEFAULT_PATH
+            )
+        endif()
+    endif()
+
+    if(NOT retro_runtime_dll_path)
+        get_filename_component(RETRO_CLANG_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        find_file(retro_runtime_dll_path
+            NAMES ${runtime_name}
+            PATHS "${RETRO_CLANG_BIN_DIR}"
+            NO_DEFAULT_PATH
+        )
+    endif()
+
+    if(NOT retro_runtime_dll_path)
+        get_filename_component(RETRO_CLANG_ROOT_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        get_filename_component(RETRO_CLANG_ROOT_DIR "${RETRO_CLANG_ROOT_DIR}" DIRECTORY)
+        file(GLOB RETRO_CLANG_RUNTIME_DLL_CANDIDATES
+            "${RETRO_CLANG_ROOT_DIR}/lib/clang/*/lib/windows/${runtime_name}"
+        )
+        list(LENGTH RETRO_CLANG_RUNTIME_DLL_CANDIDATES RETRO_CLANG_RUNTIME_DLL_COUNT)
+        if(RETRO_CLANG_RUNTIME_DLL_COUNT GREATER 0)
+            list(SORT RETRO_CLANG_RUNTIME_DLL_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
+            list(GET RETRO_CLANG_RUNTIME_DLL_CANDIDATES 0 retro_runtime_dll_path)
+        endif()
+    endif()
+
+    set(${out_var} "${retro_runtime_dll_path}" PARENT_SCOPE)
+endfunction()
+
 if(RETRO_SANITIZERS)
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
         message(FATAL_ERROR "RETRO_SANITIZERS requires a Clang or GCC toolchain.")
@@ -113,6 +170,7 @@ if(RETRO_SANITIZERS)
     set(RETRO_SANITIZER_FLAGS "")
     set(RETRO_HAS_THREAD_SAN OFF)
     set(RETRO_HAS_ADDRESS_SAN OFF)
+    set(RETRO_HAS_UNDEFINED_SAN OFF)
     set(RETRO_SANITIZER_COUNT 0)
     foreach(RETRO_SANITIZER IN LISTS RETRO_SANITIZERS)
         string(TOLOWER "${RETRO_SANITIZER}" RETRO_SANITIZER_LOWER)
@@ -124,6 +182,9 @@ if(RETRO_SANITIZERS)
         endif()
         if(RETRO_SANITIZER_LOWER STREQUAL "address")
             set(RETRO_HAS_ADDRESS_SAN ON)
+        endif()
+        if(RETRO_SANITIZER_LOWER STREQUAL "undefined")
+            set(RETRO_HAS_UNDEFINED_SAN ON)
         endif()
         math(EXPR RETRO_SANITIZER_COUNT "${RETRO_SANITIZER_COUNT} + 1")
         list(APPEND RETRO_SANITIZER_FLAGS "-fsanitize=${RETRO_SANITIZER_LOWER}")
@@ -141,6 +202,16 @@ if(RETRO_SANITIZERS)
         ${RETRO_SANITIZER_FLAGS}
     )
 
+    if(WIN32 AND RETRO_HAS_UNDEFINED_SAN)
+        # Clang's Windows UBSan C++ runtime (ubsan_standalone_cxx) is built
+        # with static CRT and conflicts with /MD third-party libraries.
+        # Disable vptr instrumentation to avoid linking that runtime while
+        # keeping the rest of UBSan checks enabled.
+        target_compile_options(retro_sanitizers INTERFACE -fno-sanitize=vptr)
+        target_link_options(retro_sanitizers INTERFACE -fno-sanitize=vptr)
+        message(STATUS "Windows UBSan: disabled vptr checks to avoid CRT runtime mismatch.")
+    endif()
+
     if(WIN32 AND RETRO_HAS_ADDRESS_SAN)
         # Prebuilt third-party Windows libs are commonly non-ASan.
         # Disable STL container/string annotations to avoid /failifmismatch
@@ -150,71 +221,50 @@ if(RETRO_SANITIZERS)
             _DISABLE_STRING_ANNOTATION
         )
 
-        execute_process(
-            COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=clang_rt.asan_dynamic-x86_64.dll
-            OUTPUT_VARIABLE RETRO_CLANG_ASAN_DLL_PATH
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            ERROR_QUIET
-        )
-        if(RETRO_CLANG_ASAN_DLL_PATH AND EXISTS "${RETRO_CLANG_ASAN_DLL_PATH}")
-            set(RETRO_WINDOWS_ASAN_RUNTIME_DLL "${RETRO_CLANG_ASAN_DLL_PATH}")
-        endif()
-
-        if(NOT RETRO_WINDOWS_ASAN_RUNTIME_DLL)
-            execute_process(
-                COMMAND ${CMAKE_CXX_COMPILER} --print-runtime-dir
-                OUTPUT_VARIABLE RETRO_CLANG_RUNTIME_DIR
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-            if(RETRO_CLANG_RUNTIME_DIR)
-                find_file(RETRO_WINDOWS_ASAN_RUNTIME_DLL
-                    NAMES clang_rt.asan_dynamic-x86_64.dll
-                    PATHS "${RETRO_CLANG_RUNTIME_DIR}"
-                    NO_DEFAULT_PATH
-                )
-            endif()
-        endif()
-        if(NOT RETRO_WINDOWS_ASAN_RUNTIME_DLL)
-            get_filename_component(RETRO_CLANG_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
-            find_file(RETRO_WINDOWS_ASAN_RUNTIME_DLL
-                NAMES clang_rt.asan_dynamic-x86_64.dll
-                PATHS "${RETRO_CLANG_BIN_DIR}"
-                NO_DEFAULT_PATH
-            )
-        endif()
-        if(NOT RETRO_WINDOWS_ASAN_RUNTIME_DLL)
-            get_filename_component(RETRO_CLANG_ROOT_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
-            get_filename_component(RETRO_CLANG_ROOT_DIR "${RETRO_CLANG_ROOT_DIR}" DIRECTORY)
-            file(GLOB RETRO_CLANG_ASAN_DLL_CANDIDATES
-                "${RETRO_CLANG_ROOT_DIR}/lib/clang/*/lib/windows/clang_rt.asan_dynamic-x86_64.dll"
-            )
-            list(LENGTH RETRO_CLANG_ASAN_DLL_CANDIDATES RETRO_CLANG_ASAN_DLL_COUNT)
-            if(RETRO_CLANG_ASAN_DLL_COUNT GREATER 0)
-                list(SORT RETRO_CLANG_ASAN_DLL_CANDIDATES COMPARE NATURAL ORDER DESCENDING)
-                list(GET RETRO_CLANG_ASAN_DLL_CANDIDATES 0 RETRO_WINDOWS_ASAN_RUNTIME_DLL)
-            endif()
-        endif()
+        retro_find_windows_clang_runtime_dll("clang_rt.asan_dynamic-x86_64.dll" RETRO_WINDOWS_ASAN_RUNTIME_DLL)
         if(NOT RETRO_WINDOWS_ASAN_RUNTIME_DLL)
             message(WARNING "Windows ASan enabled, but clang_rt.asan_dynamic-x86_64.dll was not found. Tests may fail with 0xc0000135.")
         else()
             message(STATUS "Windows ASan runtime: ${RETRO_WINDOWS_ASAN_RUNTIME_DLL}")
+            list(APPEND RETRO_WINDOWS_SANITIZER_RUNTIME_DLLS "${RETRO_WINDOWS_ASAN_RUNTIME_DLL}")
         endif()
+    endif()
+
+    if(WIN32 AND RETRO_HAS_UNDEFINED_SAN)
+        retro_find_windows_clang_runtime_dll("clang_rt.ubsan_standalone-x86_64.dll" RETRO_WINDOWS_UBSAN_RUNTIME_DLL)
+        if(NOT RETRO_WINDOWS_UBSAN_RUNTIME_DLL)
+            message(STATUS "Windows UBSan dynamic runtime not found; using static UBSan runtime linkage.")
+        else()
+            message(STATUS "Windows UBSan runtime: ${RETRO_WINDOWS_UBSAN_RUNTIME_DLL}")
+            list(APPEND RETRO_WINDOWS_SANITIZER_RUNTIME_DLLS "${RETRO_WINDOWS_UBSAN_RUNTIME_DLL}")
+        endif()
+    endif()
+
+    if(RETRO_WINDOWS_SANITIZER_RUNTIME_DLLS)
+        list(REMOVE_DUPLICATES RETRO_WINDOWS_SANITIZER_RUNTIME_DLLS)
     endif()
 
     message(STATUS "Enabled sanitizers: ${RETRO_SANITIZERS}")
 endif()
 target_link_libraries(KrisLogger PUBLIC retro_sanitizers)
 
-function(retro_copy_windows_asan_runtime target_name)
-    if(WIN32 AND RETRO_WINDOWS_ASAN_RUNTIME_DLL)
-        add_custom_command(TARGET ${target_name} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${RETRO_WINDOWS_ASAN_RUNTIME_DLL}"
-                "$<TARGET_FILE_DIR:${target_name}>"
-            VERBATIM
-        )
+function(retro_copy_windows_sanitizer_runtime target_name)
+    if(WIN32 AND RETRO_WINDOWS_SANITIZER_RUNTIME_DLLS)
+        foreach(retro_runtime_dll IN LISTS RETRO_WINDOWS_SANITIZER_RUNTIME_DLLS)
+            if(EXISTS "${retro_runtime_dll}")
+                add_custom_command(TARGET ${target_name} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${retro_runtime_dll}"
+                        "$<TARGET_FILE_DIR:${target_name}>"
+                    VERBATIM
+                )
+            endif()
+        endforeach()
     endif()
+endfunction()
+
+function(retro_copy_windows_asan_runtime target_name)
+    retro_copy_windows_sanitizer_runtime(${target_name})
 endfunction()
 
 # -----------------------------------------------------------------------------
@@ -235,7 +285,7 @@ if(ANDROID)
     add_library(${PROJECT_NAME} SHARED ${SOURCES} ${RENDERER_BACKENDS} ${NATIVE_FILES})
 else()
     add_executable(${PROJECT_NAME} ${SOURCES} ${RENDERER_BACKENDS} ${NATIVE_FILES})
-    retro_copy_windows_asan_runtime(${PROJECT_NAME})
+    retro_copy_windows_sanitizer_runtime(${PROJECT_NAME})
 endif()
 
 # -----------------------------------------------------------------------------

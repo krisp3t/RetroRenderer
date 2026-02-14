@@ -1,7 +1,7 @@
 find_package(Catch2 CONFIG REQUIRED)
 
 set(retro_use_catch_amalgamated OFF)
-if(WIN32 AND RETRO_SANITIZERS MATCHES "(^|;)address($|;)")
+if(WIN32 AND RETRO_SANITIZERS MATCHES "(^|;)(address|undefined)($|;)")
     set(retro_use_catch_amalgamated ON)
 endif()
 
@@ -22,7 +22,7 @@ if(retro_use_catch_amalgamated)
     )
     list(LENGTH retro_catch_amalgamated_candidates retro_catch_amalgamated_count)
     if(retro_catch_amalgamated_count EQUAL 0)
-        message(FATAL_ERROR "Windows ASan requires Catch2 amalgamated source. Could not find catch_amalgamated.cpp in extern/vcpkg/buildtrees/catch2/src/*/extras.")
+        message(FATAL_ERROR "Windows ASan/UBSan requires Catch2 amalgamated source. Could not find catch_amalgamated.cpp in extern/vcpkg/buildtrees/catch2/src/*/extras.")
     endif()
     list(SORT retro_catch_amalgamated_candidates COMPARE NATURAL ORDER DESCENDING)
     list(GET retro_catch_amalgamated_candidates 0 retro_catch_amalgamated_cpp)
@@ -38,7 +38,9 @@ if(retro_use_catch_amalgamated)
     )
 endif()
 
-if(COMMAND retro_copy_windows_asan_runtime)
+if(COMMAND retro_copy_windows_sanitizer_runtime)
+    retro_copy_windows_sanitizer_runtime(retrorenderer_tests)
+elseif(COMMAND retro_copy_windows_asan_runtime)
     retro_copy_windows_asan_runtime(retrorenderer_tests)
 endif()
 
@@ -53,6 +55,16 @@ set_target_properties(retrorenderer_tests PROPERTIES
     CXX_EXTENSIONS OFF
 )
 
+if(WIN32 AND RETRO_SANITIZERS MATCHES "(^|;)undefined($|;)")
+    # Windows UBSan runtime is static-CRT; keep test targets on /MT to avoid
+    # /failifmismatch with msvcprt (/MD).
+    set(retro_windows_ubsan_msvc_runtime "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET retrorenderer_tests PROPERTY MSVC_RUNTIME_LIBRARY "${retro_windows_ubsan_msvc_runtime}")
+    if(TARGET KrisLogger)
+        set_property(TARGET KrisLogger PROPERTY MSVC_RUNTIME_LIBRARY "${retro_windows_ubsan_msvc_runtime}")
+    endif()
+endif()
+
 target_compile_options(retrorenderer_tests PRIVATE
     $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -pedantic>
 )
@@ -63,10 +75,13 @@ target_compile_definitions(retrorenderer_tests
 if(RETRO_SANITIZERS MATCHES "(^|;)address($|;)")
     target_compile_definitions(retrorenderer_tests PRIVATE RETRO_EXPECT_ASAN=1)
 endif()
+if(RETRO_SANITIZERS MATCHES "(^|;)undefined($|;)")
+    target_compile_definitions(retrorenderer_tests PRIVATE RETRO_EXPECT_UBSAN=1)
+endif()
 
 target_link_libraries(retrorenderer_tests
     PRIVATE
-    glm::glm
+    $<IF:$<TARGET_EXISTS:glm::glm-header-only>,glm::glm-header-only,glm::glm>
     KrisLogger
     retro_sanitizers
 )
@@ -89,6 +104,12 @@ if(WIN32)
         list(APPEND retro_test_environment_entries
             "ASAN_OPTIONS=halt_on_error=1:symbolize=1:verbosity=1:print_stats=1"
             "ASAN_SYMBOLIZER_PATH=C:/Program Files/LLVM/bin/llvm-symbolizer.exe"
+        )
+    endif()
+    if(RETRO_SANITIZERS MATCHES "(^|;)undefined($|;)")
+        list(APPEND retro_test_environment_entries
+            "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
+            "UBSAN_SYMBOLIZER_PATH=C:/Program Files/LLVM/bin/llvm-symbolizer.exe"
         )
     endif()
 
