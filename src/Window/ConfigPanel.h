@@ -5,6 +5,7 @@
 #include "../include/kris_glheaders.h"
 #include <SDL.h>
 #include <vector>
+#include <memory>
 
 namespace RetroRenderer {
 struct VirtualStickState {
@@ -41,6 +42,7 @@ class ConfigPanel {
     void DisplayCullSettings();
     void DisplayRendererSettings();
     void DisplayRasterizerSettings();
+    void DisplayPostFxSettings();
     void DisplayEnvironmentSettings();
     void DisplayMainMenu();
     void DisplaySceneGraph();
@@ -52,6 +54,8 @@ class ConfigPanel {
     void DisplayExamplesDialog();
     void DisplayWindowSettings();
     void DisplayJoysticks();
+    void ApplyRendererPreset(Config::RenderPreset preset);
+    void MarkRendererPresetCustom();
     void OpenWebFilePicker();
     void OpenAndroidFilePicker();
 

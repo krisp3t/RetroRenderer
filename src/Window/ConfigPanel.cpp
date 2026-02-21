@@ -67,6 +67,22 @@ EM_JS(void, OpenWebFilePicker_JS, (), {
 #endif
 
 namespace RetroRenderer {
+namespace {
+const char* RenderPresetDescription(Config::RenderPreset preset) {
+    switch (preset) {
+    case Config::RenderPreset::CUSTOM:
+        return "Manual configuration. Use this when you want to tune the renderer without a preset overriding the baseline.";
+    case Config::RenderPreset::DEFAULT:
+        return "Baseline renderer settings with the current window-sized render target and standard presentation filtering.";
+    case Config::RenderPreset::PICO8:
+        return "Low-resolution software preset aimed at palette reduction, color ramps, and ordered dithering.";
+    case Config::RenderPreset::PICOCAD:
+        return "Low-resolution software preset aimed at picoCAD-style low-poly rendering, affine mapping, and vertex snap.";
+    }
+    return "";
+}
+} // namespace
+
 ConfigPanel::~ConfigPanel() {
     Destroy();
 }
@@ -114,6 +130,22 @@ bool ConfigPanel::Init(SDL_Window* window, SDL_GLContext glContext, std::shared_
     p_stats_ = stats;
 
     return true;
+}
+
+void ConfigPanel::ApplyRendererPreset(Config::RenderPreset preset) {
+    if (!p_config_) {
+        return;
+    }
+
+    Config::ApplyRenderPreset(*p_config_, preset);
+    Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_config_->renderer.resolution});
+}
+
+void ConfigPanel::MarkRendererPresetCustom() {
+    if (!p_config_ || p_config_->retro.preset == Config::RenderPreset::CUSTOM) {
+        return;
+    }
+    p_config_->retro.preset = Config::RenderPreset::CUSTOM;
 }
 
 void ConfigPanel::StyleColorsEnemymouse() {
@@ -536,7 +568,7 @@ void ConfigPanel::DisplayConfigWindow(Config& config) {
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Post-FX")) {
-                ImGui::Text("Post-FX");
+                DisplayPostFxSettings();
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();
@@ -569,6 +601,7 @@ void ConfigPanel::DisplayCameraSettings() {
 
 void ConfigPanel::DisplayRendererSettings() {
     auto& r = p_config_->renderer;
+    bool manualChange = false;
     ImGui::SeparatorText("Renderer settings");
     if (ImGui::Button("Take screenshot")) {
         // TODO: implement screenshot
@@ -580,17 +613,34 @@ void ConfigPanel::DisplayRendererSettings() {
         LOGD("Sending to RenderDoc");
     }
 
-    ImGui::RadioButton("Software", reinterpret_cast<int*>(&r.selectedRenderer),
-                       static_cast<int>(Config::RendererType::SOFTWARE));
+    ImGui::SeparatorText("Preset");
+    const char* presetItems[] = {"Custom", "Default", "PICO-8", "picoCAD"};
+    int presetIndex = static_cast<int>(p_config_->retro.preset);
+    if (ImGui::Combo("Render preset", &presetIndex, presetItems, IM_ARRAYSIZE(presetItems))) {
+        ApplyRendererPreset(static_cast<Config::RenderPreset>(presetIndex));
+    }
     ImGui::SameLine();
-    ImGui::RadioButton("OpenGL", reinterpret_cast<int*>(&r.selectedRenderer),
-                       static_cast<int>(Config::RendererType::GL));
+    if (ImGui::Button("Reapply preset")) {
+        ApplyRendererPreset(p_config_->retro.preset);
+    }
+    ImGui::TextWrapped("%s", RenderPresetDescription(p_config_->retro.preset));
+
+    if (ImGui::RadioButton("Software", reinterpret_cast<int*>(&r.selectedRenderer),
+                           static_cast<int>(Config::RendererType::SOFTWARE))) {
+        manualChange = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("OpenGL", reinterpret_cast<int*>(&r.selectedRenderer),
+                           static_cast<int>(Config::RendererType::GL))) {
+        manualChange = true;
+    }
 
     ImGui::SeparatorText("Resolution");
     ImGui::Text("Render resolution: %d x %d (@ %.1f scale)", static_cast<int>(r.resolution.x),
                 static_cast<int>(r.resolution.y), r.resolutionScale);
     if (ImGui::InputFloat("Render resolution scale", reinterpret_cast<float*>(&r.resolutionScale), 0.1f, 0.5f,
                           "%.1f")) {
+        manualChange = true;
         r.resolutionScale = glm::clamp(r.resolutionScale, 0.1f, 4.0f);
         LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
         glm::ivec2 newResolution = {static_cast<int>(floor(p_config_->renderer.resolution.x * r.resolutionScale)),
@@ -599,72 +649,128 @@ void ConfigPanel::DisplayRendererSettings() {
     }
 
     ImGui::SeparatorText("Scene");
-    ImGui::Checkbox("Enable perspective-correct interpolation", &r.enablePerspectiveCorrect);
+    manualChange |= ImGui::Checkbox("Enable perspective-correct interpolation", &r.enablePerspectiveCorrect);
     const char* aaItems[] = {"None", "MSAA", "FXAA"};
-    ImGui::Combo("Anti-aliasing", reinterpret_cast<int*>(&r.aaType), aaItems, IM_ARRAYSIZE(aaItems));
-    ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float*>(&r.clearColor),
-                      ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+    manualChange |= ImGui::Combo("Anti-aliasing", reinterpret_cast<int*>(&r.aaType), aaItems, IM_ARRAYSIZE(aaItems));
+    ImGui::SeparatorText("Presentation");
+    if (ImGui::Checkbox("Nearest-neighbor presentation", &r.nearestNeighborPresentation)) {
+        manualChange = true;
+        Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_config_->renderer.resolution});
+    }
+    if (ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float*>(&r.clearColor),
+                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel)) {
+        manualChange = true;
+    }
     ImGui::SameLine();
     ImGui::Text("Background color:");
     // ImGui::InputInt2("Viewport resolution", reinterpret_cast<int*>(&r.viewportResolution)); // TODO: add min, max
+
+    if (manualChange) {
+        MarkRendererPresetCustom();
+    }
 }
 
 void ConfigPanel::DisplayRasterizerSettings() {
     ImGui::SeparatorText("Rasterizer settings");
+    bool manualChange = false;
 
     if (p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE) {
         auto& r = p_config_->software.rasterizer;
         const char* lineItems[] = {"DDA (slower)", "Bresenham (faster)"};
         const char* polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
         const char* fillItems[] = {"Scanline", "Barycentric", "Pineda (parallel)"};
-        ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
+        manualChange |= ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
 
         switch (r.polygonMode) {
         case Config::RasterizationPolygonMode::POINT:
             ImGui::SeparatorText("Point");
-            ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
-            ImGui::ColorEdit4("Point color", reinterpret_cast<float*>(&r.lineColor));
+            manualChange |= ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
+            manualChange |= ImGui::ColorEdit4("Point color", reinterpret_cast<float*>(&r.lineColor));
             break;
         case Config::RasterizationPolygonMode::LINE:
             ImGui::SeparatorText("Wireframe");
-            ImGui::Combo("Line mode", reinterpret_cast<int*>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
-            ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
-            ImGui::ColorEdit4("Line color", reinterpret_cast<float*>(&r.lineColor));
-            ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
+            manualChange |= ImGui::Combo("Line mode", reinterpret_cast<int*>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
+            manualChange |= ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
+            manualChange |= ImGui::ColorEdit4("Line color", reinterpret_cast<float*>(&r.lineColor));
+            manualChange |= ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
             break;
         case Config::RasterizationPolygonMode::FILL:
             ImGui::SeparatorText("Fill");
-            ImGui::Combo("Fill mode", reinterpret_cast<int*>(&r.fillMode), fillItems, IM_ARRAYSIZE(lineItems));
+            manualChange |= ImGui::Combo("Fill mode", reinterpret_cast<int*>(&r.fillMode), fillItems, IM_ARRAYSIZE(fillItems));
         }
     } else if (p_config_->renderer.selectedRenderer == Config::RendererType::GL) {
         auto& r = p_config_->gl.rasterizer;
         const char* polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
-        ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
+        manualChange |= ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
+    }
+
+    if (manualChange) {
+        MarkRendererPresetCustom();
     }
 }
 
 void ConfigPanel::DisplayCullSettings() {
     auto& c = p_config_->cull;
+    bool manualChange = false;
     ImGui::SeparatorText("Cull settings");
-    ImGui::Checkbox("Backface culling", &c.backfaceCulling);
-    ImGui::Checkbox("Depth testing", &c.depthTest);
+    manualChange |= ImGui::Checkbox("Backface culling", &c.backfaceCulling);
+    manualChange |= ImGui::Checkbox("Depth testing", &c.depthTest);
     ImGui::SeparatorText("Clip settings");
     ImGui::Text("Clipping triangles and pixels outside of screen is essential to rendering.");
     ImGui::TextColored(ImVec4(1.0, 0.0, 0.0, 1.0),
                        "Disabling clipping will produce graphical errors, assert fails and undefined behavior.");
-    ImGui::Checkbox("Raster clip", &c.rasterClip);
-    ImGui::Checkbox("Geometric clip", &c.geometricClip);
-    ImGui::Checkbox("Frustum cull", &c.frustumCull);
+    manualChange |= ImGui::Checkbox("Raster clip", &c.rasterClip);
+    manualChange |= ImGui::Checkbox("Geometric clip", &c.geometricClip);
+    manualChange |= ImGui::Checkbox("Frustum cull", &c.frustumCull);
+
+    if (manualChange) {
+        MarkRendererPresetCustom();
+    }
 }
 
 void ConfigPanel::DisplayEnvironmentSettings() {
     auto& e = p_config_->environment;
+    bool manualChange = false;
     ImGui::SeparatorText("Environment settings");
-    ImGui::Checkbox("Show skybox", &e.showSkybox);
-    ImGui::Checkbox("Show grid", &e.showGrid);
-    ImGui::Checkbox("Show floor", &e.showFloor);
-    ImGui::Checkbox("Shadow mapping", &e.shadowMap);
-    ImGui::DragFloat3("Light position", &e.lightPosition[0], 0.1f, 0.0f, 0.0f, "%.3f");
+    manualChange |= ImGui::Checkbox("Show skybox", &e.showSkybox);
+    manualChange |= ImGui::Checkbox("Show grid", &e.showGrid);
+    manualChange |= ImGui::Checkbox("Show floor", &e.showFloor);
+    manualChange |= ImGui::Checkbox("Shadow mapping", &e.shadowMap);
+    manualChange |= ImGui::DragFloat3("Light position", &e.lightPosition[0], 0.1f, 0.0f, 0.0f, "%.3f");
+
+    if (manualChange) {
+        MarkRendererPresetCustom();
+    }
+}
+
+void ConfigPanel::DisplayPostFxSettings() {
+    auto& retro = p_config_->retro;
+    bool manualChange = false;
+
+    ImGui::SeparatorText("Retro style");
+    ImGui::Text("Preset: %s", Config::RenderPresetLabel(retro.preset));
+
+    const char* paletteItems[] = {"None", "PICO-8"};
+    int paletteIndex = static_cast<int>(retro.palette);
+    if (ImGui::Combo("Palette", &paletteIndex, paletteItems, IM_ARRAYSIZE(paletteItems))) {
+        retro.palette = static_cast<Config::PaletteType>(paletteIndex);
+        manualChange = true;
+    }
+    manualChange |= ImGui::Checkbox("Enable palette quantization", &retro.enablePalette);
+    manualChange |= ImGui::Checkbox("Enable color ramps", &retro.enableColorRamps);
+    manualChange |= ImGui::Checkbox("Enable ordered dithering", &retro.enableOrderedDithering);
+    manualChange |= ImGui::SliderInt("Lighting bands", &retro.lightingBands, 0, 8);
+    manualChange |= ImGui::Checkbox("Snap projected vertices", &retro.snapVertices);
+    manualChange |= ImGui::Checkbox("Affine texture mapping", &retro.affineTextureMapping);
+
+    ImGui::Spacing();
+    ImGui::TextWrapped("These settings are now stored in config and driven by presets. The actual renderer hooks for "
+                       "palette quantization, dithering, lighting ramps, vertex snapping, and affine mapping still "
+                       "need to be implemented.");
+
+    if (manualChange) {
+        MarkRendererPresetCustom();
+    }
 }
 
 void ConfigPanel::DisplayControlsOverlay() {
@@ -733,6 +839,7 @@ void ConfigPanel::DisplayMetricsOverlay() {
         ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         ImGui::Text("%d x %d (%s)", p_config_->renderer.resolution.x, p_config_->renderer.resolution.y,
                     p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE ? "software" : "OpenGL");
+        ImGui::Text("Preset: %s", Config::RenderPresetLabel(p_config_->retro.preset));
         ImGui::Text("%d verts, %d tris", p_stats_->renderedVerts, p_stats_->renderedTris);
         ImGui::Text("0 draw calls");
         ImGui::SeparatorText("Memory");

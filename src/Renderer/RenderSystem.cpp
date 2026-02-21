@@ -43,6 +43,8 @@ bool RenderSystem::Init() {
 }
 
 void RenderSystem::CreateFramebufferTexture(GLuint& texId, int width, int height) {
+    auto const& p_config = Engine::Get().GetConfig();
+    const GLint filter = p_config->renderer.nearestNeighborPresentation ? GL_NEAREST : GL_LINEAR;
     if (texId != 0) {
         glDeleteTextures(1, &texId);
         texId = 0;
@@ -51,8 +53,8 @@ void RenderSystem::CreateFramebufferTexture(GLuint& texId, int width, int height
     glBindTexture(GL_TEXTURE_2D, texId);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     // TODO: make filtering configurable
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
