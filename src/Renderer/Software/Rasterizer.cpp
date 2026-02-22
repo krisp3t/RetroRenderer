@@ -1,4 +1,5 @@
 #include "Rasterizer.h"
+#include "../RetroPalette.h"
 #include <KrisLogger/Logger.h>
 #include <algorithm>
 #include <cmath>
@@ -6,6 +7,35 @@
 // TODO: possible parallel rasterizing?
 
 namespace RetroRenderer {
+namespace {
+Pixel ApplyRetroFillStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Config& cfg) {
+    if (!cfg.retro.enableOrderedDithering) {
+        return inputColor;
+    }
+
+    const Config::PaletteType palette =
+        cfg.retro.enablePalette ? cfg.retro.palette : Config::PaletteType::NONE;
+    const Color color(Color::Uint8Tag{}, inputColor.r, inputColor.g, inputColor.b, inputColor.a);
+    return RetroPalette::ApplyOrderedDither4x4(color, pixelPos, palette).ToPixel();
+}
+
+void WriteTrianglePixel(Buffer<Pixel>& framebuffer,
+                        Buffer<float>& depthBuffer,
+                        int x,
+                        int y,
+                        float z,
+                        const Config& cfg,
+                        Pixel fillColor) {
+    if (!cfg.cull.depthTest || z < depthBuffer.data[y * depthBuffer.width + x]) {
+        if (cfg.cull.depthTest) {
+            depthBuffer.data[y * depthBuffer.width + x] = z;
+        }
+        const Pixel finalColor = ApplyRetroFillStyle(fillColor, glm::ivec2{x, y}, cfg);
+        Rasterizer::DrawPixel(framebuffer, x, y, cfg.cull.rasterClip, finalColor);
+    }
+}
+} // namespace
+
 glm::vec2 Rasterizer::NDCToViewport(const glm::vec2& v, size_t width, size_t height) {
     // Keep subpixel precision for raster rules.
     return {(v.x + 1.0f) * 0.5f * width + 0.5f, (1.0f - v.y) * 0.5f * height + 0.5f};
@@ -218,12 +248,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
             const float b2 = w2 * invArea;
             const float z = viewportVertices[0].z * b0 + viewportVertices[1].z * b1 + viewportVertices[2].z * b2;
 
-            if (!cfg.cull.depthTest || z < depthBuffer.data[y * depthBuffer.width + x]) {
-                if (cfg.cull.depthTest) {
-                    depthBuffer.data[y * depthBuffer.width + x] = z;
-                }
-                DrawPixel(framebuffer, x, y, rasterClip, fillColor);
-            }
+            WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
         }
     }
 }
@@ -385,12 +410,7 @@ void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer,
             const float t = (xEnd == xStart) ? 0.0f : (x - xStart) * denom;
             const float z = minZ + (maxZ - minZ) * t;
             // Depth test (lower z is closer).
-            if (!cfg.cull.depthTest || z < depthBuffer.data[y * depthBuffer.width + x]) {
-                if (cfg.cull.depthTest) {
-                    depthBuffer.data[y * depthBuffer.width + x] = z;
-                }
-                DrawPixel(framebuffer, x, y, rasterClip, fillColor);
-            }
+            WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
         }
         currentX1 += invslope1;
         currentX2 += invslope2;
@@ -450,12 +470,7 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
         for (int x = xStart; x <= xEnd; x++) {
             const float t = (xEnd == xStart) ? 0.0f : (x - xStart) * denom;
             const float z = minZ + (maxZ - minZ) * t;
-            if (!cfg.cull.depthTest || z < depthBuffer.data[y * depthBuffer.width + x]) {
-                if (cfg.cull.depthTest) {
-                    depthBuffer.data[y * depthBuffer.width + x] = z;
-                }
-                DrawPixel(framebuffer, x, y, rasterClip, fillColor);
-            }
+            WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
         }
         currentX1 -= invslope1;
         currentX2 -= invslope2;
