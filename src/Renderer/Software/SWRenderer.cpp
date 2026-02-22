@@ -1,5 +1,7 @@
 #include "SWRenderer.h"
+#include "../RetroPalette.h"
 #include <KrisLogger/Logger.h>
+#include <algorithm>
 #include <glm/gtx/string_cast.hpp>
 #include <vector>
 
@@ -63,6 +65,45 @@ std::vector<Vertex> ClipPolygonNdc(const std::vector<Vertex>& input) {
         poly = output;
     }
     return poly;
+}
+
+Color MakeColorFromVec3(const glm::vec3& value, uint8_t alpha = 255) {
+    return Color(
+        Color::Uint8Tag{},
+        static_cast<uint8_t>(std::clamp(value.r, 0.0f, 1.0f) * 255.0f),
+        static_cast<uint8_t>(std::clamp(value.g, 0.0f, 1.0f) * 255.0f),
+        static_cast<uint8_t>(std::clamp(value.b, 0.0f, 1.0f) * 255.0f),
+        alpha);
+}
+
+Color ComputeTriangleBaseColor(const Vertex& v0, const Vertex& v1, const Vertex& v2) {
+    const glm::vec3 averageColor = glm::clamp((v0.color + v1.color + v2.color) / 3.0f, 0.0f, 1.0f);
+    return MakeColorFromVec3(averageColor);
+}
+
+Color ShadeTriangleRetro(const Color& baseColor, float lightAmount, const Config& cfg) {
+    constexpr float kAmbientFloor = 0.18f;
+    const float lit = std::clamp(kAmbientFloor + lightAmount * (1.0f - kAmbientFloor), 0.0f, 1.0f);
+    const int lightingBands = cfg.retro.lightingBands;
+    const float bandedLight = lightingBands > 0 ? RetroPalette::QuantizeUnitToBands(lit, lightingBands) : lit;
+    const Config::PaletteType palette = cfg.retro.palette;
+
+    if (cfg.retro.enableColorRamps && cfg.retro.enablePalette && palette != Config::PaletteType::NONE) {
+        const uint8_t baseIndex = RetroPalette::FindNearestPaletteIndex(baseColor, palette);
+        Color rampColor = RetroPalette::SampleRamp(palette, baseIndex, bandedLight, lightingBands > 0 ? lightingBands : 4);
+        rampColor.a = baseColor.a;
+        return rampColor;
+    }
+
+    const glm::vec3 base(
+        static_cast<float>(baseColor.r) / 255.0f,
+        static_cast<float>(baseColor.g) / 255.0f,
+        static_cast<float>(baseColor.b) / 255.0f);
+    Color shaded = MakeColorFromVec3(base * bandedLight, baseColor.a);
+    if (cfg.retro.enablePalette && palette != Config::PaletteType::NONE) {
+        shaded = RetroPalette::FindNearestPaletteColor(shaded, palette);
+    }
+    return shaded;
 }
 } // namespace
 bool SWRenderer::Init(int w, int h) {
@@ -143,15 +184,16 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                 vertex.normal = glm::normalize(glm::vec3(n * glm::vec4(vertex.normal, 0.0f)));
             }
 
-            // Flat lighting (Lambert) in world space.
+            // Flat retro lighting in world space.
             const glm::vec3 worldPos0 = glm::vec3(modelMat * v0.position);
             const glm::vec3 worldPos1 = glm::vec3(modelMat * v1.position);
             const glm::vec3 worldPos2 = glm::vec3(modelMat * v2.position);
             const glm::vec3 worldPos = (worldPos0 + worldPos1 + worldPos2) / 3.0f;
-            const glm::vec3 normal = glm::normalize(v0.normal + v1.normal + v2.normal);
+            const glm::vec3 normal = glm::normalize(vertices[0].normal + vertices[1].normal + vertices[2].normal);
             const glm::vec3 lightDir = glm::normalize(m_FrameConfigSnapshot.environment.lightPosition - worldPos);
             const float ndotl = std::max(glm::dot(normal, lightDir), 0.0f);
-            const Color lit(Color::FloatTag{}, ndotl, ndotl, ndotl, 1.0f);
+            const Color baseColor = ComputeTriangleBaseColor(v0, v1, v2);
+            const Color lit = ShadeTriangleRetro(baseColor, ndotl, m_FrameConfigSnapshot);
 
             // Perspective division
             for (auto& vertex : vertices) {
