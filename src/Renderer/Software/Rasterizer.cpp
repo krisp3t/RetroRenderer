@@ -8,6 +8,45 @@
 
 namespace RetroRenderer {
 namespace {
+Color MakeColorFromVec3(const glm::vec3& value, uint8_t alpha = 255) {
+    return Color(
+        Color::Uint8Tag{},
+        static_cast<uint8_t>(std::clamp(value.r, 0.0f, 1.0f) * 255.0f),
+        static_cast<uint8_t>(std::clamp(value.g, 0.0f, 1.0f) * 255.0f),
+        static_cast<uint8_t>(std::clamp(value.b, 0.0f, 1.0f) * 255.0f),
+        alpha);
+}
+
+Color ComputeAverageVertexColor(const std::array<Vertex, 3>& vertices) {
+    const glm::vec3 averageColor = glm::clamp((vertices[0].color + vertices[1].color + vertices[2].color) / 3.0f, 0.0f, 1.0f);
+    return MakeColorFromVec3(averageColor);
+}
+
+Color ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& cfg) {
+    constexpr float kAmbientFloor = 0.18f;
+    const float lit = std::clamp(kAmbientFloor + lightAmount * (1.0f - kAmbientFloor), 0.0f, 1.0f);
+    const int lightingBands = cfg.retro.lightingBands;
+    const float bandedLight = lightingBands > 0 ? RetroPalette::QuantizeUnitToBands(lit, lightingBands) : lit;
+    const Config::PaletteType palette = cfg.retro.palette;
+
+    if (cfg.retro.enableColorRamps && cfg.retro.enablePalette && palette != Config::PaletteType::NONE) {
+        const uint8_t baseIndex = RetroPalette::FindNearestPaletteIndex(baseColor, palette);
+        Color rampColor = RetroPalette::SampleRamp(palette, baseIndex, bandedLight, lightingBands > 0 ? lightingBands : 4);
+        rampColor.a = baseColor.a;
+        return rampColor;
+    }
+
+    const glm::vec3 base(
+        static_cast<float>(baseColor.r) / 255.0f,
+        static_cast<float>(baseColor.g) / 255.0f,
+        static_cast<float>(baseColor.b) / 255.0f);
+    Color shaded = MakeColorFromVec3(base * bandedLight, baseColor.a);
+    if (cfg.retro.enablePalette && palette != Config::PaletteType::NONE) {
+        shaded = RetroPalette::FindNearestPaletteColor(shaded, palette);
+    }
+    return shaded;
+}
+
 Pixel ApplyRetroFillStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Config& cfg) {
     if (!cfg.retro.enableOrderedDithering) {
         return inputColor;
@@ -135,7 +174,7 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
                               Buffer<float>& depthBuffer,
                               std::array<Vertex, 3>& vertices,
                               const Config& cfg,
-                              Pixel fillColor) {
+                              float lightAmount) {
 
     // Convert vertices to viewport space.
     std::array<glm::vec3, 3> viewportVertices{};
@@ -169,11 +208,13 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
     case Config::RasterizationPolygonMode::FILL:
         switch (cfg.software.rasterizer.fillMode) {
         case Config::RasterizationFillMode::BARYCENTRIC:
-            DrawBarycentricTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
+            DrawBarycentricTriangle(framebuffer, depthBuffer, vertices, viewportVertices, cfg, lightAmount);
             break;
-        default:
+        default: {
+            const Pixel fillColor = ShadeRetroColor(ComputeAverageVertexColor(vertices), lightAmount, cfg).ToPixel();
             DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             break;
+        }
         }
         break;
     default:
@@ -194,9 +235,11 @@ static bool IsTopLeftEdge(const glm::vec2& a, const glm::vec2& b) {
 
 void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                          Buffer<float>& depthBuffer,
+                                         const std::array<Vertex, 3>& vertices,
                                          std::array<glm::vec3, 3>& viewportVertices,
                                          const Config& cfg,
-                                         Pixel fillColor) {
+                                         float lightAmount) {
+    std::array<Vertex, 3> shadeVertices = vertices;
     glm::vec2 v0 = {viewportVertices[0].x, viewportVertices[0].y};
     glm::vec2 v1 = {viewportVertices[1].x, viewportVertices[1].y};
     glm::vec2 v2 = {viewportVertices[2].x, viewportVertices[2].y};
@@ -208,6 +251,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
     if (area < 0.0f) {
         std::swap(v1, v2);
         std::swap(viewportVertices[1], viewportVertices[2]);
+        std::swap(shadeVertices[1], shadeVertices[2]);
         area = -area;
     }
 
@@ -247,7 +291,10 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
             const float b1 = w1 * invArea;
             const float b2 = w2 * invArea;
             const float z = viewportVertices[0].z * b0 + viewportVertices[1].z * b1 + viewportVertices[2].z * b2;
-
+            const glm::vec3 baseColorVec =
+                glm::clamp(shadeVertices[0].color * b0 + shadeVertices[1].color * b1 + shadeVertices[2].color * b2,
+                           0.0f, 1.0f);
+            const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(baseColorVec), lightAmount, cfg).ToPixel();
             WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
         }
     }

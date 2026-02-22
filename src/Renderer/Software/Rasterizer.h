@@ -18,7 +18,7 @@ class Rasterizer {
                              Buffer<float>& depthBuffer,
                              std::array<Vertex, 3>& vertices,
                              const Config& cfg,
-                             Pixel fillColor);
+                             float lightAmount);
     static void DrawQuad(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>& vertices);
     static void DrawLine(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color);
     static void DrawHLine(Buffer<Pixel>& framebuffer, int x0, int x1, int y, const Config& cfg, Pixel color);
@@ -27,9 +27,10 @@ class Rasterizer {
   private:
     static void DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                         Buffer<float>& depthBuffer,
+                                        const std::array<Vertex, 3>& vertices,
                                         std::array<glm::vec3, 3>& viewportVertices,
                                         const Config& cfg,
-                                        Pixel fillColor);
+                                        float lightAmount);
     // Line drawing algos
     static void DrawLineDDA(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color);
     static void DrawLineBresenham(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color);
