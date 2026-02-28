@@ -516,13 +516,20 @@ void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer,
             xStart = std::max(0, xStart);
             xEnd = std::min(xEnd, static_cast<int>(framebuffer.width - 1));
         }
+        if (xEnd < xStart) {
+            currentX1 += invslope1;
+            currentX2 += invslope2;
+            currentZ1 += invslopez1;
+            currentZ2 += invslopez2;
+            continue;
+        }
 
-        const float denom = (xEnd - xStart) != 0 ? 1.0f / static_cast<float>(xEnd - xStart) : 0.0f;
+        float z = minZ;
+        const float zStep = (xEnd != xStart) ? (maxZ - minZ) / static_cast<float>(xEnd - xStart) : 0.0f;
         for (int x = xStart; x <= xEnd; x++) {
-            const float t = (xEnd == xStart) ? 0.0f : (x - xStart) * denom;
-            const float z = minZ + (maxZ - minZ) * t;
             // Depth test (lower z is closer).
             WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, &fillPattern);
+            z += zStep;
         }
         currentX1 += invslope1;
         currentX2 += invslope2;
@@ -578,12 +585,19 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
             xStart = std::max(0, xStart);
             xEnd = std::min(xEnd, static_cast<int>(framebuffer.width - 1));
         }
+        if (xEnd < xStart) {
+            currentX1 -= invslope1;
+            currentX2 -= invslope2;
+            currentZ1 -= invslopez1;
+            currentZ2 -= invslopez2;
+            continue;
+        }
 
-        const float denom = (xEnd - xStart) != 0 ? 1.0f / static_cast<float>(xEnd - xStart) : 0.0f;
+        float z = minZ;
+        const float zStep = (xEnd != xStart) ? (maxZ - minZ) / static_cast<float>(xEnd - xStart) : 0.0f;
         for (int x = xStart; x <= xEnd; x++) {
-            const float t = (xEnd == xStart) ? 0.0f : (x - xStart) * denom;
-            const float z = minZ + (maxZ - minZ) * t;
             WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, &fillPattern);
+            z += zStep;
         }
         currentX1 -= invslope1;
         currentX2 -= invslope2;

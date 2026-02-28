@@ -1,6 +1,8 @@
 #include "SWRenderer.h"
 #include <KrisLogger/Logger.h>
 #include <glm/gtx/string_cast.hpp>
+#include <array>
+#include <utility>
 #include <vector>
 
 namespace RetroRenderer {
@@ -10,6 +12,13 @@ struct ClipPlane {
     float d;
 };
 
+constexpr size_t kMaxClippedPolygonVertices = 12;
+
+struct ClippedPolygon {
+    std::array<Vertex, kMaxClippedPolygonVertices> vertices{};
+    size_t count = 0;
+};
+
 float PlaneDistance(const ClipPlane& plane, const Vertex& v) {
     return glm::dot(plane.normal, glm::vec3(v.position)) + plane.d;
 }
@@ -17,14 +26,50 @@ float PlaneDistance(const ClipPlane& plane, const Vertex& v) {
 Vertex LerpVertex(const Vertex& a, const Vertex& b, float t) {
     Vertex out;
     out.position = glm::mix(a.position, b.position, t);
-    out.normal = glm::normalize(glm::mix(a.normal, b.normal, t));
+    out.normal = glm::mix(a.normal, b.normal, t);
     out.texCoords = glm::mix(a.texCoords, b.texCoords, t);
     out.color = glm::mix(a.color, b.color, t);
     return out;
 }
 
+bool PushVertex(ClippedPolygon& polygon, const Vertex& vertex) {
+    if (polygon.count >= polygon.vertices.size()) {
+        return false;
+    }
+    polygon.vertices[polygon.count++] = vertex;
+    return true;
+}
+
+bool IsVertexInsideNdc(const Vertex& vertex) {
+    const glm::vec4& p = vertex.position;
+    return p.x >= -1.0f && p.x <= 1.0f &&
+           p.y >= -1.0f && p.y <= 1.0f &&
+           p.z >= -1.0f && p.z <= 1.0f;
+}
+
+bool IsTriangleFullyInsideNdc(const std::array<Vertex, 3>& vertices) {
+    return IsVertexInsideNdc(vertices[0]) &&
+           IsVertexInsideNdc(vertices[1]) &&
+           IsVertexInsideNdc(vertices[2]);
+}
+
+bool IsTriangleTriviallyRejected(const std::array<Vertex, 3>& vertices) {
+    const auto allOutside = [&vertices](auto predicate) {
+        return predicate(vertices[0].position) &&
+               predicate(vertices[1].position) &&
+               predicate(vertices[2].position);
+    };
+
+    return allOutside([](const glm::vec4& p) { return p.x < -1.0f; }) ||
+           allOutside([](const glm::vec4& p) { return p.x > 1.0f; }) ||
+           allOutside([](const glm::vec4& p) { return p.y < -1.0f; }) ||
+           allOutside([](const glm::vec4& p) { return p.y > 1.0f; }) ||
+           allOutside([](const glm::vec4& p) { return p.z < -1.0f; }) ||
+           allOutside([](const glm::vec4& p) { return p.z > 1.0f; });
+}
+
 // TODO: Geometric clipping is in NDC (not homogeneous clip space); good for now but edge cases near w=0 will still be imperfect.
-std::vector<Vertex> ClipPolygonNdc(const std::vector<Vertex>& input) {
+ClippedPolygon ClipPolygonNdc(const std::array<Vertex, 3>& inputTriangle) {
     static const ClipPlane kPlanes[] = {
         {{1.0f, 0.0f, 0.0f}, 1.0f}, // x >= -1
         {{-1.0f, 0.0f, 0.0f}, 1.0f}, // x <= 1
@@ -34,33 +79,45 @@ std::vector<Vertex> ClipPolygonNdc(const std::vector<Vertex>& input) {
         {{0.0f, 0.0f, -1.0f}, 1.0f}, // z <= 1
     };
 
-    std::vector<Vertex> poly = input;
-    std::vector<Vertex> output;
+    ClippedPolygon poly{};
+    poly.vertices[0] = inputTriangle[0];
+    poly.vertices[1] = inputTriangle[1];
+    poly.vertices[2] = inputTriangle[2];
+    poly.count = 3;
+
+    ClippedPolygon output{};
     for (const auto& plane : kPlanes) {
-        if (poly.empty()) {
+        if (poly.count == 0) {
             break;
         }
-        output.clear();
-        Vertex prev = poly.back();
+        output.count = 0;
+        Vertex prev = poly.vertices[poly.count - 1];
         float prevDist = PlaneDistance(plane, prev);
         bool prevInside = prevDist >= 0.0f;
 
-        for (const auto& curr : poly) {
+        for (size_t i = 0; i < poly.count; i++) {
+            const Vertex& curr = poly.vertices[i];
             float currDist = PlaneDistance(plane, curr);
             bool currInside = currDist >= 0.0f;
 
             if (currInside != prevInside) {
                 float t = prevDist / (prevDist - currDist);
-                output.push_back(LerpVertex(prev, curr, t));
+                if (!PushVertex(output, LerpVertex(prev, curr, t))) {
+                    output.count = 0;
+                    return output;
+                }
             }
             if (currInside) {
-                output.push_back(curr);
+                if (!PushVertex(output, curr)) {
+                    output.count = 0;
+                    return output;
+                }
             }
             prev = curr;
             prevDist = currDist;
             prevInside = currInside;
         }
-        poly = output;
+        std::swap(poly, output);
     }
     return poly;
 }
@@ -128,26 +185,34 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
         assert(mesh.m_Indices.size() % 3 == 0 && mesh.m_Indices.size() == mesh.m_numFaces * 3 &&
             "Mesh is not triangulated");
 
+        std::vector<Vertex> transformedVertices = mesh.m_Vertices;
+        std::vector<glm::vec3> worldPositions(mesh.m_Vertices.size());
+        for (size_t vertexIndex = 0; vertexIndex < mesh.m_Vertices.size(); vertexIndex++) {
+            const Vertex& sourceVertex = mesh.m_Vertices[vertexIndex];
+            Vertex& transformedVertex = transformedVertices[vertexIndex];
+            transformedVertex.position = mvp * sourceVertex.position;
+            transformedVertex.normal = glm::normalize(glm::vec3(n * glm::vec4(sourceVertex.normal, 0.0f)));
+            worldPositions[vertexIndex] = glm::vec3(modelMat * sourceVertex.position);
+        }
+
         for (unsigned int i = 0; i < mesh.m_numFaces; i++) {
             // Input Assembler
             unsigned int baseIndex = i * 3;
-            auto& v0 = mesh.m_Vertices[mesh.m_Indices[baseIndex]];
-            auto& v1 = mesh.m_Vertices[mesh.m_Indices[baseIndex + 1]];
-            auto& v2 = mesh.m_Vertices[mesh.m_Indices[baseIndex + 2]];
-            std::array<Vertex, 3> vertices = {v0, v1, v2};
+            const unsigned int i0 = mesh.m_Indices[baseIndex];
+            const unsigned int i1 = mesh.m_Indices[baseIndex + 1];
+            const unsigned int i2 = mesh.m_Indices[baseIndex + 2];
+            std::array<Vertex, 3> vertices = {
+                transformedVertices[i0],
+                transformedVertices[i1],
+                transformedVertices[i2],
+            };
 
             // TODO: backface cull
 
-            // Vertex Shader
-            for (auto& vertex : vertices) {
-                vertex.position = mvp * vertex.position;
-                vertex.normal = glm::normalize(glm::vec3(n * glm::vec4(vertex.normal, 0.0f)));
-            }
-
             // Flat retro lighting in world space.
-            const glm::vec3 worldPos0 = glm::vec3(modelMat * v0.position);
-            const glm::vec3 worldPos1 = glm::vec3(modelMat * v1.position);
-            const glm::vec3 worldPos2 = glm::vec3(modelMat * v2.position);
+            const glm::vec3& worldPos0 = worldPositions[i0];
+            const glm::vec3& worldPos1 = worldPositions[i1];
+            const glm::vec3& worldPos2 = worldPositions[i2];
             const glm::vec3 worldPos = (worldPos0 + worldPos1 + worldPos2) / 3.0f;
             const glm::vec3 normal = glm::normalize(vertices[0].normal + vertices[1].normal + vertices[2].normal);
             const glm::vec3 lightDir = glm::normalize(m_FrameConfigSnapshot.environment.lightPosition - worldPos);
@@ -160,29 +225,21 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
 
             // Rasterizer
             const auto& cfg = m_FrameConfigSnapshot;
-            // Early-reject in NDC
-            if (cfg.cull.rasterClip) {
-                bool allOutside = true;
-                for (const auto& v : vertices) {
-                    if (v.position.x >= -1.0f && v.position.x <= 1.0f &&
-                        v.position.y >= -1.0f && v.position.y <= 1.0f &&
-                        v.position.z >= -1.0f && v.position.z <= 1.0f) {
-                        allOutside = false;
-                        break;
-                    }
-                }
-                if (allOutside) {
-                    continue;
-                }
+            if (cfg.cull.rasterClip && IsTriangleTriviallyRejected(vertices)) {
+                continue;
             }
             if (cfg.cull.geometricClip) {
-                std::vector<Vertex> poly = {vertices[0], vertices[1], vertices[2]};
-                std::vector<Vertex> clipped = ClipPolygonNdc(poly);
-                if (clipped.size() < 3) {
+                if (IsTriangleFullyInsideNdc(vertices)) {
+                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, cfg, ndotl);
                     continue;
                 }
-                for (size_t t = 1; t + 1 < clipped.size(); t++) {
-                    std::array<Vertex, 3> tri = {clipped[0], clipped[t], clipped[t + 1]};
+
+                const ClippedPolygon clipped = ClipPolygonNdc(vertices);
+                if (clipped.count < 3) {
+                    continue;
+                }
+                for (size_t t = 1; t + 1 < clipped.count; t++) {
+                    std::array<Vertex, 3> tri = {clipped.vertices[0], clipped.vertices[t], clipped.vertices[t + 1]};
                     Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, tri, cfg, ndotl);
                 }
             } else {
