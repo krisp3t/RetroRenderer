@@ -8,6 +8,12 @@
 
 namespace RetroRenderer {
 namespace {
+using DitherPattern = std::array<Pixel, 16>;
+
+size_t DitherPatternIndex(int x, int y) {
+    return static_cast<size_t>(((y & 3) << 2) | (x & 3));
+}
+
 Color MakeColorFromVec3(const glm::vec3& value, uint8_t alpha = 255) {
     return Color(
         Color::Uint8Tag{},
@@ -20,6 +26,18 @@ Color MakeColorFromVec3(const glm::vec3& value, uint8_t alpha = 255) {
 Color ComputeAverageVertexColor(const std::array<Vertex, 3>& vertices) {
     const glm::vec3 averageColor = glm::clamp((vertices[0].color + vertices[1].color + vertices[2].color) / 3.0f, 0.0f, 1.0f);
     return MakeColorFromVec3(averageColor);
+}
+
+bool HasUniformVertexColor(const std::array<Vertex, 3>& vertices) {
+    constexpr float kColorEpsilon = 1.0f / 255.0f;
+    const auto nearlyEqual = [](const glm::vec3& a, const glm::vec3& b) {
+        return std::abs(a.r - b.r) <= kColorEpsilon &&
+               std::abs(a.g - b.g) <= kColorEpsilon &&
+               std::abs(a.b - b.b) <= kColorEpsilon;
+    };
+
+    return nearlyEqual(vertices[0].color, vertices[1].color) &&
+           nearlyEqual(vertices[0].color, vertices[2].color);
 }
 
 Color ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& cfg) {
@@ -58,19 +76,43 @@ Pixel ApplyRetroFillStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Co
     return RetroPalette::ApplyOrderedDither4x4(color, pixelPos, palette).ToPixel();
 }
 
+DitherPattern BuildRetroFillPattern(Pixel inputColor, const Config& cfg) {
+    DitherPattern pattern{};
+    if (!cfg.retro.enableOrderedDithering) {
+        pattern.fill(inputColor);
+        return pattern;
+    }
+
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            pattern[DitherPatternIndex(x, y)] = ApplyRetroFillStyle(inputColor, glm::ivec2{x, y}, cfg);
+        }
+    }
+    return pattern;
+}
+
 void WriteTrianglePixel(Buffer<Pixel>& framebuffer,
                         Buffer<float>& depthBuffer,
                         int x,
                         int y,
                         float z,
                         const Config& cfg,
-                        Pixel fillColor) {
-    if (!cfg.cull.depthTest || z < depthBuffer.data[y * depthBuffer.width + x]) {
-        if (cfg.cull.depthTest) {
-            depthBuffer.data[y * depthBuffer.width + x] = z;
+                        Pixel fillColor,
+                        const DitherPattern* fillPattern = nullptr) {
+    if (!cfg.cull.rasterClip) {
+        if (x < 0 || x >= static_cast<int>(framebuffer.width) || y < 0 || y >= static_cast<int>(framebuffer.height)) {
+            return;
         }
-        const Pixel finalColor = ApplyRetroFillStyle(fillColor, glm::ivec2{x, y}, cfg);
-        Rasterizer::DrawPixel(framebuffer, x, y, cfg.cull.rasterClip, finalColor);
+    }
+
+    const size_t pixelIndex = static_cast<size_t>(y) * framebuffer.width + static_cast<size_t>(x);
+    if (!cfg.cull.depthTest || z < depthBuffer.data[pixelIndex]) {
+        if (cfg.cull.depthTest) {
+            depthBuffer.data[pixelIndex] = z;
+        }
+        const Pixel finalColor =
+            fillPattern ? (*fillPattern)[DitherPatternIndex(x, y)] : ApplyRetroFillStyle(fillColor, glm::ivec2{x, y}, cfg);
+        framebuffer.data[pixelIndex] = finalColor;
     }
 }
 } // namespace
@@ -208,7 +250,12 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
     case Config::RasterizationPolygonMode::FILL:
         switch (cfg.software.rasterizer.fillMode) {
         case Config::RasterizationFillMode::BARYCENTRIC:
-            DrawBarycentricTriangle(framebuffer, depthBuffer, vertices, viewportVertices, cfg, lightAmount);
+            if (HasUniformVertexColor(vertices)) {
+                const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(vertices[0].color), lightAmount, cfg).ToPixel();
+                DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
+            } else {
+                DrawBarycentricTriangle(framebuffer, depthBuffer, vertices, viewportVertices, cfg, lightAmount);
+            }
             break;
         default: {
             const Pixel fillColor = ShadeRetroColor(ComputeAverageVertexColor(vertices), lightAmount, cfg).ToPixel();
@@ -266,37 +313,53 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
         maxX = std::min(maxX, static_cast<int>(framebuffer.width - 1));
         maxY = std::min(maxY, static_cast<int>(framebuffer.height - 1));
     }
+    if (maxX < minX || maxY < minY) {
+        return;
+    }
 
     const bool e0TopLeft = IsTopLeftEdge(v1, v2);
     const bool e1TopLeft = IsTopLeftEdge(v2, v0);
     const bool e2TopLeft = IsTopLeftEdge(v0, v1);
     const float invArea = 1.0f / area;
+    const glm::vec2 pStart = {static_cast<float>(minX) + 0.5f, static_cast<float>(minY) + 0.5f};
+    const float w0StepX = v2.y - v1.y;
+    const float w1StepX = v0.y - v2.y;
+    const float w2StepX = v1.y - v0.y;
+    const float w0StepY = v1.x - v2.x;
+    const float w1StepY = v2.x - v0.x;
+    const float w2StepY = v0.x - v1.x;
+
+    float w0Row = EdgeFunction(v1, v2, pStart);
+    float w1Row = EdgeFunction(v2, v0, pStart);
+    float w2Row = EdgeFunction(v0, v1, pStart);
 
     for (int y = minY; y <= maxY; y++) {
+        float w0 = w0Row;
+        float w1 = w1Row;
+        float w2 = w2Row;
         for (int x = minX; x <= maxX; x++) {
-            const glm::vec2 p = {static_cast<float>(x) + 0.5f, static_cast<float>(y) + 0.5f};
-            float w0 = EdgeFunction(v1, v2, p);
-            float w1 = EdgeFunction(v2, v0, p);
-            float w2 = EdgeFunction(v0, v1, p);
-
             const bool inside =
                 (w0 > 0.0f || (w0 == 0.0f && e0TopLeft)) &&
                 (w1 > 0.0f || (w1 == 0.0f && e1TopLeft)) &&
                 (w2 > 0.0f || (w2 == 0.0f && e2TopLeft));
-            if (!inside) {
-                continue;
+            if (inside) {
+                const float b0 = w0 * invArea;
+                const float b1 = w1 * invArea;
+                const float b2 = w2 * invArea;
+                const float z = viewportVertices[0].z * b0 + viewportVertices[1].z * b1 + viewportVertices[2].z * b2;
+                const glm::vec3 baseColorVec =
+                    glm::clamp(shadeVertices[0].color * b0 + shadeVertices[1].color * b1 + shadeVertices[2].color * b2,
+                               0.0f, 1.0f);
+                const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(baseColorVec), lightAmount, cfg).ToPixel();
+                WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
             }
-
-            const float b0 = w0 * invArea;
-            const float b1 = w1 * invArea;
-            const float b2 = w2 * invArea;
-            const float z = viewportVertices[0].z * b0 + viewportVertices[1].z * b1 + viewportVertices[2].z * b2;
-            const glm::vec3 baseColorVec =
-                glm::clamp(shadeVertices[0].color * b0 + shadeVertices[1].color * b1 + shadeVertices[2].color * b2,
-                           0.0f, 1.0f);
-            const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(baseColorVec), lightAmount, cfg).ToPixel();
-            WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
+            w0 += w0StepX;
+            w1 += w1StepX;
+            w2 += w2StepX;
         }
+        w0Row += w0StepY;
+        w1Row += w1StepY;
+        w2Row += w2StepY;
     }
 }
 
@@ -361,6 +424,7 @@ void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer,
                                   std::array<glm::vec3, 3>& viewportVertices,
                                   const Config& cfg,
                                   Pixel fillColor) {
+    const DitherPattern fillPattern = BuildRetroFillPattern(fillColor, cfg);
     auto& v0 = viewportVertices[0];
     auto& v1 = viewportVertices[1];
     auto& v2 = viewportVertices[2];
@@ -377,14 +441,14 @@ void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer,
     if (v1.y == v2.y) {
         if (v2.x < v1.x)
             std::swap(v2, v1); // Ensure v1 is leftmost
-        FillFlatBottomTri(framebuffer, depthBuffer, v0, v1, v2, cfg, fillColor);
+        FillFlatBottomTri(framebuffer, depthBuffer, v0, v1, v2, cfg, fillColor, fillPattern);
         return;
     }
     // Flat-top triangle
     if (v0.y == v1.y) {
         if (v1.x < v0.x)
             std::swap(v1, v0); // Ensure v2 is rightmost
-        FillFlatTopTri(framebuffer, depthBuffer, v0, v1, v2, cfg, fillColor);
+        FillFlatTopTri(framebuffer, depthBuffer, v0, v1, v2, cfg, fillColor, fillPattern);
         return;
     }
     // Neither, need to split triangle
@@ -396,12 +460,12 @@ void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer,
     // Split into a flat-bottom and flat-top triangle
     if (v1.x < mid.x) // Major-right triangle
     {
-        FillFlatBottomTri(framebuffer, depthBuffer, v0, v1, mid, cfg, fillColor);
-        FillFlatTopTri(framebuffer, depthBuffer, v1, mid, v2, cfg, fillColor);
+        FillFlatBottomTri(framebuffer, depthBuffer, v0, v1, mid, cfg, fillColor, fillPattern);
+        FillFlatTopTri(framebuffer, depthBuffer, v1, mid, v2, cfg, fillColor, fillPattern);
     } else // Major-left triangle
     {
-        FillFlatBottomTri(framebuffer, depthBuffer, v0, mid, v1, cfg, fillColor);
-        FillFlatTopTri(framebuffer, depthBuffer, mid, v1, v2, cfg, fillColor);
+        FillFlatBottomTri(framebuffer, depthBuffer, v0, mid, v1, cfg, fillColor, fillPattern);
+        FillFlatTopTri(framebuffer, depthBuffer, mid, v1, v2, cfg, fillColor, fillPattern);
     }
 }
 
@@ -414,7 +478,8 @@ void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer,
                                    glm::vec3& v1,
                                    glm::vec3& v2,
                                    const Config& cfg,
-                                   Pixel fillColor) {
+                                   Pixel fillColor,
+                                   const DitherPattern& fillPattern) {
     // Calculate invslopes in screen space
     // Run over rise, because edges can be completely vertical (infinite slope)
     double invslope1 = (v1.x - v0.x) / (v1.y - v0.y);
@@ -457,7 +522,7 @@ void Rasterizer::FillFlatBottomTri(Buffer<Pixel>& framebuffer,
             const float t = (xEnd == xStart) ? 0.0f : (x - xStart) * denom;
             const float z = minZ + (maxZ - minZ) * t;
             // Depth test (lower z is closer).
-            WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
+            WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, &fillPattern);
         }
         currentX1 += invslope1;
         currentX2 += invslope2;
@@ -475,7 +540,8 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
                                 glm::vec3& v1,
                                 glm::vec3& v2,
                                 const Config& cfg,
-                                Pixel fillColor) {
+                                Pixel fillColor,
+                                const DitherPattern& fillPattern) {
     // Calculate invslopes in screen space
     // Run over rise, because edges can be completely vertical (infinite slope)
     double invslope1 = (v2.x - v0.x) / (v2.y - v0.y);
@@ -517,7 +583,7 @@ void Rasterizer::FillFlatTopTri(Buffer<Pixel>& framebuffer,
         for (int x = xStart; x <= xEnd; x++) {
             const float t = (xEnd == xStart) ? 0.0f : (x - xStart) * denom;
             const float z = minZ + (maxZ - minZ) * t;
-            WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
+            WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, &fillPattern);
         }
         currentX1 -= invslope1;
         currentX2 -= invslope2;

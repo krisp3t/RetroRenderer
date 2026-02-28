@@ -229,7 +229,6 @@ struct Config {
             config.environment.showFloor = false;
             config.environment.shadowMap = false;
             config.cull.backfaceCulling = true;
-            config.software.rasterizer.fillMode = RasterizationFillMode::BARYCENTRIC;
             config.retro.palette = PaletteType::PICO8;
             config.retro.enablePalette = true;
             config.retro.enableColorRamps = true;
@@ -246,7 +245,6 @@ struct Config {
             config.environment.showFloor = false;
             config.environment.shadowMap = false;
             config.cull.backfaceCulling = true;
-            config.software.rasterizer.fillMode = RasterizationFillMode::BARYCENTRIC;
             config.retro.palette = PaletteType::PICO8;
             config.retro.enablePalette = true;
             config.retro.enableColorRamps = true;

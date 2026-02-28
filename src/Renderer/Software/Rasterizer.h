@@ -50,14 +50,16 @@ class Rasterizer {
                                   glm::vec3& v1,
                                   glm::vec3& v2,
                                   const Config& cfg,
-                                  Pixel fillColor);
+                                  Pixel fillColor,
+                                  const std::array<Pixel, 16>& fillPattern);
     static void FillFlatTopTri(Buffer<Pixel>& framebuffer,
                                Buffer<float>& depthBuffer,
                                glm::vec3& v0,
                                glm::vec3& v1,
                                glm::vec3& v2,
                                const Config& cfg,
-                               Pixel fillColor);
+                               Pixel fillColor,
+                               const std::array<Pixel, 16>& fillPattern);
     // Trig cull
     static bool PixelCullTriangle(const glm::vec2& v0, const glm::vec2& v1, const glm::vec2& v2,
                                   const glm::vec2& testPoint);
