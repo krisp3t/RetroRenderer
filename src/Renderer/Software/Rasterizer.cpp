@@ -40,7 +40,7 @@ bool HasUniformVertexColor(const std::array<Vertex, 3>& vertices) {
            nearlyEqual(vertices[0].color, vertices[2].color);
 }
 
-Color ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& cfg) {
+Pixel ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& cfg) {
     constexpr float kAmbientFloor = 0.18f;
     const float lit = std::clamp(kAmbientFloor + lightAmount * (1.0f - kAmbientFloor), 0.0f, 1.0f);
     const int lightingBands = cfg.retro.lightingBands;
@@ -49,20 +49,19 @@ Color ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& c
 
     if (cfg.retro.enableColorRamps && cfg.retro.enablePalette && palette != Config::PaletteType::NONE) {
         const uint8_t baseIndex = RetroPalette::FindNearestPaletteIndex(baseColor, palette);
-        Color rampColor = RetroPalette::SampleRamp(palette, baseIndex, bandedLight, lightingBands > 0 ? lightingBands : 4);
-        rampColor.a = baseColor.a;
-        return rampColor;
+        return RetroPalette::SampleRampPixel(palette, baseIndex, bandedLight, lightingBands > 0 ? lightingBands : 4, baseColor.a);
     }
 
-    const glm::vec3 base(
-        static_cast<float>(baseColor.r) / 255.0f,
-        static_cast<float>(baseColor.g) / 255.0f,
-        static_cast<float>(baseColor.b) / 255.0f);
-    Color shaded = MakeColorFromVec3(base * bandedLight, baseColor.a);
+    const uint8_t shadedR = static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.r) * bandedLight), 0L, 255L));
+    const uint8_t shadedG = static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.g) * bandedLight), 0L, 255L));
+    const uint8_t shadedB = static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.b) * bandedLight), 0L, 255L));
     if (cfg.retro.enablePalette && palette != Config::PaletteType::NONE) {
-        shaded = RetroPalette::FindNearestPaletteColor(shaded, palette);
+        const Color& quantized = RetroPalette::GetPaletteColor(
+            palette,
+            RetroPalette::FindNearestPaletteIndex(shadedR, shadedG, shadedB, palette));
+        return Pixel{quantized.r, quantized.g, quantized.b, baseColor.a};
     }
-    return shaded;
+    return Pixel{shadedR, shadedG, shadedB, baseColor.a};
 }
 
 Pixel ApplyRetroFillStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Config& cfg) {
@@ -72,6 +71,13 @@ Pixel ApplyRetroFillStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Co
 
     const Config::PaletteType palette =
         cfg.retro.enablePalette ? cfg.retro.palette : Config::PaletteType::NONE;
+    if (palette != Config::PaletteType::NONE) {
+        const uint8_t paletteIndex = RetroPalette::FindNearestPaletteIndex(inputColor.r, inputColor.g, inputColor.b, palette);
+        Pixel pixel = RetroPalette::GetOrderedDitherPattern4x4(palette, paletteIndex)[DitherPatternIndex(pixelPos.x, pixelPos.y)];
+        pixel.a = inputColor.a;
+        return pixel;
+    }
+
     const Color color(Color::Uint8Tag{}, inputColor.r, inputColor.g, inputColor.b, inputColor.a);
     return RetroPalette::ApplyOrderedDither4x4(color, pixelPos, palette).ToPixel();
 }
@@ -80,6 +86,19 @@ DitherPattern BuildRetroFillPattern(Pixel inputColor, const Config& cfg) {
     DitherPattern pattern{};
     if (!cfg.retro.enableOrderedDithering) {
         pattern.fill(inputColor);
+        return pattern;
+    }
+
+    const Config::PaletteType palette =
+        cfg.retro.enablePalette ? cfg.retro.palette : Config::PaletteType::NONE;
+    if (palette != Config::PaletteType::NONE) {
+        const uint8_t paletteIndex = RetroPalette::FindNearestPaletteIndex(inputColor.r, inputColor.g, inputColor.b, palette);
+        DitherPattern pattern = RetroPalette::GetOrderedDitherPattern4x4(palette, paletteIndex);
+        if (inputColor.a != 255) {
+            for (Pixel& pixel : pattern) {
+                pixel.a = inputColor.a;
+            }
+        }
         return pattern;
     }
 
@@ -251,14 +270,14 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
         switch (cfg.software.rasterizer.fillMode) {
         case Config::RasterizationFillMode::BARYCENTRIC:
             if (HasUniformVertexColor(vertices)) {
-                const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(vertices[0].color), lightAmount, cfg).ToPixel();
+                const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(vertices[0].color), lightAmount, cfg);
                 DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             } else {
                 DrawBarycentricTriangle(framebuffer, depthBuffer, vertices, viewportVertices, cfg, lightAmount);
             }
             break;
         default: {
-            const Pixel fillColor = ShadeRetroColor(ComputeAverageVertexColor(vertices), lightAmount, cfg).ToPixel();
+            const Pixel fillColor = ShadeRetroColor(ComputeAverageVertexColor(vertices), lightAmount, cfg);
             DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             break;
         }
@@ -350,7 +369,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                 const glm::vec3 baseColorVec =
                     glm::clamp(shadeVertices[0].color * b0 + shadeVertices[1].color * b1 + shadeVertices[2].color * b2,
                                0.0f, 1.0f);
-                const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(baseColorVec), lightAmount, cfg).ToPixel();
+                const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(baseColorVec), lightAmount, cfg);
                 WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
             }
             w0 += w0StepX;

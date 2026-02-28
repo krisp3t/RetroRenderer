@@ -6,6 +6,8 @@
 namespace RetroRenderer {
 namespace RetroPalette {
 namespace {
+constexpr size_t kRgb5AxisSize = 32;
+constexpr size_t kRgb5LutSize = kRgb5AxisSize * kRgb5AxisSize * kRgb5AxisSize;
 
 Color MakeColor(uint8_t r, uint8_t g, uint8_t b) {
     return Color(Color::Uint8Tag{}, r, g, b);
@@ -71,6 +73,68 @@ Config::PaletteType NormalizePalette(Config::PaletteType palette) {
     return palette == Config::PaletteType::NONE ? Config::PaletteType::PICO8 : palette;
 }
 
+size_t QuantizedRgb5Index(uint8_t r, uint8_t g, uint8_t b) {
+    return (static_cast<size_t>(r >> 3) << 10) |
+           (static_cast<size_t>(g >> 3) << 5) |
+           static_cast<size_t>(b >> 3);
+}
+
+uint8_t FindNearestPico8IndexSlow(uint8_t r, uint8_t g, uint8_t b) {
+    const Color color(Color::Uint8Tag{}, r, g, b);
+    int bestDistance = WeightedColorDistanceSq(color, kPico8Palette[0]);
+    uint8_t bestIndex = 0;
+    for (size_t i = 1; i < kPico8Palette.size(); i++) {
+        const int distance = WeightedColorDistanceSq(color, kPico8Palette[i]);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            bestIndex = static_cast<uint8_t>(i);
+        }
+    }
+    return bestIndex;
+}
+
+const std::array<uint8_t, kRgb5LutSize>& GetPico8NearestIndexLut() {
+    static const std::array<uint8_t, kRgb5LutSize> lut = [] {
+        std::array<uint8_t, kRgb5LutSize> values{};
+        for (size_t r = 0; r < kRgb5AxisSize; r++) {
+            for (size_t g = 0; g < kRgb5AxisSize; g++) {
+                for (size_t b = 0; b < kRgb5AxisSize; b++) {
+                    const uint8_t red = static_cast<uint8_t>((r << 3) | (r >> 2));
+                    const uint8_t green = static_cast<uint8_t>((g << 3) | (g >> 2));
+                    const uint8_t blue = static_cast<uint8_t>((b << 3) | (b >> 2));
+                    values[(r << 10) | (g << 5) | b] = FindNearestPico8IndexSlow(red, green, blue);
+                }
+            }
+        }
+        return values;
+    }();
+    return lut;
+}
+
+const std::array<std::array<Pixel, 16>, kPico8PaletteSize>& GetPico8OrderedDitherPatterns() {
+    static const std::array<std::array<Pixel, 16>, kPico8PaletteSize> patterns = [] {
+        std::array<std::array<Pixel, 16>, kPico8PaletteSize> values{};
+        for (size_t paletteIndex = 0; paletteIndex < kPico8PaletteSize; paletteIndex++) {
+            const Color& baseColor = kPico8Palette[paletteIndex];
+            for (int y = 0; y < 4; y++) {
+                for (int x = 0; x < 4; x++) {
+                    const float centeredThreshold = GetOrderedDitherThreshold4x4(glm::ivec2{x, y}) - 0.5f;
+                    const int offset = static_cast<int>(std::lround(centeredThreshold * 64.0f));
+                    const auto applyOffset = [offset](uint8_t channel) {
+                        return static_cast<uint8_t>(std::clamp(static_cast<int>(channel) + offset, 0, 255));
+                    };
+                    const uint8_t quantizedIndex =
+                        FindNearestPico8IndexSlow(applyOffset(baseColor.r), applyOffset(baseColor.g), applyOffset(baseColor.b));
+                    const Color& quantizedColor = kPico8Palette[quantizedIndex];
+                    values[paletteIndex][static_cast<size_t>((y << 2) | x)] = quantizedColor.ToPixel();
+                }
+            }
+        }
+        return values;
+    }();
+    return patterns;
+}
+
 } // namespace
 
 const std::array<Color, kPico8PaletteSize>& GetPico8Palette() {
@@ -91,34 +155,49 @@ const Color& GetPaletteColor(Config::PaletteType palette, size_t index) {
     return kPico8Palette[0];
 }
 
+const std::array<Pixel, 16>& GetOrderedDitherPattern4x4(Config::PaletteType palette, uint8_t paletteIndex) {
+    switch (NormalizePalette(palette)) {
+    case Config::PaletteType::PICO8:
+        return GetPico8OrderedDitherPatterns()[std::min<size_t>(paletteIndex, kPico8PaletteSize - 1)];
+    case Config::PaletteType::NONE:
+        break;
+    }
+
+    return GetPico8OrderedDitherPatterns()[0];
+}
+
 uint8_t FindNearestPaletteIndex(const Color& color, Config::PaletteType palette) {
     if (palette == Config::PaletteType::NONE) {
         return 0;
     }
 
-    const auto& paletteColors = GetPico8Palette();
-    int bestDistance = WeightedColorDistanceSq(color, paletteColors[0]);
-    uint8_t bestIndex = 0;
-    for (size_t i = 1; i < paletteColors.size(); i++) {
-        const int distance = WeightedColorDistanceSq(color, paletteColors[i]);
-        if (distance < bestDistance) {
-            bestDistance = distance;
-            bestIndex = static_cast<uint8_t>(i);
-        }
+    return FindNearestPaletteIndex(color.r, color.g, color.b, palette);
+}
+
+uint8_t FindNearestPaletteIndex(uint8_t r, uint8_t g, uint8_t b, Config::PaletteType palette) {
+    switch (NormalizePalette(palette)) {
+    case Config::PaletteType::PICO8:
+        return GetPico8NearestIndexLut()[QuantizedRgb5Index(r, g, b)];
+    case Config::PaletteType::NONE:
+        break;
     }
-    return bestIndex;
+    return 0;
 }
 
 Color FindNearestPaletteColor(const Color& color, Config::PaletteType palette) {
     if (palette == Config::PaletteType::NONE) {
         return color;
     }
-    const Color& quantized = GetPaletteColor(palette, FindNearestPaletteIndex(color, palette));
+    const Color& quantized = GetPaletteColor(palette, FindNearestPaletteIndex(color.r, color.g, color.b, palette));
     return PreserveAlpha(color, quantized);
 }
 
 Pixel FindNearestPalettePixel(const Color& color, Config::PaletteType palette) {
-    return FindNearestPaletteColor(color, palette).ToPixel();
+    if (palette == Config::PaletteType::NONE) {
+        return color.ToPixel();
+    }
+    const Color& quantized = GetPaletteColor(palette, FindNearestPaletteIndex(color.r, color.g, color.b, palette));
+    return Pixel{quantized.r, quantized.g, quantized.b, color.a};
 }
 
 float GetOrderedDitherThreshold4x4(const glm::ivec2& pixelPos) {
@@ -134,6 +213,12 @@ Color ApplyOrderedDither4x4(const Color& color,
                             float strength) {
     if (palette == Config::PaletteType::NONE) {
         return color;
+    }
+
+    if (NormalizePalette(palette) == Config::PaletteType::PICO8 && strength == 1.0f) {
+        const uint8_t paletteIndex = FindNearestPaletteIndex(color.r, color.g, color.b, palette);
+        const Pixel pixel = GetOrderedDitherPattern4x4(palette, paletteIndex)[static_cast<size_t>(((pixelPos.y & 3) << 2) | (pixelPos.x & 3))];
+        return Color(Color::Uint8Tag{}, pixel.r, pixel.g, pixel.b, color.a);
     }
 
     const float clampedStrength = std::clamp(strength, 0.0f, 2.0f);
@@ -175,6 +260,21 @@ Color SampleRamp(Config::PaletteType palette, uint8_t basePaletteIndex, float va
                          ramp.paletteIndices.size() - 1);
     const Color& rampColor = GetPaletteColor(safePalette, ramp.paletteIndices[slot]);
     return rampColor;
+}
+
+Pixel SampleRampPixel(Config::PaletteType palette,
+                      uint8_t basePaletteIndex,
+                      float value,
+                      int bandCount,
+                      uint8_t alpha) {
+    const Config::PaletteType safePalette = NormalizePalette(palette);
+    const PaletteRamp& ramp = GetPico8Ramp(basePaletteIndex);
+    const float quantized = QuantizeUnitToBands(value, bandCount);
+    const size_t slot =
+        std::min<size_t>(static_cast<size_t>(std::lround(quantized * static_cast<float>(ramp.paletteIndices.size() - 1))),
+                         ramp.paletteIndices.size() - 1);
+    const Color& rampColor = GetPaletteColor(safePalette, ramp.paletteIndices[slot]);
+    return Pixel{rampColor.r, rampColor.g, rampColor.b, alpha};
 }
 
 } // namespace RetroPalette
