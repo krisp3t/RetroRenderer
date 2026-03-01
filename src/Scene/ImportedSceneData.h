@@ -11,6 +11,7 @@ namespace RetroRenderer {
 struct ImportedMaterial {
     glm::vec3 diffuseColor = glm::vec3(1.0f);
     glm::vec3 specularColor = glm::vec3(0.0f);
+    std::string diffuseTexturePath;
 };
 
 struct ImportedMesh {
@@ -30,6 +31,7 @@ struct ImportedSceneData {
     std::vector<ImportedNode> nodes;
     std::vector<ImportedMesh> meshes;
     std::vector<ImportedMaterial> materials;
+    std::string sourceDirectory;
     int rootNodeIndex = -1;
 };
 

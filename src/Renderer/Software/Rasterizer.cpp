@@ -1,5 +1,6 @@
 #include "Rasterizer.h"
 #include "../RetroPalette.h"
+#include "../../Scene/Texture.h"
 #include <KrisLogger/Logger.h>
 #include <algorithm>
 #include <cmath>
@@ -9,6 +10,11 @@
 namespace RetroRenderer {
 namespace {
 using DitherPattern = std::array<Pixel, 16>;
+
+struct FragmentInterpolants {
+    glm::vec3 color = glm::vec3(1.0f);
+    glm::vec2 texCoords = glm::vec2(0.0f);
+};
 
 size_t DitherPatternIndex(int x, int y) {
     return static_cast<size_t>(((y & 3) << 2) | (x & 3));
@@ -23,12 +29,12 @@ Color MakeColorFromVec3(const glm::vec3& value, uint8_t alpha = 255) {
         alpha);
 }
 
-Color ComputeAverageVertexColor(const std::array<Vertex, 3>& vertices) {
+Color ComputeAverageVertexColor(const std::array<RasterVertex, 3>& vertices) {
     const glm::vec3 averageColor = glm::clamp((vertices[0].color + vertices[1].color + vertices[2].color) / 3.0f, 0.0f, 1.0f);
     return MakeColorFromVec3(averageColor);
 }
 
-bool HasUniformVertexColor(const std::array<Vertex, 3>& vertices) {
+bool HasUniformVertexColor(const std::array<RasterVertex, 3>& vertices) {
     constexpr float kColorEpsilon = 1.0f / 255.0f;
     const auto nearlyEqual = [](const glm::vec3& a, const glm::vec3& b) {
         return std::abs(a.r - b.r) <= kColorEpsilon &&
@@ -38,6 +44,45 @@ bool HasUniformVertexColor(const std::array<Vertex, 3>& vertices) {
 
     return nearlyEqual(vertices[0].color, vertices[1].color) &&
            nearlyEqual(vertices[0].color, vertices[2].color);
+}
+
+float SafeReciprocalW(float clipW) {
+    return std::abs(clipW) > 1e-6f ? 1.0f / clipW : 0.0f;
+}
+
+bool UsePerspectiveCorrectInterpolation(const Config& cfg) {
+    return cfg.renderer.enablePerspectiveCorrect && !cfg.retro.affineTextureMapping;
+}
+
+FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex, 3>& vertices,
+                                                   float b0,
+                                                   float b1,
+                                                   float b2,
+                                                   const Config& cfg) {
+    FragmentInterpolants interpolants{};
+    if (UsePerspectiveCorrectInterpolation(cfg)) {
+        const float rw0 = SafeReciprocalW(vertices[0].clipW);
+        const float rw1 = SafeReciprocalW(vertices[1].clipW);
+        const float rw2 = SafeReciprocalW(vertices[2].clipW);
+        const float w0 = b0 * rw0;
+        const float w1 = b1 * rw1;
+        const float w2 = b2 * rw2;
+        const float weightSum = w0 + w1 + w2;
+        if (std::abs(weightSum) > 1e-6f) {
+            const float invWeightSum = 1.0f / weightSum;
+            interpolants.color = glm::clamp(
+                (vertices[0].color * w0 + vertices[1].color * w1 + vertices[2].color * w2) * invWeightSum,
+                0.0f,
+                1.0f);
+            interpolants.texCoords =
+                (vertices[0].texCoords * w0 + vertices[1].texCoords * w1 + vertices[2].texCoords * w2) * invWeightSum;
+            return interpolants;
+        }
+    }
+
+    interpolants.color = glm::clamp(vertices[0].color * b0 + vertices[1].color * b1 + vertices[2].color * b2, 0.0f, 1.0f);
+    interpolants.texCoords = vertices[0].texCoords * b0 + vertices[1].texCoords * b1 + vertices[2].texCoords * b2;
+    return interpolants;
 }
 
 Pixel ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& cfg) {
@@ -233,9 +278,10 @@ void Rasterizer::DrawLineBresenham(Buffer<Pixel>& fb, glm::vec2 p0, glm::vec2 p1
 
 void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
                               Buffer<float>& depthBuffer,
-                              std::array<Vertex, 3>& vertices,
+                              std::array<RasterVertex, 3>& vertices,
                               const Config& cfg,
-                              float lightAmount) {
+                              float lightAmount,
+                              const Texture* texture) {
 
     // Convert vertices to viewport space.
     std::array<glm::vec3, 3> viewportVertices{};
@@ -269,11 +315,11 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
     case Config::RasterizationPolygonMode::FILL:
         switch (cfg.software.rasterizer.fillMode) {
         case Config::RasterizationFillMode::BARYCENTRIC:
-            if (HasUniformVertexColor(vertices)) {
+            if (texture == nullptr && HasUniformVertexColor(vertices)) {
                 const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(vertices[0].color), lightAmount, cfg);
                 DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             } else {
-                DrawBarycentricTriangle(framebuffer, depthBuffer, vertices, viewportVertices, cfg, lightAmount);
+                DrawBarycentricTriangle(framebuffer, depthBuffer, vertices, viewportVertices, cfg, lightAmount, texture);
             }
             break;
         default: {
@@ -301,11 +347,12 @@ static bool IsTopLeftEdge(const glm::vec2& a, const glm::vec2& b) {
 
 void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                          Buffer<float>& depthBuffer,
-                                         const std::array<Vertex, 3>& vertices,
+                                         const std::array<RasterVertex, 3>& vertices,
                                          std::array<glm::vec3, 3>& viewportVertices,
                                          const Config& cfg,
-                                         float lightAmount) {
-    std::array<Vertex, 3> shadeVertices = vertices;
+                                         float lightAmount,
+                                         const Texture* texture) {
+    std::array<RasterVertex, 3> shadeVertices = vertices;
     glm::vec2 v0 = {viewportVertices[0].x, viewportVertices[0].y};
     glm::vec2 v1 = {viewportVertices[1].x, viewportVertices[1].y};
     glm::vec2 v2 = {viewportVertices[2].x, viewportVertices[2].y};
@@ -366,10 +413,18 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                 const float b1 = w1 * invArea;
                 const float b2 = w2 * invArea;
                 const float z = viewportVertices[0].z * b0 + viewportVertices[1].z * b1 + viewportVertices[2].z * b2;
-                const glm::vec3 baseColorVec =
-                    glm::clamp(shadeVertices[0].color * b0 + shadeVertices[1].color * b1 + shadeVertices[2].color * b2,
-                               0.0f, 1.0f);
-                const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(baseColorVec), lightAmount, cfg);
+                const FragmentInterpolants interpolants = InterpolateFragmentAttributes(shadeVertices, b0, b1, b2, cfg);
+                Color baseColor = MakeColorFromVec3(interpolants.color);
+                if (texture && texture->HasCpuPixels()) {
+                    const Pixel texel = texture->SampleNearestRepeat(interpolants.texCoords);
+                    baseColor = Color(
+                        Color::Uint8Tag{},
+                        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.r) * static_cast<unsigned int>(texel.r)) / 255U),
+                        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.g) * static_cast<unsigned int>(texel.g)) / 255U),
+                        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.b) * static_cast<unsigned int>(texel.b)) / 255U),
+                        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.a) * static_cast<unsigned int>(texel.a)) / 255U));
+                }
+                const Pixel fillColor = ShadeRetroColor(baseColor, lightAmount, cfg);
                 WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
             }
             w0 += w0StepX;

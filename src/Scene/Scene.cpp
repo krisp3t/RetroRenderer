@@ -2,6 +2,7 @@
 #include "ISceneImporter.h"
 #include "../Engine.h"
 #include <KrisLogger/Logger.h>
+#include <filesystem>
 #include <utility>
 
 namespace RetroRenderer {
@@ -111,7 +112,19 @@ void Scene::ProcessImportedMesh(const ImportedMesh& mesh,
         if (materialIndex >= 0 && materialIndex < static_cast<int>(sceneData.materials.size())) {
             LOGI("Processing material %d for model %s", materialIndex, modelName.c_str());
             const ImportedMaterial& material = sceneData.materials[materialIndex];
-            (void)material; // TODO: process material
+            if (!material.diffuseTexturePath.empty()) {
+                std::filesystem::path texturePath = material.diffuseTexturePath;
+                if (texturePath.is_relative() && !sceneData.sourceDirectory.empty()) {
+                    texturePath = std::filesystem::path(sceneData.sourceDirectory) / texturePath;
+                }
+
+                Texture texture;
+                if (texture.LoadFromFile(texturePath.string().c_str())) {
+                    textures.emplace_back(std::move(texture));
+                } else {
+                    LOGW("Failed to load diffuse texture '%s' for model %s", texturePath.string().c_str(), modelName.c_str());
+                }
+            }
         }
     }
 

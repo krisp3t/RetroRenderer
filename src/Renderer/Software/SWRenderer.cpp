@@ -15,24 +15,24 @@ struct ClipPlane {
 constexpr size_t kMaxClippedPolygonVertices = 12;
 
 struct ClippedPolygon {
-    std::array<Vertex, kMaxClippedPolygonVertices> vertices{};
+    std::array<RasterVertex, kMaxClippedPolygonVertices> vertices{};
     size_t count = 0;
 };
 
-float PlaneDistance(const ClipPlane& plane, const Vertex& v) {
-    return glm::dot(plane.normal, glm::vec3(v.position)) + plane.d;
+float PlaneDistance(const ClipPlane& plane, const RasterVertex& v) {
+    return glm::dot(plane.normal, v.position) + plane.d;
 }
 
-Vertex LerpVertex(const Vertex& a, const Vertex& b, float t) {
-    Vertex out;
+RasterVertex LerpVertex(const RasterVertex& a, const RasterVertex& b, float t) {
+    RasterVertex out;
     out.position = glm::mix(a.position, b.position, t);
-    out.normal = glm::mix(a.normal, b.normal, t);
     out.texCoords = glm::mix(a.texCoords, b.texCoords, t);
     out.color = glm::mix(a.color, b.color, t);
+    out.clipW = glm::mix(a.clipW, b.clipW, t);
     return out;
 }
 
-bool PushVertex(ClippedPolygon& polygon, const Vertex& vertex) {
+bool PushVertex(ClippedPolygon& polygon, const RasterVertex& vertex) {
     if (polygon.count >= polygon.vertices.size()) {
         return false;
     }
@@ -40,36 +40,47 @@ bool PushVertex(ClippedPolygon& polygon, const Vertex& vertex) {
     return true;
 }
 
-bool IsVertexInsideNdc(const Vertex& vertex) {
-    const glm::vec4& p = vertex.position;
+bool IsVertexInsideNdc(const RasterVertex& vertex) {
+    const glm::vec3& p = vertex.position;
     return p.x >= -1.0f && p.x <= 1.0f &&
            p.y >= -1.0f && p.y <= 1.0f &&
            p.z >= -1.0f && p.z <= 1.0f;
 }
 
-bool IsTriangleFullyInsideNdc(const std::array<Vertex, 3>& vertices) {
+bool IsTriangleFullyInsideNdc(const std::array<RasterVertex, 3>& vertices) {
     return IsVertexInsideNdc(vertices[0]) &&
            IsVertexInsideNdc(vertices[1]) &&
            IsVertexInsideNdc(vertices[2]);
 }
 
-bool IsTriangleTriviallyRejected(const std::array<Vertex, 3>& vertices) {
+bool IsTriangleTriviallyRejected(const std::array<RasterVertex, 3>& vertices) {
     const auto allOutside = [&vertices](auto predicate) {
         return predicate(vertices[0].position) &&
                predicate(vertices[1].position) &&
                predicate(vertices[2].position);
     };
 
-    return allOutside([](const glm::vec4& p) { return p.x < -1.0f; }) ||
-           allOutside([](const glm::vec4& p) { return p.x > 1.0f; }) ||
-           allOutside([](const glm::vec4& p) { return p.y < -1.0f; }) ||
-           allOutside([](const glm::vec4& p) { return p.y > 1.0f; }) ||
-           allOutside([](const glm::vec4& p) { return p.z < -1.0f; }) ||
-           allOutside([](const glm::vec4& p) { return p.z > 1.0f; });
+    return allOutside([](const glm::vec3& p) { return p.x < -1.0f; }) ||
+           allOutside([](const glm::vec3& p) { return p.x > 1.0f; }) ||
+           allOutside([](const glm::vec3& p) { return p.y < -1.0f; }) ||
+           allOutside([](const glm::vec3& p) { return p.y > 1.0f; }) ||
+           allOutside([](const glm::vec3& p) { return p.z < -1.0f; }) ||
+           allOutside([](const glm::vec3& p) { return p.z > 1.0f; });
+}
+
+void SnapProjectedVertex(RasterVertex& vertex, size_t framebufferWidth, size_t framebufferHeight) {
+    if (framebufferWidth == 0 || framebufferHeight == 0) {
+        return;
+    }
+
+    const glm::vec2 viewport = Rasterizer::NDCToViewport(glm::vec2(vertex.position), framebufferWidth, framebufferHeight);
+    const glm::vec2 snappedViewport = glm::round(viewport);
+    vertex.position.x = ((snappedViewport.x - 0.5f) / static_cast<float>(framebufferWidth)) * 2.0f - 1.0f;
+    vertex.position.y = 1.0f - ((snappedViewport.y - 0.5f) / static_cast<float>(framebufferHeight)) * 2.0f;
 }
 
 // TODO: Geometric clipping is in NDC (not homogeneous clip space); good for now but edge cases near w=0 will still be imperfect.
-ClippedPolygon ClipPolygonNdc(const std::array<Vertex, 3>& inputTriangle) {
+ClippedPolygon ClipPolygonNdc(const std::array<RasterVertex, 3>& inputTriangle) {
     static const ClipPlane kPlanes[] = {
         {{1.0f, 0.0f, 0.0f}, 1.0f}, // x >= -1
         {{-1.0f, 0.0f, 0.0f}, 1.0f}, // x <= 1
@@ -91,12 +102,12 @@ ClippedPolygon ClipPolygonNdc(const std::array<Vertex, 3>& inputTriangle) {
             break;
         }
         output.count = 0;
-        Vertex prev = poly.vertices[poly.count - 1];
+        RasterVertex prev = poly.vertices[poly.count - 1];
         float prevDist = PlaneDistance(plane, prev);
         bool prevInside = prevDist >= 0.0f;
 
         for (size_t i = 0; i < poly.count; i++) {
-            const Vertex& curr = poly.vertices[i];
+            const RasterVertex& curr = poly.vertices[i];
             float currDist = PlaneDistance(plane, curr);
             bool currInside = currDist >= 0.0f;
 
@@ -185,15 +196,18 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
         assert(mesh.m_Indices.size() % 3 == 0 && mesh.m_Indices.size() == mesh.m_numFaces * 3 &&
             "Mesh is not triangulated");
 
-        std::vector<Vertex> transformedVertices = mesh.m_Vertices;
+        const auto& cfg = m_FrameConfigSnapshot;
+        std::vector<glm::vec4> clipPositions(mesh.m_Vertices.size());
+        std::vector<glm::vec3> transformedNormals(mesh.m_Vertices.size());
         std::vector<glm::vec3> worldPositions(mesh.m_Vertices.size());
         for (size_t vertexIndex = 0; vertexIndex < mesh.m_Vertices.size(); vertexIndex++) {
             const Vertex& sourceVertex = mesh.m_Vertices[vertexIndex];
-            Vertex& transformedVertex = transformedVertices[vertexIndex];
-            transformedVertex.position = mvp * sourceVertex.position;
-            transformedVertex.normal = glm::normalize(glm::vec3(n * glm::vec4(sourceVertex.normal, 0.0f)));
+            clipPositions[vertexIndex] = mvp * sourceVertex.position;
+            transformedNormals[vertexIndex] = glm::normalize(glm::vec3(n * glm::vec4(sourceVertex.normal, 0.0f)));
             worldPositions[vertexIndex] = glm::vec3(modelMat * sourceVertex.position);
         }
+
+        const Texture* diffuseTexture = mesh.m_Textures.empty() ? nullptr : &mesh.m_Textures[0];
 
         for (unsigned int i = 0; i < mesh.m_numFaces; i++) {
             // Input Assembler
@@ -201,11 +215,29 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             const unsigned int i0 = mesh.m_Indices[baseIndex];
             const unsigned int i1 = mesh.m_Indices[baseIndex + 1];
             const unsigned int i2 = mesh.m_Indices[baseIndex + 2];
-            std::array<Vertex, 3> vertices = {
-                transformedVertices[i0],
-                transformedVertices[i1],
-                transformedVertices[i2],
-            };
+            const glm::vec4& clipPos0 = clipPositions[i0];
+            const glm::vec4& clipPos1 = clipPositions[i1];
+            const glm::vec4& clipPos2 = clipPositions[i2];
+            if (std::abs(clipPos0.w) <= 1e-6f || std::abs(clipPos1.w) <= 1e-6f || std::abs(clipPos2.w) <= 1e-6f) {
+                continue;
+            }
+
+            std::array<RasterVertex, 3> vertices{};
+            const unsigned int indices[3] = {i0, i1, i2};
+            const glm::vec4 clipPositionsForTri[3] = {clipPos0, clipPos1, clipPos2};
+            for (int v = 0; v < 3; v++) {
+                const Vertex& sourceVertex = mesh.m_Vertices[indices[v]];
+                vertices[v].position = glm::vec3(clipPositionsForTri[v]) / clipPositionsForTri[v].w;
+                vertices[v].clipW = clipPositionsForTri[v].w;
+                vertices[v].texCoords = sourceVertex.texCoords;
+                vertices[v].color = sourceVertex.color;
+            }
+
+            if (cfg.retro.snapVertices) {
+                for (auto& vertex : vertices) {
+                    SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
+                }
+            }
 
             // TODO: backface cull
 
@@ -214,23 +246,15 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             const glm::vec3& worldPos1 = worldPositions[i1];
             const glm::vec3& worldPos2 = worldPositions[i2];
             const glm::vec3 worldPos = (worldPos0 + worldPos1 + worldPos2) / 3.0f;
-            const glm::vec3 normal = glm::normalize(vertices[0].normal + vertices[1].normal + vertices[2].normal);
-            const glm::vec3 lightDir = glm::normalize(m_FrameConfigSnapshot.environment.lightPosition - worldPos);
+            const glm::vec3 normal = glm::normalize(transformedNormals[i0] + transformedNormals[i1] + transformedNormals[i2]);
+            const glm::vec3 lightDir = glm::normalize(cfg.environment.lightPosition - worldPos);
             const float ndotl = std::max(glm::dot(normal, lightDir), 0.0f);
-
-            // Perspective division
-            for (auto& vertex : vertices) {
-                vertex.position /= vertex.position.w;
-            }
-
-            // Rasterizer
-            const auto& cfg = m_FrameConfigSnapshot;
             if (cfg.cull.rasterClip && IsTriangleTriviallyRejected(vertices)) {
                 continue;
             }
             if (cfg.cull.geometricClip) {
                 if (IsTriangleFullyInsideNdc(vertices)) {
-                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, cfg, ndotl);
+                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, cfg, ndotl, diffuseTexture);
                     continue;
                 }
 
@@ -239,11 +263,11 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                     continue;
                 }
                 for (size_t t = 1; t + 1 < clipped.count; t++) {
-                    std::array<Vertex, 3> tri = {clipped.vertices[0], clipped.vertices[t], clipped.vertices[t + 1]};
-                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, tri, cfg, ndotl);
+                    std::array<RasterVertex, 3> tri = {clipped.vertices[0], clipped.vertices[t], clipped.vertices[t + 1]};
+                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, tri, cfg, ndotl, diffuseTexture);
                 }
             } else {
-                Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, cfg, ndotl);
+                Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, cfg, ndotl, diffuseTexture);
             }
 
             // Stats

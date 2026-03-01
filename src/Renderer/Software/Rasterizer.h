@@ -2,11 +2,18 @@
 
 #include "../../Base/Color.h"
 #include "../../Base/Config.h"
-#include "../../Scene/Vertex.h"
 #include "../Buffer.h"
 #include <array>
 
 namespace RetroRenderer {
+class Texture;
+
+struct RasterVertex {
+    glm::vec3 position = glm::vec3(0.0f);
+    glm::vec2 texCoords = glm::vec2(0.0f);
+    glm::vec3 color = glm::vec3(1.0f);
+    float clipW = 1.0f;
+};
 
 class Rasterizer {
   public:
@@ -16,10 +23,11 @@ class Rasterizer {
     static glm::vec2 NDCToViewport(const glm::vec2& v, size_t width, size_t height);
     static void DrawTriangle(Buffer<Pixel>& framebuffer,
                              Buffer<float>& depthBuffer,
-                             std::array<Vertex, 3>& vertices,
+                             std::array<RasterVertex, 3>& vertices,
                              const Config& cfg,
-                             float lightAmount);
-    static void DrawQuad(Buffer<Pixel>& framebuffer, std::array<Vertex, 3>& vertices);
+                             float lightAmount,
+                             const Texture* texture = nullptr);
+    static void DrawQuad(Buffer<Pixel>& framebuffer, std::array<RasterVertex, 3>& vertices);
     static void DrawLine(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color);
     static void DrawHLine(Buffer<Pixel>& framebuffer, int x0, int x1, int y, const Config& cfg, Pixel color);
     static void DrawPixel(Buffer<Pixel>& framebuffer, float x, float y, bool rasterClip, Pixel color);
@@ -27,10 +35,11 @@ class Rasterizer {
   private:
     static void DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                         Buffer<float>& depthBuffer,
-                                        const std::array<Vertex, 3>& vertices,
+                                        const std::array<RasterVertex, 3>& vertices,
                                         std::array<glm::vec3, 3>& viewportVertices,
                                         const Config& cfg,
-                                        float lightAmount);
+                                        float lightAmount,
+                                        const Texture* texture);
     // Line drawing algos
     static void DrawLineDDA(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color);
     static void DrawLineBresenham(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color);

@@ -5,6 +5,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+#include <filesystem>
 #include <utility>
 #include <vector>
 
@@ -48,6 +49,11 @@ ImportedMaterial ConvertAssimpMaterial(const aiMaterial* material) {
     aiColor3D specularColor(0.0f, 0.0f, 0.0f);
     material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
     importedMaterial.specularColor = glm::vec3(specularColor.r, specularColor.g, specularColor.b);
+
+    aiString diffuseTexturePath;
+    if (material->GetTexture(aiTextureType_DIFFUSE, 0, &diffuseTexturePath) == aiReturn_SUCCESS) {
+        importedMaterial.diffuseTexturePath = diffuseTexturePath.C_Str();
+    }
 
     return importedMaterial;
 }
@@ -179,7 +185,11 @@ bool AssimpSceneImporter::LoadFromFile(const std::string& path, ImportedSceneDat
         LOGE("assimp: Failed to load scene from file '%s': %s", path.c_str(), importer.GetErrorString());
         return false;
     }
-    return BuildImportedSceneData(scene, outSceneData);
+    if (!BuildImportedSceneData(scene, outSceneData)) {
+        return false;
+    }
+    outSceneData.sourceDirectory = std::filesystem::path(path).parent_path().string();
+    return true;
 }
 
 bool AssimpSceneImporter::BuildImportedSceneData(const aiScene* scene, ImportedSceneData& outSceneData) const {
