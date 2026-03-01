@@ -39,6 +39,7 @@ class Texture {
     int GetHeight() const {
         return m_Height;
     }
+    Texture CloneCpuOnly() const;
     Pixel SampleNearestRepeat(const glm::vec2& uv) const;
 
   private:

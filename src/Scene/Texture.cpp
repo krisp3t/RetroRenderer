@@ -195,6 +195,15 @@ void Texture::Bind(GLuint unit) const {
     glBindTexture(GL_TEXTURE_2D, m_TextureID);
 }
 
+Texture Texture::CloneCpuOnly() const {
+    Texture clone;
+    clone.m_Path = m_Path;
+    clone.m_Width = m_Width;
+    clone.m_Height = m_Height;
+    clone.m_Pixels = m_Pixels;
+    return clone;
+}
+
 Pixel Texture::SampleNearestRepeat(const glm::vec2& uv) const {
     if (!HasCpuPixels()) {
         return Pixel{255, 255, 255, 255};

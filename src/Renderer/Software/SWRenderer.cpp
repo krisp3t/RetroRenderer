@@ -165,6 +165,10 @@ void SWRenderer::SetFrameConfig(const Config& config) {
     m_FrameConfigSnapshot = config;
 }
 
+void SWRenderer::SetFallbackTexture(const Texture* texture) {
+    p_FrameFallbackTexture = texture;
+}
+
 /**
  * @brief Draw a model on the framebuffer. Must have triangulated meshes!
  * @param mesh
@@ -207,7 +211,10 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             worldPositions[vertexIndex] = glm::vec3(modelMat * sourceVertex.position);
         }
 
-        const Texture* diffuseTexture = mesh.m_Textures.empty() ? nullptr : &mesh.m_Textures[0];
+        const Texture* diffuseTexture = p_FrameFallbackTexture;
+        if (diffuseTexture == nullptr && !mesh.m_Textures.empty()) {
+            diffuseTexture = &mesh.m_Textures[0];
+        }
 
         for (unsigned int i = 0; i < mesh.m_numFaces; i++) {
             // Input Assembler

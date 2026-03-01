@@ -54,6 +54,7 @@ class RenderSystem {
         std::vector<int> renderQueue;
         Config configSnapshot{};
         Color clearColor{};
+        std::optional<Texture> fallbackTexture;
         uint64_t jobId = 0;
     };
 

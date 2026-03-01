@@ -5,6 +5,16 @@
 #include <cstring>
 
 namespace RetroRenderer {
+namespace {
+std::optional<Texture> CaptureSoftwareFallbackTexture() {
+    auto& currentMaterial = Engine::Get().GetMaterialManager().GetCurrentMaterial();
+    if (!currentMaterial.texture.has_value() || !currentMaterial.texture->HasCpuPixels()) {
+        return std::nullopt;
+    }
+    return currentMaterial.texture->CloneCpuOnly();
+}
+} // namespace
+
 RenderSystem::~RenderSystem() {
     Destroy();
 }
@@ -254,6 +264,7 @@ void RenderSystem::SubmitSoftwareJob(const std::shared_ptr<Scene>& scene,
     job.renderQueue = renderQueue;
     job.configSnapshot = *Engine::Get().GetConfig();
     job.clearColor = m_SoftwareClearColor;
+    job.fallbackTexture = CaptureSoftwareFallbackTexture();
     {
         std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
         job.jobId = ++m_NextSoftwareJobId;
@@ -325,9 +336,11 @@ void RenderSystem::SoftwareWorkerLoop() {
 
         p_SWRenderer_->BeforeFrame(job.clearColor);
         p_SWRenderer_->SetFrameConfig(job.configSnapshot);
+        p_SWRenderer_->SetFallbackTexture(job.fallbackTexture ? &*job.fallbackTexture : nullptr);
         if (job.camera) {
             p_SWRenderer_->SetActiveCamera(*job.camera);
         } else {
+            p_SWRenderer_->SetFallbackTexture(nullptr);
             continue;
         }
         if (job.configSnapshot.environment.showSkybox) {
@@ -361,6 +374,7 @@ void RenderSystem::SoftwareWorkerLoop() {
             }
         }
         if (cancelled) {
+            p_SWRenderer_->SetFallbackTexture(nullptr);
             continue;
         }
 
@@ -382,6 +396,7 @@ void RenderSystem::SoftwareWorkerLoop() {
             }
             m_CompletedSoftwareFrames.push_back(std::move(finishedFrame));
         }
+        p_SWRenderer_->SetFallbackTexture(nullptr);
         p_stats->swJobsCompleted.fetch_add(1, std::memory_order_relaxed);
     }
 #endif
@@ -391,8 +406,10 @@ GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
                                         const Camera& camera,
                                         const std::vector<int>& renderQueue) {
     const Config configSnapshot = *Engine::Get().GetConfig();
+    const std::optional<Texture> fallbackTexture = CaptureSoftwareFallbackTexture();
     p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
     p_SWRenderer_->SetFrameConfig(configSnapshot);
+    p_SWRenderer_->SetFallbackTexture(fallbackTexture ? &*fallbackTexture : nullptr);
     p_SWRenderer_->SetActiveCamera(camera);
     if (configSnapshot.environment.showSkybox) {
         p_SWRenderer_->DrawSkybox();
@@ -414,6 +431,7 @@ GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(buffer.width), static_cast<GLsizei>(buffer.height),
                     GL_RGBA, GL_UNSIGNED_BYTE, buffer.data);
     glBindTexture(GL_TEXTURE_2D, 0);
+    p_SWRenderer_->SetFallbackTexture(nullptr);
     return m_SWFramebufferTexture;
 }
 } // namespace RetroRenderer

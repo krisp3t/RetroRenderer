@@ -18,6 +18,7 @@ class SWRenderer : public IRenderer {
     bool Resize(int w, int h);
     void SetActiveCamera(const Camera& camera) override;
     void SetFrameConfig(const Config& config);
+    void SetFallbackTexture(const Texture* texture);
     void DrawTriangularMesh(const Model* model) override;
     void DrawSkybox() override;
     void BeforeFrame(const Color& clearColor) override;
@@ -34,6 +35,7 @@ class SWRenderer : public IRenderer {
     std::unique_ptr<Buffer<float>> m_DepthBuffer = nullptr;
     Camera* p_Camera = nullptr;
     Config m_FrameConfigSnapshot{};
+    const Texture* p_FrameFallbackTexture = nullptr;
     std::unique_ptr<Rasterizer> m_Rasterizer = nullptr;
 };
 
