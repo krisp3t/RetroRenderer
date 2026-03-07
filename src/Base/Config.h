@@ -125,6 +125,7 @@ struct Config {
         RenderPreset preset = RenderPreset::DEFAULT;
         PaletteType palette = PaletteType::NONE;
         bool enablePalette = false;
+        bool useTextureDerivedPalette = false;
         bool enableColorRamps = false;
         bool enableOrderedDithering = false;
         int lightingBands = 0;
@@ -187,6 +188,7 @@ struct Config {
         config.retro.preset = preset;
         config.retro.palette = PaletteType::NONE;
         config.retro.enablePalette = false;
+        config.retro.useTextureDerivedPalette = false;
         config.retro.enableColorRamps = false;
         config.retro.enableOrderedDithering = false;
         config.retro.lightingBands = 0;
@@ -251,6 +253,7 @@ struct Config {
             config.retro.enableColorRamps = true;
             config.retro.enableOrderedDithering = true;
             config.retro.lightingBands = 3;
+            config.retro.useTextureDerivedPalette = true;
             config.retro.snapVertices = true;
             config.retro.affineTextureMapping = true;
             break;

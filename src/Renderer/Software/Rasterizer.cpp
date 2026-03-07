@@ -57,7 +57,7 @@ bool UsePerspectiveCorrectInterpolation(const Config& cfg) {
 bool UseTextureAutoPalette(const Texture* texture, const Config& cfg) {
     return texture != nullptr &&
            texture->HasAutoPalette() &&
-           cfg.retro.preset == Config::RenderPreset::PICOCAD &&
+           cfg.retro.useTextureDerivedPalette &&
            cfg.retro.enablePalette;
 }
 

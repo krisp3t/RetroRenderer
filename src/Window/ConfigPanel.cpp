@@ -77,7 +77,7 @@ const char* RenderPresetDescription(Config::RenderPreset preset) {
     case Config::RenderPreset::PICO8:
         return "Low-resolution software preset aimed at palette reduction, color ramps, and ordered dithering.";
     case Config::RenderPreset::PICOCAD:
-        return "Low-resolution software preset aimed at picoCAD-style low-poly rendering, affine mapping, and vertex snap.";
+        return "Low-resolution software preset aimed at picoCAD-style low-poly rendering, texture-derived palettes, affine mapping, and vertex snap.";
     }
     return "";
 }
@@ -730,15 +730,15 @@ void ConfigPanel::DisplayCullSettings() {
 
 void ConfigPanel::DisplayEnvironmentSettings() {
     auto& e = p_config_->environment;
-    bool manualChange = false;
+    bool presetChange = false;
     ImGui::SeparatorText("Environment settings");
-    manualChange |= ImGui::Checkbox("Show skybox", &e.showSkybox);
-    manualChange |= ImGui::Checkbox("Show grid", &e.showGrid);
-    manualChange |= ImGui::Checkbox("Show floor", &e.showFloor);
-    manualChange |= ImGui::Checkbox("Shadow mapping", &e.shadowMap);
-    manualChange |= ImGui::DragFloat3("Light position", &e.lightPosition[0], 0.1f, 0.0f, 0.0f, "%.3f");
+    presetChange |= ImGui::Checkbox("Show skybox", &e.showSkybox);
+    presetChange |= ImGui::Checkbox("Show grid", &e.showGrid);
+    presetChange |= ImGui::Checkbox("Show floor", &e.showFloor);
+    presetChange |= ImGui::Checkbox("Shadow mapping", &e.shadowMap);
+    ImGui::DragFloat3("Light position", &e.lightPosition[0], 0.1f, 0.0f, 0.0f, "%.3f");
 
-    if (manualChange) {
+    if (presetChange) {
         MarkRendererPresetCustom();
     }
 }
@@ -757,6 +757,7 @@ void ConfigPanel::DisplayPostFxSettings() {
         manualChange = true;
     }
     manualChange |= ImGui::Checkbox("Enable palette quantization", &retro.enablePalette);
+    manualChange |= ImGui::Checkbox("Derive palette from texture", &retro.useTextureDerivedPalette);
     manualChange |= ImGui::Checkbox("Enable color ramps", &retro.enableColorRamps);
     manualChange |= ImGui::Checkbox("Enable ordered dithering", &retro.enableOrderedDithering);
     manualChange |= ImGui::SliderInt("Lighting bands", &retro.lightingBands, 0, 8);
@@ -764,9 +765,8 @@ void ConfigPanel::DisplayPostFxSettings() {
     manualChange |= ImGui::Checkbox("Affine texture mapping", &retro.affineTextureMapping);
 
     ImGui::Spacing();
-    ImGui::TextWrapped("These settings are now stored in config and driven by presets. The actual renderer hooks for "
-                       "palette quantization, dithering, lighting ramps, vertex snapping, and affine mapping still "
-                       "need to be implemented.");
+    ImGui::TextWrapped("Palette quantization, color ramps, ordered dithering, vertex snapping, affine mapping, and "
+                       "texture-derived palettes are active on the software retro path.");
 
     if (manualChange) {
         MarkRendererPresetCustom();
