@@ -54,6 +54,13 @@ bool UsePerspectiveCorrectInterpolation(const Config& cfg) {
     return cfg.renderer.enablePerspectiveCorrect && !cfg.retro.affineTextureMapping;
 }
 
+bool UseTextureAutoPalette(const Texture* texture, const Config& cfg) {
+    return texture != nullptr &&
+           texture->HasAutoPalette() &&
+           cfg.retro.preset == Config::RenderPreset::PICOCAD &&
+           cfg.retro.enablePalette;
+}
+
 FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex, 3>& vertices,
                                                    float b0,
                                                    float b1,
@@ -85,12 +92,18 @@ FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex
     return interpolants;
 }
 
-Pixel ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& cfg) {
+Pixel ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& cfg, const Texture* paletteTexture = nullptr) {
     constexpr float kAmbientFloor = 0.18f;
     const float lit = std::clamp(kAmbientFloor + lightAmount * (1.0f - kAmbientFloor), 0.0f, 1.0f);
     const int lightingBands = cfg.retro.lightingBands;
     const float bandedLight = lightingBands > 0 ? RetroPalette::QuantizeUnitToBands(lit, lightingBands) : lit;
     const Config::PaletteType palette = cfg.retro.palette;
+    const bool useTexturePalette = UseTextureAutoPalette(paletteTexture, cfg);
+
+    if (cfg.retro.enableColorRamps && useTexturePalette) {
+        const uint8_t baseIndex = paletteTexture->FindNearestAutoPaletteIndex(baseColor);
+        return paletteTexture->SampleAutoRampPixel(baseIndex, bandedLight, lightingBands > 0 ? lightingBands : 4, baseColor.a);
+    }
 
     if (cfg.retro.enableColorRamps && cfg.retro.enablePalette && palette != Config::PaletteType::NONE) {
         const uint8_t baseIndex = RetroPalette::FindNearestPaletteIndex(baseColor, palette);
@@ -100,6 +113,11 @@ Pixel ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& c
     const uint8_t shadedR = static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.r) * bandedLight), 0L, 255L));
     const uint8_t shadedG = static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.g) * bandedLight), 0L, 255L));
     const uint8_t shadedB = static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.b) * bandedLight), 0L, 255L));
+    if (useTexturePalette) {
+        const Color shaded(Color::Uint8Tag{}, shadedR, shadedG, shadedB, baseColor.a);
+        return paletteTexture->FindNearestAutoPalettePixel(shaded);
+    }
+
     if (cfg.retro.enablePalette && palette != Config::PaletteType::NONE) {
         const Color& quantized = RetroPalette::GetPaletteColor(
             palette,
@@ -109,9 +127,16 @@ Pixel ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& c
     return Pixel{shadedR, shadedG, shadedB, baseColor.a};
 }
 
-Pixel ApplyRetroFillStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Config& cfg) {
+Pixel ApplyRetroFillStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Config& cfg, const Texture* paletteTexture = nullptr) {
     if (!cfg.retro.enableOrderedDithering) {
         return inputColor;
+    }
+
+    if (UseTextureAutoPalette(paletteTexture, cfg)) {
+        const uint8_t paletteIndex = paletteTexture->FindNearestAutoPaletteIndex(inputColor.r, inputColor.g, inputColor.b);
+        Pixel pixel = paletteTexture->GetAutoDitherPattern4x4(paletteIndex)[DitherPatternIndex(pixelPos.x, pixelPos.y)];
+        pixel.a = inputColor.a;
+        return pixel;
     }
 
     const Config::PaletteType palette =
@@ -127,11 +152,22 @@ Pixel ApplyRetroFillStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Co
     return RetroPalette::ApplyOrderedDither4x4(color, pixelPos, palette).ToPixel();
 }
 
-DitherPattern BuildRetroFillPattern(Pixel inputColor, const Config& cfg) {
+DitherPattern BuildRetroFillPattern(Pixel inputColor, const Config& cfg, const Texture* paletteTexture = nullptr) {
     DitherPattern pattern{};
     if (!cfg.retro.enableOrderedDithering) {
         pattern.fill(inputColor);
         return pattern;
+    }
+
+    if (UseTextureAutoPalette(paletteTexture, cfg)) {
+        const uint8_t paletteIndex = paletteTexture->FindNearestAutoPaletteIndex(inputColor.r, inputColor.g, inputColor.b);
+        DitherPattern texturePattern = paletteTexture->GetAutoDitherPattern4x4(paletteIndex);
+        if (inputColor.a != 255) {
+            for (Pixel& pixel : texturePattern) {
+                pixel.a = inputColor.a;
+            }
+        }
+        return texturePattern;
     }
 
     const Config::PaletteType palette =
@@ -162,7 +198,8 @@ void WriteTrianglePixel(Buffer<Pixel>& framebuffer,
                         float z,
                         const Config& cfg,
                         Pixel fillColor,
-                        const DitherPattern* fillPattern = nullptr) {
+                        const DitherPattern* fillPattern = nullptr,
+                        const Texture* paletteTexture = nullptr) {
     if (!cfg.cull.rasterClip) {
         if (x < 0 || x >= static_cast<int>(framebuffer.width) || y < 0 || y >= static_cast<int>(framebuffer.height)) {
             return;
@@ -175,7 +212,7 @@ void WriteTrianglePixel(Buffer<Pixel>& framebuffer,
             depthBuffer.data[pixelIndex] = z;
         }
         const Pixel finalColor =
-            fillPattern ? (*fillPattern)[DitherPatternIndex(x, y)] : ApplyRetroFillStyle(fillColor, glm::ivec2{x, y}, cfg);
+            fillPattern ? (*fillPattern)[DitherPatternIndex(x, y)] : ApplyRetroFillStyle(fillColor, glm::ivec2{x, y}, cfg, paletteTexture);
         framebuffer.data[pixelIndex] = finalColor;
     }
 }
@@ -316,14 +353,14 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
         switch (cfg.software.rasterizer.fillMode) {
         case Config::RasterizationFillMode::BARYCENTRIC:
             if (texture == nullptr && HasUniformVertexColor(vertices)) {
-                const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(vertices[0].color), lightAmount, cfg);
+                const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(vertices[0].color), lightAmount, cfg, texture);
                 DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             } else {
                 DrawBarycentricTriangle(framebuffer, depthBuffer, vertices, viewportVertices, cfg, lightAmount, texture);
             }
             break;
         default: {
-            const Pixel fillColor = ShadeRetroColor(ComputeAverageVertexColor(vertices), lightAmount, cfg);
+            const Pixel fillColor = ShadeRetroColor(ComputeAverageVertexColor(vertices), lightAmount, cfg, texture);
             DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             break;
         }
@@ -424,8 +461,8 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                         static_cast<uint8_t>((static_cast<unsigned int>(baseColor.b) * static_cast<unsigned int>(texel.b)) / 255U),
                         static_cast<uint8_t>((static_cast<unsigned int>(baseColor.a) * static_cast<unsigned int>(texel.a)) / 255U));
                 }
-                const Pixel fillColor = ShadeRetroColor(baseColor, lightAmount, cfg);
-                WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor);
+                const Pixel fillColor = ShadeRetroColor(baseColor, lightAmount, cfg, texture);
+                WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, nullptr, texture);
             }
             w0 += w0StepX;
             w1 += w1StepX;
