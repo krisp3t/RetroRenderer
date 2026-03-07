@@ -1,9 +1,6 @@
 #include "ISceneImporter.h"
 
 #include "LightweightObjSceneImporter.h"
-#if RETRO_WITH_ASSIMP
-#include "AssimpSceneImporter.h"
-#endif
 #include <KrisLogger/Logger.h>
 #include <cctype>
 #include <memory>
@@ -25,42 +22,28 @@ bool HasObjExtension(const std::string& path) {
 class DefaultSceneImporter final : public ISceneImporter {
   public:
     bool LoadFromMemory(const uint8_t* data, size_t size, ImportedSceneData& outSceneData) override {
-        if (m_ObjImporter.LoadFromMemory(data, size, outSceneData)) {
-            return true;
+        const bool loaded = m_ObjImporter.LoadFromMemory(data, size, outSceneData);
+        if (!loaded) {
+            LOGE("Failed to load scene from memory. Only OBJ scenes are supported.");
         }
-#if RETRO_WITH_ASSIMP
-        return m_AssimpImporter.LoadFromMemory(data, size, outSceneData);
-#else
-        LOGE("Failed to load scene from memory as OBJ and RETRO_WITH_ASSIMP=0");
-        return false;
-#endif
+        return loaded;
     }
 
     bool LoadFromFile(const std::string& path, ImportedSceneData& outSceneData) override {
-        if (HasObjExtension(path)) {
-            if (m_ObjImporter.LoadFromFile(path, outSceneData)) {
-                return true;
-            }
-#if RETRO_WITH_ASSIMP
-            LOGW("OBJ importer failed for '%s', trying Assimp fallback", path.c_str());
-#else
+        if (!HasObjExtension(path)) {
+            LOGE("Unsupported scene format '%s'. Only OBJ scenes are supported.", path.c_str());
             return false;
-#endif
         }
 
-#if RETRO_WITH_ASSIMP
-        if (m_AssimpImporter.LoadFromFile(path, outSceneData)) {
-            return true;
+        const bool loaded = m_ObjImporter.LoadFromFile(path, outSceneData);
+        if (!loaded) {
+            LOGE("Failed to load OBJ scene '%s'", path.c_str());
         }
-#endif
-        return m_ObjImporter.LoadFromFile(path, outSceneData);
+        return loaded;
     }
 
   private:
     LightweightObjSceneImporter m_ObjImporter;
-#if RETRO_WITH_ASSIMP
-    AssimpSceneImporter m_AssimpImporter;
-#endif
 };
 } // namespace
 
