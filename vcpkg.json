@@ -55,7 +55,6 @@
             ],
             "platform": "!emscripten"
         },
-        "assimp",
         {
             "name": "catch2",
             "platform": "!android & !emscripten"

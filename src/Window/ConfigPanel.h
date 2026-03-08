@@ -59,7 +59,7 @@ class ConfigPanel {
     void OpenWebFilePicker();
     void OpenAndroidFilePicker();
 
-    const char* k_supportedModels = ".obj,.gltf,.glb,.fbx,.usd";
+    const char* k_supportedModels = ".obj";
     VirtualStickState moveStickState;
     VirtualStickState rotateStickState;
 };

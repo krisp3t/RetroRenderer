@@ -1,6 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.18)
 project(retrorenderer VERSION 1.0 LANGUAGES C CXX)
-option(RETRO_ENABLE_ASSIMP "Enable Assimp scene importer backend" ON)
 option(RETRO_BUILD_TESTS "Build Catch2 unit tests" OFF)
 option(RETRO_REQUIRE_CLANG "Fail configure if Clang is not the active compiler" OFF)
 set(RETRO_SANITIZERS "" CACHE STRING "Semicolon-separated sanitizers for Clang/GCC (address;undefined;thread;leak)")
@@ -73,12 +72,6 @@ find_package(SDL2_image CONFIG REQUIRED)
 endif ()
 find_package(glm       CONFIG REQUIRED)
 find_package(imgui     CONFIG REQUIRED)
-if(RETRO_ENABLE_ASSIMP)
-    find_package(assimp CONFIG REQUIRED)
-    set(RETRO_WITH_ASSIMP_VALUE 1)
-else()
-    set(RETRO_WITH_ASSIMP_VALUE 0)
-endif()
 find_package(glad      CONFIG REQUIRED)
 
 # -----------------------------------------------------------------------------
@@ -308,7 +301,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
 )
-target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL=0 RETRO_WITH_ASSIMP=${RETRO_WITH_ASSIMP_VALUE})
+target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL=0)
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -pedantic>
 )
@@ -340,12 +333,6 @@ target_link_libraries(${PROJECT_NAME}
         KrisLogger
         retro_sanitizers
 )
-if(RETRO_ENABLE_ASSIMP)
-    target_link_libraries(${PROJECT_NAME}
-            PRIVATE
-            assimp::assimp
-    )
-endif()
 # -----------------------------------------------------------------------------
 # Android-specific system libs
 # -----------------------------------------------------------------------------
