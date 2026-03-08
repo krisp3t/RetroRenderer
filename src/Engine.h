@@ -54,7 +54,7 @@ class Engine {
     std::unique_ptr<SceneManager> p_SceneManager;
     std::unique_ptr<MaterialManager> p_MaterialManager;
 
-    Uint32 m_StartTicks = 0;
+    Uint32 m_LastFrameTicks = 0;
     bool m_Running = true;
 };
 

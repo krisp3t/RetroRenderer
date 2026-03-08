@@ -320,8 +320,9 @@ void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture) {
     };
 
     auto HandleCameraDrag = [&]() {
-        int deltaX, deltaY;
-        // SDL_GetRelativeMouseState(&deltaX, &deltaY);
+        int deltaX = 0;
+        int deltaY = 0;
+        SDL_GetRelativeMouseState(&deltaX, &deltaY);
         if (auto cam = Engine::Get().GetCamera()) {
             cam->m_EulerRotation.y += deltaX * 0.05f;
             cam->m_EulerRotation.x -= deltaY * 0.05f;
@@ -580,8 +581,7 @@ void ConfigPanel::DisplayConfigWindow(Config& config) {
 void ConfigPanel::DisplayCameraSettings() {
     if (auto cam = Engine::Get().GetCamera()) {
         ImGui::SeparatorText("Camera settings");
-        ImGui::DragFloat3("Position", glm::value_ptr(cam->m_Position), 0.1f, 0.0f, 0.0f, "%.3f",
-                          ImGuiSliderFlags_Logarithmic);
+        ImGui::DragFloat3("Position", glm::value_ptr(cam->m_Position), 0.1f, 0.0f, 0.0f, "%.3f");
         ImGui::DragFloat3("Rotation", glm::value_ptr(cam->m_EulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
         ImGui::Combo("Camera type", reinterpret_cast<int*>(&cam->m_Type), "Perspective\0Orthographic\0");
         switch (cam->m_Type) {

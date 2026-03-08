@@ -18,6 +18,7 @@ InputActionMask InputSystem::HandleInput() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL2_ProcessEvent(&event);
+        ImGuiIO& io = ImGui::GetIO();
         switch (event.type) {
         case SDL_QUIT:
             m_inputState_ |= static_cast<InputActionMask>(InputAction::QUIT);
@@ -26,6 +27,9 @@ InputActionMask InputSystem::HandleInput() {
             if (event.key.keysym.sym == SDLK_ESCAPE) {
                 m_inputState_ |= static_cast<InputActionMask>(InputAction::QUIT);
                 return m_inputState_;
+            }
+            if (io.WantCaptureKeyboard || io.WantTextInput) {
+                break;
             }
             HandleKeyDown(event.key.keysym.sym, *p_config);
             break;
@@ -54,10 +58,10 @@ void InputSystem::HandleKeyDown(SDL_Keycode key, Config& config) {
     case SDLK_d:
         m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_RIGHT);
         break;
-    case SDLK_LSHIFT:
+    case SDLK_SPACE:
         m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_UP);
         break;
-    case SDLK_LCTRL:
+    case SDLK_c:
         m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_DOWN);
         break;
     case SDLK_LEFT:

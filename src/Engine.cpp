@@ -1,6 +1,7 @@
 #include "Engine.h"
 #include "Base/MemoryProfiler.h"
 #include <KrisLogger/Logger.h>
+#include <algorithm>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -46,7 +47,7 @@ bool Engine::Init() {
 }
 
 void Engine::Run() {
-    m_StartTicks = SDL_GetTicks();
+    m_LastFrameTicks = SDL_GetTicks();
 
     LOGD("Entered main loop");
 #ifdef __EMSCRIPTEN__
@@ -60,7 +61,10 @@ void Engine::Run() {
 }
 
 void Engine::ProcessFrame() {
-    auto delta = SDL_GetTicks() - m_StartTicks;
+    const Uint32 now = SDL_GetTicks();
+    const Uint32 rawDelta = now - m_LastFrameTicks;
+    m_LastFrameTicks = now;
+    const Uint32 delta = std::min<Uint32>(rawDelta, 50);
 
     ProcessEventQueue();
 
