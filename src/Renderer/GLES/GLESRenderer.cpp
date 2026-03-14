@@ -76,13 +76,17 @@ void GLESRenderer::SetActiveCamera(const Camera& camera) {
     p_Camera = const_cast<Camera*>(&camera);
 }
 
+void GLESRenderer::SetSceneLights(const std::vector<LightSnapshot>& lights) {
+    m_SceneLights = lights;
+}
+
 void GLESRenderer::DrawTriangularMesh(const Model* model) {
     // TODO: Cache uniforms after shader compile?
     MaterialManager::Material& mat = Engine::Get().GetMaterialManager().GetCurrentMaterial();
     auto& config = Engine::Get().GetConfig();
     glUseProgram(mat.shaderProgram.id);
 
-    const glm::vec3 lightPos = config->environment.lightPosition;
+    const glm::vec3 lightPos = !m_SceneLights.empty() ? m_SceneLights.front().position : config->environment.lightPosition;
     const glm::mat4& modelMat = model->GetWorldTransform();
     const glm::mat4& viewMat = p_Camera->m_ViewMat;
     const glm::mat4& projMat = p_Camera->m_ProjMat;

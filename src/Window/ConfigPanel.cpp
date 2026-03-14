@@ -736,7 +736,7 @@ void ConfigPanel::DisplayEnvironmentSettings() {
     presetChange |= ImGui::Checkbox("Show grid", &e.showGrid);
     presetChange |= ImGui::Checkbox("Show floor", &e.showFloor);
     presetChange |= ImGui::Checkbox("Shadow mapping", &e.shadowMap);
-    ImGui::DragFloat3("Light position", &e.lightPosition[0], 0.1f, 0.0f, 0.0f, "%.3f");
+    ImGui::TextWrapped("Scene lights now live in the Scene Graph window. Use that to inspect and move lights.");
 
     if (presetChange) {
         MarkRendererPresetCustom();

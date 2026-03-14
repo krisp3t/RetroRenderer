@@ -1,5 +1,9 @@
 #pragma once
 
+#include "../Scene/Light.h"
+#include <string>
+#include <vector>
+
 namespace RetroRenderer {
 class Camera;
 
@@ -22,6 +26,7 @@ class IRenderer {
     virtual GLuint EndFrame() = 0; // Copy to framebuffer texture
 
     virtual void SetActiveCamera(const Camera& camera) = 0;
+    virtual void SetSceneLights(const std::vector<LightSnapshot>& lights) = 0;
 
     virtual void DrawTriangularMesh(const Model* model) = 0;
 

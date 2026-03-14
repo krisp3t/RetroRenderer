@@ -95,9 +95,7 @@ void RenderSystem::BeforeFrame(const Color& clearColor) {
 }
 
 std::vector<int>& RenderSystem::BuildRenderQueue(Scene& scene, const Camera& camera) {
-    if (p_activeRenderer_ != p_SWRenderer_.get()) {
-        p_activeRenderer_->SetActiveCamera(camera);
-    }
+    (void)camera;
     return scene.GetVisibleModels(); // TODO: split into meshes?
 }
 
@@ -117,6 +115,10 @@ GLuint RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& c
         return m_SWFramebufferTexture;
 #endif
     }
+
+    const std::vector<LightSnapshot> lightSnapshots = scene->BuildLightSnapshots();
+    p_activeRenderer_->SetActiveCamera(camera);
+    p_activeRenderer_->SetSceneLights(lightSnapshots);
 
     if (p_config->environment.showSkybox) {
         p_activeRenderer_->DrawSkybox();
@@ -261,6 +263,7 @@ void RenderSystem::SubmitSoftwareJob(const std::shared_ptr<Scene>& scene,
     SoftwareRenderJob job;
     job.scene = scene;
     job.camera = std::make_shared<Camera>(camera);
+    job.lights = scene->BuildLightSnapshots();
     job.renderQueue = renderQueue;
     job.configSnapshot = *Engine::Get().GetConfig();
     job.clearColor = m_SoftwareClearColor;
@@ -337,6 +340,7 @@ void RenderSystem::SoftwareWorkerLoop() {
         p_SWRenderer_->BeforeFrame(job.clearColor);
         p_SWRenderer_->SetFrameConfig(job.configSnapshot);
         p_SWRenderer_->SetFallbackTexture(job.fallbackTexture ? &*job.fallbackTexture : nullptr);
+        p_SWRenderer_->SetSceneLights(job.lights);
         if (job.camera) {
             p_SWRenderer_->SetActiveCamera(*job.camera);
         } else {
@@ -410,6 +414,7 @@ GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
     p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
     p_SWRenderer_->SetFrameConfig(configSnapshot);
     p_SWRenderer_->SetFallbackTexture(fallbackTexture ? &*fallbackTexture : nullptr);
+    p_SWRenderer_->SetSceneLights(scene ? scene->BuildLightSnapshots() : std::vector<LightSnapshot>{});
     p_SWRenderer_->SetActiveCamera(camera);
     if (configSnapshot.environment.showSkybox) {
         p_SWRenderer_->DrawSkybox();

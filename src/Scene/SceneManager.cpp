@@ -108,21 +108,35 @@ void SceneManager::RenderUI() {
         ImGui::Text("Main camera");
         ImGui::TreePop();
     }
-    if (ImGui::TreeNode("Directional light")) {
-        ImGui::Text("Directional light");
-        ImGui::TreePop();
-    }
 
     if (p_Scene.get() == nullptr) {
         return;
     }
     if (ImGui::TreeNode("Scene")) {
+        if (ImGui::TreeNode("Lights")) {
+            auto& lights = p_Scene->GetLights();
+            for (size_t i = 0; i < lights.size(); i++) {
+                RenderUILight(lights[i], static_cast<int>(i));
+            }
+            ImGui::TreePop();
+        }
         for (size_t i = 0; i < p_Scene->m_Models.size(); i++) {
             if (!p_Scene->m_Models[i].m_Parent.has_value()) // roots only
             {
                 RenderUIModelRecursive(i);
             }
         }
+        ImGui::TreePop();
+    }
+}
+
+void SceneManager::RenderUILight(SceneLight& light, int lightIndex) {
+    const std::string label = light.name + "##light_" + std::to_string(lightIndex);
+    if (ImGui::TreeNode(label.c_str())) {
+        ImGui::Text("Type: %s", light.type == LightType::POINT ? "Point" : "Unknown");
+        ImGui::DragFloat3("Position", glm::value_ptr(light.position), 0.1f, 0.0f, 0.0f, "%.3f");
+        ImGui::ColorEdit3("Color", glm::value_ptr(light.color));
+        ImGui::SliderFloat("Intensity", &light.intensity, 0.0f, 4.0f, "%.2f");
         ImGui::TreePop();
     }
 }

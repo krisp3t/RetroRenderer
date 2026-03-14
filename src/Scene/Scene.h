@@ -2,6 +2,7 @@
 
 #include "Camera.h"
 #include "ImportedSceneData.h"
+#include "Light.h"
 #include "Mesh.h"
 #include "Model.h"
 #include <cstddef>
@@ -23,12 +24,17 @@ class Scene {
     void SetImporter(std::unique_ptr<ISceneImporter> importer);
     void FrustumCull(const Camera& camera);
     [[nodiscard]] std::vector<int>& GetVisibleModels();
+    [[nodiscard]] std::vector<SceneLight>& GetLights();
+    [[nodiscard]] const std::vector<SceneLight>& GetLights() const;
+    [[nodiscard]] std::vector<LightSnapshot> BuildLightSnapshots() const;
     [[nodiscard]] const glm::mat4& GetModelWorldTransform(int index) const;
     void MarkDirtyModel(int index);
 
     std::vector<Model> m_Models;
+    std::vector<SceneLight> m_Lights;
 
   private:
+    void InitializeDefaultLighting();
     bool ProcessImportedScene(const ImportedSceneData& sceneData);
     bool ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneData, int parentIndex);
     void ProcessImportedMesh(const ImportedMesh& mesh,

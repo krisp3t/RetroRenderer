@@ -7,9 +7,20 @@
 
 namespace RetroRenderer {
 Scene::Scene() : p_SceneImporter(CreateDefaultSceneImporter()) {
+    InitializeDefaultLighting();
 }
 
 Scene::~Scene() = default;
+
+void Scene::InitializeDefaultLighting() {
+    m_Lights.clear();
+
+    SceneLight light{};
+    if (const auto config = Engine::Get().GetConfig()) {
+        light.position = config->environment.lightPosition;
+    }
+    m_Lights.push_back(light);
+}
 
 void Scene::SetImporter(std::unique_ptr<ISceneImporter> importer) {
     if (!importer) {
@@ -133,6 +144,23 @@ void Scene::ProcessImportedMesh(const ImportedMesh& mesh,
 
 std::vector<int>& Scene::GetVisibleModels() {
     return m_VisibleModels;
+}
+
+std::vector<SceneLight>& Scene::GetLights() {
+    return m_Lights;
+}
+
+const std::vector<SceneLight>& Scene::GetLights() const {
+    return m_Lights;
+}
+
+std::vector<LightSnapshot> Scene::BuildLightSnapshots() const {
+    std::vector<LightSnapshot> snapshots;
+    snapshots.reserve(m_Lights.size());
+    for (const SceneLight& light : m_Lights) {
+        snapshots.push_back(light.ToSnapshot());
+    }
+    return snapshots;
 }
 
 // TODO: current implementation uses the model origin only (no bounds)

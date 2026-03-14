@@ -19,6 +19,7 @@ class GLESRenderer : public IRenderer {
     void Destroy() override;
 
     void SetActiveCamera(const Camera& camera) override;
+    void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
 
     void DrawTriangularMesh(const Model* model) override;
 
@@ -41,6 +42,7 @@ class GLESRenderer : public IRenderer {
 
   private:
     Camera* p_Camera = nullptr;
+    std::vector<LightSnapshot> m_SceneLights;
 
     GLuint p_FrameBufferTexture = 0;
     GLuint m_FrameBuffer = 0;

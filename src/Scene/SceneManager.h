@@ -22,6 +22,7 @@ class SceneManager {
     [[nodiscard]] Camera* GetCamera() const;
 
   private:
+    void RenderUILight(SceneLight& light, int lightIndex);
     void RenderUIModelRecursive(int modelIndex);
 
     std::shared_ptr<Scene> p_Scene = nullptr;

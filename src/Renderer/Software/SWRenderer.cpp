@@ -7,6 +7,31 @@
 
 namespace RetroRenderer {
 namespace {
+float ComputeLightAmount(const std::vector<LightSnapshot>& lights,
+                         const glm::vec3& worldPos,
+                         const glm::vec3& normal,
+                         const Config& cfg) {
+    if (lights.empty()) {
+        const glm::vec3 lightDir = glm::normalize(cfg.environment.lightPosition - worldPos);
+        return std::max(glm::dot(normal, lightDir), 0.0f);
+    }
+
+    float accumulated = 0.0f;
+    for (const LightSnapshot& light : lights) {
+        if (light.type != LightType::POINT) {
+            continue;
+        }
+        const glm::vec3 lightVector = light.position - worldPos;
+        const float lightLengthSq = glm::dot(lightVector, lightVector);
+        if (lightLengthSq <= 1e-6f) {
+            continue;
+        }
+        const glm::vec3 lightDir = lightVector * glm::inversesqrt(lightLengthSq);
+        accumulated += std::max(glm::dot(normal, lightDir), 0.0f) * std::max(light.intensity, 0.0f);
+    }
+    return std::clamp(accumulated, 0.0f, 1.0f);
+}
+
 struct ClipPlane {
     glm::vec3 normal;
     float d;
@@ -161,6 +186,10 @@ void SWRenderer::SetActiveCamera(const Camera& camera) {
     p_Camera = const_cast<Camera*>(&camera);
 }
 
+void SWRenderer::SetSceneLights(const std::vector<LightSnapshot>& lights) {
+    m_FrameLights = lights;
+}
+
 void SWRenderer::SetFrameConfig(const Config& config) {
     m_FrameConfigSnapshot = config;
 }
@@ -254,8 +283,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             const glm::vec3& worldPos2 = worldPositions[i2];
             const glm::vec3 worldPos = (worldPos0 + worldPos1 + worldPos2) / 3.0f;
             const glm::vec3 normal = glm::normalize(transformedNormals[i0] + transformedNormals[i1] + transformedNormals[i2]);
-            const glm::vec3 lightDir = glm::normalize(cfg.environment.lightPosition - worldPos);
-            const float ndotl = std::max(glm::dot(normal, lightDir), 0.0f);
+            const float ndotl = ComputeLightAmount(m_FrameLights, worldPos, normal, cfg);
             if (cfg.cull.rasterClip && IsTriangleTriviallyRejected(vertices)) {
                 continue;
             }

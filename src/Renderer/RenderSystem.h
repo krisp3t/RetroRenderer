@@ -51,6 +51,7 @@ class RenderSystem {
     struct SoftwareRenderJob {
         std::shared_ptr<Scene> scene = nullptr;
         std::shared_ptr<Camera> camera = nullptr;
+        std::vector<LightSnapshot> lights;
         std::vector<int> renderQueue;
         Config configSnapshot{};
         Color clearColor{};
