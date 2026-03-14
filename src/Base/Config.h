@@ -129,6 +129,8 @@ struct Config {
         bool enableColorRamps = false;
         bool enableOrderedDithering = false;
         int lightingBands = 0;
+        bool flatFaceLighting = false;
+        int textureMaxDimension = 0;
         bool snapVertices = false;
         bool affineTextureMapping = false;
     };
@@ -192,6 +194,8 @@ struct Config {
         config.retro.enableColorRamps = false;
         config.retro.enableOrderedDithering = false;
         config.retro.lightingBands = 0;
+        config.retro.flatFaceLighting = false;
+        config.retro.textureMaxDimension = 0;
         config.retro.snapVertices = false;
         config.retro.affineTextureMapping = false;
 
@@ -253,6 +257,8 @@ struct Config {
             config.retro.enableColorRamps = true;
             config.retro.enableOrderedDithering = true;
             config.retro.lightingBands = 3;
+            config.retro.flatFaceLighting = true;
+            config.retro.textureMaxDimension = 16;
             config.retro.useTextureDerivedPalette = true;
             config.retro.snapVertices = true;
             config.retro.affineTextureMapping = true;

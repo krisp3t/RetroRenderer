@@ -47,6 +47,7 @@ class Texture {
     }
     Texture CloneCpuOnly() const;
     Pixel SampleNearestRepeat(const glm::vec2& uv) const;
+    Pixel SampleReducedNearestRepeat(const glm::vec2& uv, int maxDimension) const;
     uint8_t FindNearestAutoPaletteIndex(const Color& color) const;
     uint8_t FindNearestAutoPaletteIndex(uint8_t r, uint8_t g, uint8_t b) const;
     Pixel FindNearestAutoPalettePixel(const Color& color) const;

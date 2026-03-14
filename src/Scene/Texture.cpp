@@ -5,6 +5,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <vector>
 
 namespace RetroRenderer {
@@ -41,6 +42,39 @@ float QuantizeUnitToBands(float value, int bandCount) {
 
     const int safeBandCount = std::max(bandCount, 2);
     return std::round(clamped * static_cast<float>(safeBandCount - 1)) / static_cast<float>(safeBandCount - 1);
+}
+
+float PixelLuminance(const Pixel& pixel) {
+    return (0.2126f * static_cast<float>(pixel.r) +
+            0.7152f * static_cast<float>(pixel.g) +
+            0.0722f * static_cast<float>(pixel.b)) /
+           255.0f;
+}
+
+glm::ivec2 ComputeReducedDimensions(int width, int height, int maxDimension) {
+    if (width <= 0 || height <= 0 || maxDimension <= 0) {
+        return {width, height};
+    }
+
+    if (width >= height) {
+        const int reducedWidth = std::min(width, maxDimension);
+        const int reducedHeight = std::max(
+            1,
+            static_cast<int>(std::lround(static_cast<float>(height) *
+                                         (static_cast<float>(reducedWidth) / static_cast<float>(width)))));
+        return {reducedWidth, reducedHeight};
+    }
+
+    const int reducedHeight = std::min(height, maxDimension);
+    const int reducedWidth = std::max(
+        1,
+        static_cast<int>(std::lround(static_cast<float>(width) *
+                                     (static_cast<float>(reducedHeight) / static_cast<float>(height)))));
+    return {reducedWidth, reducedHeight};
+}
+
+int ComputeRampNeighborScore(const Pixel& baseColor, const Pixel& candidateColor, int rankDistance) {
+    return WeightedColorDistanceSq(baseColor, candidateColor) + rankDistance * 96;
 }
 
 bool PopulateTextureStorage(SDL_Surface* surface,
@@ -273,6 +307,25 @@ Pixel Texture::SampleNearestRepeat(const glm::vec2& uv) const {
     return m_Pixels[static_cast<size_t>(y) * static_cast<size_t>(m_Width) + static_cast<size_t>(x)];
 }
 
+Pixel Texture::SampleReducedNearestRepeat(const glm::vec2& uv, int maxDimension) const {
+    if (!HasCpuPixels() || maxDimension <= 0) {
+        return SampleNearestRepeat(uv);
+    }
+
+    const glm::ivec2 reducedSize = ComputeReducedDimensions(m_Width, m_Height, maxDimension);
+    const float wrappedU = uv.x - std::floor(uv.x);
+    const float wrappedV = uv.y - std::floor(uv.y);
+    const int reducedX = std::clamp(static_cast<int>(std::floor(wrappedU * static_cast<float>(reducedSize.x))),
+                                    0,
+                                    reducedSize.x - 1);
+    const int reducedY = std::clamp(static_cast<int>(std::floor((1.0f - wrappedV) * static_cast<float>(reducedSize.y))),
+                                    0,
+                                    reducedSize.y - 1);
+    const int x = std::clamp(((reducedX * 2 + 1) * m_Width) / (reducedSize.x * 2), 0, m_Width - 1);
+    const int y = std::clamp(((reducedY * 2 + 1) * m_Height) / (reducedSize.y * 2), 0, m_Height - 1);
+    return m_Pixels[static_cast<size_t>(y) * static_cast<size_t>(m_Width) + static_cast<size_t>(x)];
+}
+
 uint8_t Texture::FindNearestAutoPaletteIndex(const Color& color) const {
     return FindNearestAutoPaletteIndex(color.r, color.g, color.b);
 }
@@ -434,19 +487,66 @@ void Texture::RebuildAutoPaletteCaches() {
 
     m_HasAutoPalette = true;
 
+    std::array<size_t, kAutoPaletteSize> luminanceOrder{};
+    for (size_t i = 0; i < kAutoPaletteSize; i++) {
+        luminanceOrder[i] = i;
+    }
+    std::sort(luminanceOrder.begin(), luminanceOrder.end(), [this](size_t a, size_t b) {
+        return PixelLuminance(m_AutoPalette[a]) < PixelLuminance(m_AutoPalette[b]);
+    });
+    std::array<size_t, kAutoPaletteSize> luminanceRank{};
+    for (size_t i = 0; i < kAutoPaletteSize; i++) {
+        luminanceRank[luminanceOrder[i]] = i;
+    }
+
     for (size_t paletteIndex = 0; paletteIndex < kAutoPaletteSize; paletteIndex++) {
         const Pixel& baseColor = m_AutoPalette[paletteIndex];
-        for (size_t slot = 0; slot < m_AutoRampPixels[paletteIndex].size(); slot++) {
-            const float factor =
-                static_cast<float>(slot) / static_cast<float>(m_AutoRampPixels[paletteIndex].size() - 1);
-            const Color shaded(
-                Color::Uint8Tag{},
-                static_cast<uint8_t>(std::lround(static_cast<float>(baseColor.r) * factor)),
-                static_cast<uint8_t>(std::lround(static_cast<float>(baseColor.g) * factor)),
-                static_cast<uint8_t>(std::lround(static_cast<float>(baseColor.b) * factor)),
-                255);
-            m_AutoRampPixels[paletteIndex][slot] = FindNearestAutoPalettePixel(shaded);
+        const size_t baseRank = luminanceRank[paletteIndex];
+        size_t darkerNearIndex = paletteIndex;
+        size_t darkerFarIndex = paletteIndex;
+        size_t lighterNearIndex = paletteIndex;
+        int darkerNearScore = std::numeric_limits<int>::max();
+        int darkerFarScore = std::numeric_limits<int>::max();
+        int lighterNearScore = std::numeric_limits<int>::max();
+
+        for (size_t rank = 0; rank < kAutoPaletteSize; rank++) {
+            const size_t candidateIndex = luminanceOrder[rank];
+            if (candidateIndex == paletteIndex) {
+                continue;
+            }
+
+            const int rankDistance = std::abs(static_cast<int>(rank) - static_cast<int>(baseRank));
+            const int score = ComputeRampNeighborScore(baseColor, m_AutoPalette[candidateIndex], rankDistance);
+            if (rank < baseRank) {
+                if (score < darkerNearScore) {
+                    darkerFarIndex = darkerNearIndex;
+                    darkerFarScore = darkerNearScore;
+                    darkerNearIndex = candidateIndex;
+                    darkerNearScore = score;
+                } else if (candidateIndex != darkerNearIndex && score < darkerFarScore) {
+                    darkerFarIndex = candidateIndex;
+                    darkerFarScore = score;
+                }
+            } else if (rank > baseRank && score < lighterNearScore) {
+                lighterNearIndex = candidateIndex;
+                lighterNearScore = score;
+            }
         }
+
+        if (darkerNearScore == std::numeric_limits<int>::max()) {
+            darkerNearIndex = paletteIndex;
+        }
+        if (darkerFarScore == std::numeric_limits<int>::max()) {
+            darkerFarIndex = darkerNearIndex;
+        }
+        if (lighterNearScore == std::numeric_limits<int>::max()) {
+            lighterNearIndex = paletteIndex;
+        }
+
+        m_AutoRampPixels[paletteIndex][0] = m_AutoPalette[darkerFarIndex];
+        m_AutoRampPixels[paletteIndex][1] = m_AutoPalette[darkerNearIndex];
+        m_AutoRampPixels[paletteIndex][2] = baseColor;
+        m_AutoRampPixels[paletteIndex][3] = m_AutoPalette[lighterNearIndex];
 
         for (int y = 0; y < 4; y++) {
             for (int x = 0; x < 4; x++) {

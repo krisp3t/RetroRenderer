@@ -29,6 +29,10 @@ Color MakeColorFromVec3(const glm::vec3& value, uint8_t alpha = 255) {
         alpha);
 }
 
+Color MakeColorFromPixel(const Pixel& pixel) {
+    return Color(Color::Uint8Tag{}, pixel.r, pixel.g, pixel.b, pixel.a);
+}
+
 Color ComputeAverageVertexColor(const std::array<RasterVertex, 3>& vertices) {
     const glm::vec3 averageColor = glm::clamp((vertices[0].color + vertices[1].color + vertices[2].color) / 3.0f, 0.0f, 1.0f);
     return MakeColorFromVec3(averageColor);
@@ -453,7 +457,17 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                 const FragmentInterpolants interpolants = InterpolateFragmentAttributes(shadeVertices, b0, b1, b2, cfg);
                 Color baseColor = MakeColorFromVec3(interpolants.color);
                 if (texture && texture->HasCpuPixels()) {
-                    const Pixel texel = texture->SampleNearestRepeat(interpolants.texCoords);
+                    Pixel texel = cfg.retro.textureMaxDimension > 0
+                                      ? texture->SampleReducedNearestRepeat(interpolants.texCoords, cfg.retro.textureMaxDimension)
+                                      : texture->SampleNearestRepeat(interpolants.texCoords);
+                    const bool useTexturePalette = UseTextureAutoPalette(texture, cfg);
+                    if (cfg.retro.enablePalette) {
+                        if (useTexturePalette) {
+                            texel = texture->FindNearestAutoPalettePixel(MakeColorFromPixel(texel));
+                        } else if (cfg.retro.palette != Config::PaletteType::NONE) {
+                            texel = RetroPalette::FindNearestPalettePixel(MakeColorFromPixel(texel), cfg.retro.palette);
+                        }
+                    }
                     baseColor = Color(
                         Color::Uint8Tag{},
                         static_cast<uint8_t>((static_cast<unsigned int>(baseColor.r) * static_cast<unsigned int>(texel.r)) / 255U),

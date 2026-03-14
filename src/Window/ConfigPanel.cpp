@@ -77,7 +77,7 @@ const char* RenderPresetDescription(Config::RenderPreset preset) {
     case Config::RenderPreset::PICO8:
         return "Low-resolution software preset aimed at palette reduction, color ramps, and ordered dithering.";
     case Config::RenderPreset::PICOCAD:
-        return "Low-resolution software preset aimed at picoCAD-style low-poly rendering, texture-derived palettes, affine mapping, and vertex snap.";
+        return "Low-resolution software preset aimed at picoCAD-style low-poly rendering, flat face lighting, reduced textures, texture-derived palettes, affine mapping, and vertex snap.";
     }
     return "";
 }
@@ -761,12 +761,14 @@ void ConfigPanel::DisplayPostFxSettings() {
     manualChange |= ImGui::Checkbox("Enable color ramps", &retro.enableColorRamps);
     manualChange |= ImGui::Checkbox("Enable ordered dithering", &retro.enableOrderedDithering);
     manualChange |= ImGui::SliderInt("Lighting bands", &retro.lightingBands, 0, 8);
+    manualChange |= ImGui::Checkbox("Flat face lighting", &retro.flatFaceLighting);
+    manualChange |= ImGui::SliderInt("Texture max dimension", &retro.textureMaxDimension, 0, 64);
     manualChange |= ImGui::Checkbox("Snap projected vertices", &retro.snapVertices);
     manualChange |= ImGui::Checkbox("Affine texture mapping", &retro.affineTextureMapping);
 
     ImGui::Spacing();
-    ImGui::TextWrapped("Palette quantization, color ramps, ordered dithering, vertex snapping, affine mapping, and "
-                       "texture-derived palettes are active on the software retro path.");
+    ImGui::TextWrapped("Palette quantization, texture-derived palettes, reduced texture sampling, flat face lighting, "
+                       "ordered dithering, vertex snapping, and affine mapping are active on the software retro path.");
 
     if (manualChange) {
         MarkRendererPresetCustom();

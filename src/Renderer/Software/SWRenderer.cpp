@@ -32,6 +32,26 @@ float ComputeLightAmount(const std::vector<LightSnapshot>& lights,
     return std::clamp(accumulated, 0.0f, 1.0f);
 }
 
+glm::vec3 ComputeTriangleLightingNormal(const glm::vec3& worldPos0,
+                                        const glm::vec3& worldPos1,
+                                        const glm::vec3& worldPos2,
+                                        const glm::vec3& normal0,
+                                        const glm::vec3& normal1,
+                                        const glm::vec3& normal2,
+                                        const Config& cfg) {
+    if (cfg.retro.flatFaceLighting) {
+        const glm::vec3 edge0 = worldPos1 - worldPos0;
+        const glm::vec3 edge1 = worldPos2 - worldPos0;
+        const glm::vec3 faceNormal = glm::cross(edge0, edge1);
+        const float faceNormalLengthSq = glm::dot(faceNormal, faceNormal);
+        if (faceNormalLengthSq > 1e-8f) {
+            return faceNormal * glm::inversesqrt(faceNormalLengthSq);
+        }
+    }
+
+    return glm::normalize(normal0 + normal1 + normal2);
+}
+
 struct ClipPlane {
     glm::vec3 normal;
     float d;
@@ -282,7 +302,14 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             const glm::vec3& worldPos1 = worldPositions[i1];
             const glm::vec3& worldPos2 = worldPositions[i2];
             const glm::vec3 worldPos = (worldPos0 + worldPos1 + worldPos2) / 3.0f;
-            const glm::vec3 normal = glm::normalize(transformedNormals[i0] + transformedNormals[i1] + transformedNormals[i2]);
+            const glm::vec3 normal = ComputeTriangleLightingNormal(
+                worldPos0,
+                worldPos1,
+                worldPos2,
+                transformedNormals[i0],
+                transformedNormals[i1],
+                transformedNormals[i2],
+                cfg);
             const float ndotl = ComputeLightAmount(m_FrameLights, worldPos, normal, cfg);
             if (cfg.cull.rasterClip && IsTriangleTriviallyRejected(vertices)) {
                 continue;
