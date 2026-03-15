@@ -19,6 +19,9 @@ SoftwareMaterialState CaptureSoftwareMaterialState() {
     const auto& currentMaterial = Engine::Get().GetMaterialManager().GetCurrentMaterial();
     SoftwareMaterialState state{};
     state.lightColor = currentMaterial.lightColor;
+    state.useVertexColor = currentMaterial.name == "phong-vc" ||
+                           currentMaterial.shaderProgram.vertexPath.find("phong-vc") != std::string::npos ||
+                           currentMaterial.shaderProgram.fragmentPath.find("phong-vc") != std::string::npos;
     if (currentMaterial.phongParams.has_value()) {
         state.enablePhong = true;
         state.ambientStrength = currentMaterial.phongParams->ambientStrength;

@@ -40,6 +40,10 @@ Color ComputeAverageVertexColor(const std::array<RasterVertex, 3>& vertices) {
     return MakeColorFromVec3(averageColor);
 }
 
+Color WhiteColor() {
+    return Color(Color::Uint8Tag{}, 255, 255, 255, 255);
+}
+
 glm::vec3 ComputeAverageWorldPosition(const std::array<RasterVertex, 3>& vertices) {
     return (vertices[0].worldPosition + vertices[1].worldPosition + vertices[2].worldPosition) / 3.0f;
 }
@@ -414,6 +418,7 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
     }
 
     // TODO: add cfg.lineColor
+    const Texture* shadingTexture = materialState.useVertexColor ? nullptr : texture;
     switch (cfg.software.rasterizer.polygonMode) {
     case Config::RasterizationPolygonMode::POINT:
         DrawPointTriangle(framebuffer, viewportVertices, cfg);
@@ -429,7 +434,8 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
     case Config::RasterizationPolygonMode::FILL:
         switch (cfg.software.rasterizer.fillMode) {
         case Config::RasterizationFillMode::BARYCENTRIC:
-            DrawBarycentricTriangle(framebuffer, depthBuffer, vertices, viewportVertices, cfg, lights, materialState, viewPosition, texture);
+            DrawBarycentricTriangle(
+                framebuffer, depthBuffer, vertices, viewportVertices, cfg, lights, materialState, viewPosition, shadingTexture);
             break;
         default: {
             const glm::vec3 lighting = ComputePhongLighting(
@@ -439,7 +445,8 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
                 lights,
                 materialState,
                 cfg);
-            const Pixel fillColor = ShadeRetroColor(ComputeAverageVertexColor(vertices), lighting, cfg, texture);
+            const Color baseColor = materialState.useVertexColor ? ComputeAverageVertexColor(vertices) : WhiteColor();
+            const Pixel fillColor = ShadeRetroColor(baseColor, lighting, cfg, shadingTexture);
             DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             break;
         }
@@ -532,7 +539,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                 const float b2 = w2 * invArea;
                 const float z = viewportVertices[0].z * b0 + viewportVertices[1].z * b1 + viewportVertices[2].z * b2;
                 const FragmentInterpolants interpolants = InterpolateFragmentAttributes(shadeVertices, b0, b1, b2, cfg);
-                Color baseColor = MakeColorFromVec3(interpolants.color);
+                Color baseColor = materialState.useVertexColor ? MakeColorFromVec3(interpolants.color) : WhiteColor();
                 if (texture && texture->HasCpuPixels()) {
                     Pixel texel = cfg.retro.textureMaxDimension > 0
                                       ? texture->SampleReducedNearestRepeat(interpolants.texCoords, cfg.retro.textureMaxDimension)

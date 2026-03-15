@@ -94,7 +94,7 @@ void GLESRenderer::DrawTriangularMesh(const Model* model) {
     // Combined matrices
     glm::mat4 mv = viewMat * modelMat;
     glm::mat4 mvp = projMat * mv;
-    glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(mv)));
+    glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelMat)));
 
     // Upload uniforms
     glUniformMatrix4fv(glGetUniformLocation(mat.shaderProgram.id, "u_ModelMatrix"), 1, GL_FALSE,
