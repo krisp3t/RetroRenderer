@@ -53,31 +53,35 @@ glm::vec3 ComputeTriangleLightingNormal(const glm::vec3& worldPos0,
 }
 
 struct ClipPlane {
-    glm::vec3 normal;
-    float d;
+    glm::vec4 equation;
 };
 
 constexpr size_t kMaxClippedPolygonVertices = 12;
 
+struct ClipVertex {
+    glm::vec4 clipPosition = glm::vec4(0.0f);
+    glm::vec2 texCoords = glm::vec2(0.0f);
+    glm::vec3 color = glm::vec3(1.0f);
+};
+
 struct ClippedPolygon {
-    std::array<RasterVertex, kMaxClippedPolygonVertices> vertices{};
+    std::array<ClipVertex, kMaxClippedPolygonVertices> vertices{};
     size_t count = 0;
 };
 
-float PlaneDistance(const ClipPlane& plane, const RasterVertex& v) {
-    return glm::dot(plane.normal, v.position) + plane.d;
+float PlaneDistance(const ClipPlane& plane, const ClipVertex& v) {
+    return glm::dot(plane.equation, v.clipPosition);
 }
 
-RasterVertex LerpVertex(const RasterVertex& a, const RasterVertex& b, float t) {
-    RasterVertex out;
-    out.position = glm::mix(a.position, b.position, t);
+ClipVertex LerpVertex(const ClipVertex& a, const ClipVertex& b, float t) {
+    ClipVertex out;
+    out.clipPosition = glm::mix(a.clipPosition, b.clipPosition, t);
     out.texCoords = glm::mix(a.texCoords, b.texCoords, t);
     out.color = glm::mix(a.color, b.color, t);
-    out.clipW = glm::mix(a.clipW, b.clipW, t);
     return out;
 }
 
-bool PushVertex(ClippedPolygon& polygon, const RasterVertex& vertex) {
+bool PushVertex(ClippedPolygon& polygon, const ClipVertex& vertex) {
     if (polygon.count >= polygon.vertices.size()) {
         return false;
     }
@@ -85,32 +89,55 @@ bool PushVertex(ClippedPolygon& polygon, const RasterVertex& vertex) {
     return true;
 }
 
-bool IsVertexInsideNdc(const RasterVertex& vertex) {
-    const glm::vec3& p = vertex.position;
-    return p.x >= -1.0f && p.x <= 1.0f &&
-           p.y >= -1.0f && p.y <= 1.0f &&
-           p.z >= -1.0f && p.z <= 1.0f;
+bool IsVertexInsideClipSpace(const ClipVertex& vertex) {
+    const glm::vec4& p = vertex.clipPosition;
+    return p.x >= -p.w && p.x <= p.w &&
+           p.y >= -p.w && p.y <= p.w &&
+           p.z >= -p.w && p.z <= p.w;
 }
 
-bool IsTriangleFullyInsideNdc(const std::array<RasterVertex, 3>& vertices) {
-    return IsVertexInsideNdc(vertices[0]) &&
-           IsVertexInsideNdc(vertices[1]) &&
-           IsVertexInsideNdc(vertices[2]);
+bool IsTriangleFullyInsideClipSpace(const std::array<ClipVertex, 3>& vertices) {
+    return IsVertexInsideClipSpace(vertices[0]) &&
+           IsVertexInsideClipSpace(vertices[1]) &&
+           IsVertexInsideClipSpace(vertices[2]);
 }
 
-bool IsTriangleTriviallyRejected(const std::array<RasterVertex, 3>& vertices) {
+bool IsTriangleTriviallyRejected(const std::array<ClipVertex, 3>& vertices) {
     const auto allOutside = [&vertices](auto predicate) {
-        return predicate(vertices[0].position) &&
-               predicate(vertices[1].position) &&
-               predicate(vertices[2].position);
+        return predicate(vertices[0].clipPosition) &&
+               predicate(vertices[1].clipPosition) &&
+               predicate(vertices[2].clipPosition);
     };
 
-    return allOutside([](const glm::vec3& p) { return p.x < -1.0f; }) ||
-           allOutside([](const glm::vec3& p) { return p.x > 1.0f; }) ||
-           allOutside([](const glm::vec3& p) { return p.y < -1.0f; }) ||
-           allOutside([](const glm::vec3& p) { return p.y > 1.0f; }) ||
-           allOutside([](const glm::vec3& p) { return p.z < -1.0f; }) ||
-           allOutside([](const glm::vec3& p) { return p.z > 1.0f; });
+    return allOutside([](const glm::vec4& p) { return p.x < -p.w; }) ||
+           allOutside([](const glm::vec4& p) { return p.x > p.w; }) ||
+           allOutside([](const glm::vec4& p) { return p.y < -p.w; }) ||
+           allOutside([](const glm::vec4& p) { return p.y > p.w; }) ||
+           allOutside([](const glm::vec4& p) { return p.z < -p.w; }) ||
+           allOutside([](const glm::vec4& p) { return p.z > p.w; });
+}
+
+bool TryMakeRasterVertex(const ClipVertex& clipVertex, RasterVertex& outVertex) {
+    if (std::abs(clipVertex.clipPosition.w) <= 1e-6f) {
+        return false;
+    }
+
+    const glm::vec3 ndcPosition = glm::vec3(clipVertex.clipPosition) / clipVertex.clipPosition.w;
+    outVertex.position = ndcPosition;
+    outVertex.cullPosition = ndcPosition;
+    outVertex.clipW = clipVertex.clipPosition.w;
+    outVertex.texCoords = clipVertex.texCoords;
+    outVertex.color = clipVertex.color;
+    return true;
+}
+
+bool TryMakeRasterTriangle(const std::array<ClipVertex, 3>& clipVertices, std::array<RasterVertex, 3>& outVertices) {
+    for (size_t i = 0; i < clipVertices.size(); i++) {
+        if (!TryMakeRasterVertex(clipVertices[i], outVertices[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 void SnapProjectedVertex(RasterVertex& vertex, size_t framebufferWidth, size_t framebufferHeight) {
@@ -124,15 +151,14 @@ void SnapProjectedVertex(RasterVertex& vertex, size_t framebufferWidth, size_t f
     vertex.position.y = 1.0f - ((snappedViewport.y - 0.5f) / static_cast<float>(framebufferHeight)) * 2.0f;
 }
 
-// TODO: Geometric clipping is in NDC (not homogeneous clip space); good for now but edge cases near w=0 will still be imperfect.
-ClippedPolygon ClipPolygonNdc(const std::array<RasterVertex, 3>& inputTriangle) {
+ClippedPolygon ClipPolygonClipSpace(const std::array<ClipVertex, 3>& inputTriangle) {
     static const ClipPlane kPlanes[] = {
-        {{1.0f, 0.0f, 0.0f}, 1.0f}, // x >= -1
-        {{-1.0f, 0.0f, 0.0f}, 1.0f}, // x <= 1
-        {{0.0f, 1.0f, 0.0f}, 1.0f}, // y >= -1
-        {{0.0f, -1.0f, 0.0f}, 1.0f}, // y <= 1
-        {{0.0f, 0.0f, 1.0f}, 1.0f}, // z >= -1
-        {{0.0f, 0.0f, -1.0f}, 1.0f}, // z <= 1
+        {{1.0f, 0.0f, 0.0f, 1.0f}},   // x >= -w
+        {{-1.0f, 0.0f, 0.0f, 1.0f}},  // x <= w
+        {{0.0f, 1.0f, 0.0f, 1.0f}},   // y >= -w
+        {{0.0f, -1.0f, 0.0f, 1.0f}},  // y <= w
+        {{0.0f, 0.0f, 1.0f, 1.0f}},   // z >= -w
+        {{0.0f, 0.0f, -1.0f, 1.0f}},  // z <= w
     };
 
     ClippedPolygon poly{};
@@ -147,12 +173,12 @@ ClippedPolygon ClipPolygonNdc(const std::array<RasterVertex, 3>& inputTriangle) 
             break;
         }
         output.count = 0;
-        RasterVertex prev = poly.vertices[poly.count - 1];
+        ClipVertex prev = poly.vertices[poly.count - 1];
         float prevDist = PlaneDistance(plane, prev);
         bool prevInside = prevDist >= 0.0f;
 
         for (size_t i = 0; i < poly.count; i++) {
-            const RasterVertex& curr = poly.vertices[i];
+            const ClipVertex& curr = poly.vertices[i];
             float currDist = PlaneDistance(plane, curr);
             bool currInside = currDist >= 0.0f;
 
@@ -274,25 +300,14 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             const glm::vec4& clipPos0 = clipPositions[i0];
             const glm::vec4& clipPos1 = clipPositions[i1];
             const glm::vec4& clipPos2 = clipPositions[i2];
-            if (std::abs(clipPos0.w) <= 1e-6f || std::abs(clipPos1.w) <= 1e-6f || std::abs(clipPos2.w) <= 1e-6f) {
-                continue;
-            }
-
-            std::array<RasterVertex, 3> vertices{};
+            std::array<ClipVertex, 3> clipVertices{};
             const unsigned int indices[3] = {i0, i1, i2};
             const glm::vec4 clipPositionsForTri[3] = {clipPos0, clipPos1, clipPos2};
             for (int v = 0; v < 3; v++) {
                 const Vertex& sourceVertex = mesh.m_Vertices[indices[v]];
-                vertices[v].position = glm::vec3(clipPositionsForTri[v]) / clipPositionsForTri[v].w;
-                vertices[v].clipW = clipPositionsForTri[v].w;
-                vertices[v].texCoords = sourceVertex.texCoords;
-                vertices[v].color = sourceVertex.color;
-            }
-
-            if (cfg.retro.snapVertices) {
-                for (auto& vertex : vertices) {
-                    SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
-                }
+                clipVertices[v].clipPosition = clipPositionsForTri[v];
+                clipVertices[v].texCoords = sourceVertex.texCoords;
+                clipVertices[v].color = sourceVertex.color;
             }
 
             // TODO: backface cull
@@ -311,25 +326,54 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                 transformedNormals[i2],
                 cfg);
             const float ndotl = ComputeLightAmount(m_FrameLights, worldPos, normal, cfg);
-            if (cfg.cull.rasterClip && IsTriangleTriviallyRejected(vertices)) {
+            if (cfg.cull.rasterClip && IsTriangleTriviallyRejected(clipVertices)) {
                 continue;
             }
             if (cfg.cull.geometricClip) {
-                if (IsTriangleFullyInsideNdc(vertices)) {
-                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, cfg, ndotl, diffuseTexture);
+                std::array<RasterVertex, 3> rasterVertices{};
+                if (IsTriangleFullyInsideClipSpace(clipVertices)) {
+                    if (!TryMakeRasterTriangle(clipVertices, rasterVertices)) {
+                        continue;
+                    }
+                    if (cfg.retro.snapVertices) {
+                        for (auto& vertex : rasterVertices) {
+                            SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
+                        }
+                    }
+                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, rasterVertices, cfg, ndotl, diffuseTexture);
                     continue;
                 }
 
-                const ClippedPolygon clipped = ClipPolygonNdc(vertices);
+                const ClippedPolygon clipped = ClipPolygonClipSpace(clipVertices);
                 if (clipped.count < 3) {
                     continue;
                 }
                 for (size_t t = 1; t + 1 < clipped.count; t++) {
-                    std::array<RasterVertex, 3> tri = {clipped.vertices[0], clipped.vertices[t], clipped.vertices[t + 1]};
-                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, tri, cfg, ndotl, diffuseTexture);
+                    const std::array<ClipVertex, 3> clippedTriangle = {
+                        clipped.vertices[0],
+                        clipped.vertices[t],
+                        clipped.vertices[t + 1]};
+                    if (!TryMakeRasterTriangle(clippedTriangle, rasterVertices)) {
+                        continue;
+                    }
+                    if (cfg.retro.snapVertices) {
+                        for (auto& vertex : rasterVertices) {
+                            SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
+                        }
+                    }
+                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, rasterVertices, cfg, ndotl, diffuseTexture);
                 }
             } else {
-                Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, vertices, cfg, ndotl, diffuseTexture);
+                std::array<RasterVertex, 3> rasterVertices{};
+                if (!TryMakeRasterTriangle(clipVertices, rasterVertices)) {
+                    continue;
+                }
+                if (cfg.retro.snapVertices) {
+                    for (auto& vertex : rasterVertices) {
+                        SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
+                    }
+                }
+                Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, rasterVertices, cfg, ndotl, diffuseTexture);
             }
 
             // Stats

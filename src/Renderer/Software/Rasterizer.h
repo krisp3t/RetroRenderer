@@ -10,6 +10,7 @@ class Texture;
 
 struct RasterVertex {
     glm::vec3 position = glm::vec3(0.0f);
+    glm::vec3 cullPosition = glm::vec3(0.0f);
     glm::vec2 texCoords = glm::vec2(0.0f);
     glm::vec3 color = glm::vec3(1.0f);
     float clipW = 1.0f;

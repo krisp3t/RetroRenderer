@@ -326,16 +326,20 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
 
     // Convert vertices to viewport space.
     std::array<glm::vec3, 3> viewportVertices{};
+    std::array<glm::vec3, 3> cullViewportVertices{};
     for (int i = 0; i < 3; i++) {
         const glm::vec2 viewportPos = NDCToViewport(vertices[i].position, framebuffer.width, framebuffer.height);
+        const glm::vec2 cullViewportPos = NDCToViewport(vertices[i].cullPosition, framebuffer.width, framebuffer.height);
         // Map NDC z [-1, 1] into depth [0, 1].
         const float depth = vertices[i].position.z * 0.5f + 0.5f;
+        const float cullDepth = vertices[i].cullPosition.z * 0.5f + 0.5f;
         viewportVertices[i] = glm::vec3(viewportPos.x, viewportPos.y, depth);
+        cullViewportVertices[i] = glm::vec3(cullViewportPos.x, cullViewportPos.y, cullDepth);
     }
 
-    // Backface cull in screen space (front face = clockwise, D3D-style).
+    // Backface cull in screen space before any retro vertex snap can perturb winding.
     if (cfg.cull.backfaceCulling) {
-        if (IsTriangleDegenerate(viewportVertices) || IsBackface(viewportVertices)) {
+        if (IsTriangleDegenerate(cullViewportVertices) || IsBackface(cullViewportVertices)) {
             return;
         }
     }
