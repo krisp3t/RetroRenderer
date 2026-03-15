@@ -1,5 +1,6 @@
 #include "RenderSystem.h"
 #include "../Engine.h"
+#include "../Scene/MaterialManager.h"
 #include <KrisLogger/Logger.h>
 #include <cassert>
 #include <cstring>
@@ -12,6 +13,19 @@ std::optional<Texture> CaptureSoftwareFallbackTexture() {
         return std::nullopt;
     }
     return currentMaterial.texture->CloneCpuOnly();
+}
+
+SoftwareMaterialState CaptureSoftwareMaterialState() {
+    const auto& currentMaterial = Engine::Get().GetMaterialManager().GetCurrentMaterial();
+    SoftwareMaterialState state{};
+    state.lightColor = currentMaterial.lightColor;
+    if (currentMaterial.phongParams.has_value()) {
+        state.enablePhong = true;
+        state.ambientStrength = currentMaterial.phongParams->ambientStrength;
+        state.specularStrength = currentMaterial.phongParams->specularStrength;
+        state.shininess = currentMaterial.phongParams->shininess;
+    }
+    return state;
 }
 } // namespace
 
@@ -266,6 +280,7 @@ void RenderSystem::SubmitSoftwareJob(const std::shared_ptr<Scene>& scene,
     job.lights = scene->BuildLightSnapshots();
     job.renderQueue = renderQueue;
     job.configSnapshot = *Engine::Get().GetConfig();
+    job.materialState = CaptureSoftwareMaterialState();
     job.clearColor = m_SoftwareClearColor;
     job.fallbackTexture = CaptureSoftwareFallbackTexture();
     {
@@ -339,6 +354,7 @@ void RenderSystem::SoftwareWorkerLoop() {
 
         p_SWRenderer_->BeforeFrame(job.clearColor);
         p_SWRenderer_->SetFrameConfig(job.configSnapshot);
+        p_SWRenderer_->SetMaterialState(job.materialState);
         p_SWRenderer_->SetFallbackTexture(job.fallbackTexture ? &*job.fallbackTexture : nullptr);
         p_SWRenderer_->SetSceneLights(job.lights);
         if (job.camera) {
@@ -410,9 +426,11 @@ GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
                                         const Camera& camera,
                                         const std::vector<int>& renderQueue) {
     const Config configSnapshot = *Engine::Get().GetConfig();
+    const SoftwareMaterialState materialState = CaptureSoftwareMaterialState();
     const std::optional<Texture> fallbackTexture = CaptureSoftwareFallbackTexture();
     p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
     p_SWRenderer_->SetFrameConfig(configSnapshot);
+    p_SWRenderer_->SetMaterialState(materialState);
     p_SWRenderer_->SetFallbackTexture(fallbackTexture ? &*fallbackTexture : nullptr);
     p_SWRenderer_->SetSceneLights(scene ? scene->BuildLightSnapshots() : std::vector<LightSnapshot>{});
     p_SWRenderer_->SetActiveCamera(camera);

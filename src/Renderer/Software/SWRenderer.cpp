@@ -7,31 +7,6 @@
 
 namespace RetroRenderer {
 namespace {
-float ComputeLightAmount(const std::vector<LightSnapshot>& lights,
-                         const glm::vec3& worldPos,
-                         const glm::vec3& normal,
-                         const Config& cfg) {
-    if (lights.empty()) {
-        const glm::vec3 lightDir = glm::normalize(cfg.environment.lightPosition - worldPos);
-        return std::max(glm::dot(normal, lightDir), 0.0f);
-    }
-
-    float accumulated = 0.0f;
-    for (const LightSnapshot& light : lights) {
-        if (light.type != LightType::POINT) {
-            continue;
-        }
-        const glm::vec3 lightVector = light.position - worldPos;
-        const float lightLengthSq = glm::dot(lightVector, lightVector);
-        if (lightLengthSq <= 1e-6f) {
-            continue;
-        }
-        const glm::vec3 lightDir = lightVector * glm::inversesqrt(lightLengthSq);
-        accumulated += std::max(glm::dot(normal, lightDir), 0.0f) * std::max(light.intensity, 0.0f);
-    }
-    return std::clamp(accumulated, 0.0f, 1.0f);
-}
-
 glm::vec3 ComputeTriangleLightingNormal(const glm::vec3& worldPos0,
                                         const glm::vec3& worldPos1,
                                         const glm::vec3& worldPos2,
@@ -60,6 +35,8 @@ constexpr size_t kMaxClippedPolygonVertices = 12;
 
 struct ClipVertex {
     glm::vec4 clipPosition = glm::vec4(0.0f);
+    glm::vec3 worldPosition = glm::vec3(0.0f);
+    glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
     glm::vec2 texCoords = glm::vec2(0.0f);
     glm::vec3 color = glm::vec3(1.0f);
 };
@@ -76,6 +53,8 @@ float PlaneDistance(const ClipPlane& plane, const ClipVertex& v) {
 ClipVertex LerpVertex(const ClipVertex& a, const ClipVertex& b, float t) {
     ClipVertex out;
     out.clipPosition = glm::mix(a.clipPosition, b.clipPosition, t);
+    out.worldPosition = glm::mix(a.worldPosition, b.worldPosition, t);
+    out.normal = glm::mix(a.normal, b.normal, t);
     out.texCoords = glm::mix(a.texCoords, b.texCoords, t);
     out.color = glm::mix(a.color, b.color, t);
     return out;
@@ -125,6 +104,8 @@ bool TryMakeRasterVertex(const ClipVertex& clipVertex, RasterVertex& outVertex) 
     const glm::vec3 ndcPosition = glm::vec3(clipVertex.clipPosition) / clipVertex.clipPosition.w;
     outVertex.position = ndcPosition;
     outVertex.cullPosition = ndcPosition;
+    outVertex.worldPosition = clipVertex.worldPosition;
+    outVertex.normal = clipVertex.normal;
     outVertex.clipW = clipVertex.clipPosition.w;
     outVertex.texCoords = clipVertex.texCoords;
     outVertex.color = clipVertex.color;
@@ -240,6 +221,10 @@ void SWRenderer::SetFrameConfig(const Config& config) {
     m_FrameConfigSnapshot = config;
 }
 
+void SWRenderer::SetMaterialState(const SoftwareMaterialState& materialState) {
+    m_FrameMaterialState = materialState;
+}
+
 void SWRenderer::SetFallbackTexture(const Texture* texture) {
     p_FrameFallbackTexture = texture;
 }
@@ -300,24 +285,12 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             const glm::vec4& clipPos0 = clipPositions[i0];
             const glm::vec4& clipPos1 = clipPositions[i1];
             const glm::vec4& clipPos2 = clipPositions[i2];
-            std::array<ClipVertex, 3> clipVertices{};
             const unsigned int indices[3] = {i0, i1, i2};
-            const glm::vec4 clipPositionsForTri[3] = {clipPos0, clipPos1, clipPos2};
-            for (int v = 0; v < 3; v++) {
-                const Vertex& sourceVertex = mesh.m_Vertices[indices[v]];
-                clipVertices[v].clipPosition = clipPositionsForTri[v];
-                clipVertices[v].texCoords = sourceVertex.texCoords;
-                clipVertices[v].color = sourceVertex.color;
-            }
 
-            // TODO: backface cull
-
-            // Flat retro lighting in world space.
             const glm::vec3& worldPos0 = worldPositions[i0];
             const glm::vec3& worldPos1 = worldPositions[i1];
             const glm::vec3& worldPos2 = worldPositions[i2];
-            const glm::vec3 worldPos = (worldPos0 + worldPos1 + worldPos2) / 3.0f;
-            const glm::vec3 normal = ComputeTriangleLightingNormal(
+            const glm::vec3 triangleNormal = ComputeTriangleLightingNormal(
                 worldPos0,
                 worldPos1,
                 worldPos2,
@@ -325,7 +298,19 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                 transformedNormals[i1],
                 transformedNormals[i2],
                 cfg);
-            const float ndotl = ComputeLightAmount(m_FrameLights, worldPos, normal, cfg);
+
+            std::array<ClipVertex, 3> clipVertices{};
+            const glm::vec4 clipPositionsForTri[3] = {clipPos0, clipPos1, clipPos2};
+            for (int v = 0; v < 3; v++) {
+                const unsigned int vertexIndex = indices[v];
+                const Vertex& sourceVertex = mesh.m_Vertices[vertexIndex];
+                clipVertices[v].clipPosition = clipPositionsForTri[v];
+                clipVertices[v].worldPosition = worldPositions[vertexIndex];
+                clipVertices[v].normal = cfg.retro.flatFaceLighting ? triangleNormal : transformedNormals[vertexIndex];
+                clipVertices[v].texCoords = sourceVertex.texCoords;
+                clipVertices[v].color = sourceVertex.color;
+            }
+
             if (cfg.cull.rasterClip && IsTriangleTriviallyRejected(clipVertices)) {
                 continue;
             }
@@ -340,7 +325,15 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                             SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
                         }
                     }
-                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, rasterVertices, cfg, ndotl, diffuseTexture);
+                    Rasterizer::DrawTriangle(
+                        *m_FrameBuffer,
+                        *m_DepthBuffer,
+                        rasterVertices,
+                        cfg,
+                        m_FrameLights,
+                        m_FrameMaterialState,
+                        p_Camera->m_Position,
+                        diffuseTexture);
                     continue;
                 }
 
@@ -361,7 +354,15 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                             SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
                         }
                     }
-                    Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, rasterVertices, cfg, ndotl, diffuseTexture);
+                    Rasterizer::DrawTriangle(
+                        *m_FrameBuffer,
+                        *m_DepthBuffer,
+                        rasterVertices,
+                        cfg,
+                        m_FrameLights,
+                        m_FrameMaterialState,
+                        p_Camera->m_Position,
+                        diffuseTexture);
                 }
             } else {
                 std::array<RasterVertex, 3> rasterVertices{};
@@ -373,7 +374,15 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                         SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
                     }
                 }
-                Rasterizer::DrawTriangle(*m_FrameBuffer, *m_DepthBuffer, rasterVertices, cfg, ndotl, diffuseTexture);
+                Rasterizer::DrawTriangle(
+                    *m_FrameBuffer,
+                    *m_DepthBuffer,
+                    rasterVertices,
+                    cfg,
+                    m_FrameLights,
+                    m_FrameMaterialState,
+                    p_Camera->m_Position,
+                    diffuseTexture);
             }
 
             // Stats

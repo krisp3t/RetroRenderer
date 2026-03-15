@@ -2,8 +2,11 @@
 
 #include "../../Base/Color.h"
 #include "../../Base/Config.h"
+#include "../../Scene/Light.h"
 #include "../Buffer.h"
+#include "SoftwareLighting.h"
 #include <array>
+#include <vector>
 
 namespace RetroRenderer {
 class Texture;
@@ -11,6 +14,8 @@ class Texture;
 struct RasterVertex {
     glm::vec3 position = glm::vec3(0.0f);
     glm::vec3 cullPosition = glm::vec3(0.0f);
+    glm::vec3 worldPosition = glm::vec3(0.0f);
+    glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
     glm::vec2 texCoords = glm::vec2(0.0f);
     glm::vec3 color = glm::vec3(1.0f);
     float clipW = 1.0f;
@@ -26,7 +31,9 @@ class Rasterizer {
                              Buffer<float>& depthBuffer,
                              std::array<RasterVertex, 3>& vertices,
                              const Config& cfg,
-                             float lightAmount,
+                             const std::vector<LightSnapshot>& lights,
+                             const SoftwareMaterialState& materialState,
+                             const glm::vec3& viewPosition,
                              const Texture* texture = nullptr);
     static void DrawQuad(Buffer<Pixel>& framebuffer, std::array<RasterVertex, 3>& vertices);
     static void DrawLine(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color);
@@ -39,7 +46,9 @@ class Rasterizer {
                                         const std::array<RasterVertex, 3>& vertices,
                                         std::array<glm::vec3, 3>& viewportVertices,
                                         const Config& cfg,
-                                        float lightAmount,
+                                        const std::vector<LightSnapshot>& lights,
+                                        const SoftwareMaterialState& materialState,
+                                        const glm::vec3& viewPosition,
                                         const Texture* texture);
     // Line drawing algos
     static void DrawLineDDA(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color);

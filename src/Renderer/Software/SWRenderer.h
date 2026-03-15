@@ -6,6 +6,7 @@
 #include "../../Scene/Scene.h"
 #include "../Buffer.h"
 #include "../IRenderer.h"
+#include "SoftwareLighting.h"
 #include "Rasterizer.h"
 #include <memory>
 
@@ -19,6 +20,7 @@ class SWRenderer : public IRenderer {
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
     void SetFrameConfig(const Config& config);
+    void SetMaterialState(const SoftwareMaterialState& materialState);
     void SetFallbackTexture(const Texture* texture);
     void DrawTriangularMesh(const Model* model) override;
     void DrawSkybox() override;
@@ -37,6 +39,7 @@ class SWRenderer : public IRenderer {
     Camera* p_Camera = nullptr;
     std::vector<LightSnapshot> m_FrameLights;
     Config m_FrameConfigSnapshot{};
+    SoftwareMaterialState m_FrameMaterialState{};
     const Texture* p_FrameFallbackTexture = nullptr;
     std::unique_ptr<Rasterizer> m_Rasterizer = nullptr;
 };

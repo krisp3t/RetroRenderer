@@ -12,6 +12,8 @@ namespace {
 using DitherPattern = std::array<Pixel, 16>;
 
 struct FragmentInterpolants {
+    glm::vec3 worldPosition = glm::vec3(0.0f);
+    glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
     glm::vec3 color = glm::vec3(1.0f);
     glm::vec2 texCoords = glm::vec2(0.0f);
 };
@@ -38,16 +40,17 @@ Color ComputeAverageVertexColor(const std::array<RasterVertex, 3>& vertices) {
     return MakeColorFromVec3(averageColor);
 }
 
-bool HasUniformVertexColor(const std::array<RasterVertex, 3>& vertices) {
-    constexpr float kColorEpsilon = 1.0f / 255.0f;
-    const auto nearlyEqual = [](const glm::vec3& a, const glm::vec3& b) {
-        return std::abs(a.r - b.r) <= kColorEpsilon &&
-               std::abs(a.g - b.g) <= kColorEpsilon &&
-               std::abs(a.b - b.b) <= kColorEpsilon;
-    };
+glm::vec3 ComputeAverageWorldPosition(const std::array<RasterVertex, 3>& vertices) {
+    return (vertices[0].worldPosition + vertices[1].worldPosition + vertices[2].worldPosition) / 3.0f;
+}
 
-    return nearlyEqual(vertices[0].color, vertices[1].color) &&
-           nearlyEqual(vertices[0].color, vertices[2].color);
+glm::vec3 ComputeAverageNormal(const std::array<RasterVertex, 3>& vertices) {
+    const glm::vec3 averageNormal = (vertices[0].normal + vertices[1].normal + vertices[2].normal) / 3.0f;
+    const float lengthSq = glm::dot(averageNormal, averageNormal);
+    if (lengthSq <= 1e-8f) {
+        return glm::vec3(0.0f, 0.0f, 1.0f);
+    }
+    return averageNormal * glm::inversesqrt(lengthSq);
 }
 
 float SafeReciprocalW(float clipW) {
@@ -81,26 +84,87 @@ FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex
         const float weightSum = w0 + w1 + w2;
         if (std::abs(weightSum) > 1e-6f) {
             const float invWeightSum = 1.0f / weightSum;
+            interpolants.worldPosition =
+                (vertices[0].worldPosition * w0 + vertices[1].worldPosition * w1 + vertices[2].worldPosition * w2) * invWeightSum;
+            interpolants.normal =
+                (vertices[0].normal * w0 + vertices[1].normal * w1 + vertices[2].normal * w2) * invWeightSum;
             interpolants.color = glm::clamp(
                 (vertices[0].color * w0 + vertices[1].color * w1 + vertices[2].color * w2) * invWeightSum,
                 0.0f,
                 1.0f);
             interpolants.texCoords =
                 (vertices[0].texCoords * w0 + vertices[1].texCoords * w1 + vertices[2].texCoords * w2) * invWeightSum;
+            const float normalLengthSq = glm::dot(interpolants.normal, interpolants.normal);
+            if (normalLengthSq > 1e-8f) {
+                interpolants.normal *= glm::inversesqrt(normalLengthSq);
+            }
             return interpolants;
         }
     }
 
+    interpolants.worldPosition =
+        vertices[0].worldPosition * b0 + vertices[1].worldPosition * b1 + vertices[2].worldPosition * b2;
+    interpolants.normal = vertices[0].normal * b0 + vertices[1].normal * b1 + vertices[2].normal * b2;
     interpolants.color = glm::clamp(vertices[0].color * b0 + vertices[1].color * b1 + vertices[2].color * b2, 0.0f, 1.0f);
     interpolants.texCoords = vertices[0].texCoords * b0 + vertices[1].texCoords * b1 + vertices[2].texCoords * b2;
+    const float normalLengthSq = glm::dot(interpolants.normal, interpolants.normal);
+    if (normalLengthSq > 1e-8f) {
+        interpolants.normal *= glm::inversesqrt(normalLengthSq);
+    }
     return interpolants;
 }
 
-Pixel ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& cfg, const Texture* paletteTexture = nullptr) {
-    constexpr float kAmbientFloor = 0.18f;
-    const float lit = std::clamp(kAmbientFloor + lightAmount * (1.0f - kAmbientFloor), 0.0f, 1.0f);
+glm::vec3 ComputePhongLighting(const glm::vec3& worldPosition,
+                               const glm::vec3& normal,
+                               const glm::vec3& viewPosition,
+                               const std::vector<LightSnapshot>& lights,
+                               const SoftwareMaterialState& materialState,
+                               const Config& cfg) {
+    const float normalLengthSq = glm::dot(normal, normal);
+    const glm::vec3 safeNormal = normalLengthSq > 1e-8f ? normal * glm::inversesqrt(normalLengthSq) : glm::vec3(0.0f, 0.0f, 1.0f);
+    const glm::vec3 viewVector = viewPosition - worldPosition;
+    const float viewLengthSq = glm::dot(viewVector, viewVector);
+    const glm::vec3 viewDir = viewLengthSq > 1e-8f ? viewVector * glm::inversesqrt(viewLengthSq) : safeNormal;
+    glm::vec3 lighting = materialState.enablePhong ? materialState.ambientStrength * materialState.lightColor : glm::vec3(0.0f);
+
+    const auto accumulateFromLight = [&](const glm::vec3& lightPosition, float intensity) {
+        const glm::vec3 lightVector = lightPosition - worldPosition;
+        const float lightLengthSq = glm::dot(lightVector, lightVector);
+        if (lightLengthSq <= 1e-8f) {
+            return;
+        }
+
+        const glm::vec3 lightDir = lightVector * glm::inversesqrt(lightLengthSq);
+        const float diff = std::max(glm::dot(safeNormal, lightDir), 0.0f);
+        lighting += diff * materialState.lightColor * intensity;
+        if (materialState.enablePhong && materialState.specularStrength > 0.0f && diff > 0.0f) {
+            const glm::vec3 reflectDir = glm::reflect(-lightDir, safeNormal);
+            const float spec = std::pow(std::max(glm::dot(viewDir, reflectDir), 0.0f), std::max(materialState.shininess, 1.0f));
+            lighting += materialState.specularStrength * spec * materialState.lightColor * intensity;
+        }
+    };
+
+    if (lights.empty()) {
+        accumulateFromLight(cfg.environment.lightPosition, 1.0f);
+    } else {
+        for (const LightSnapshot& light : lights) {
+            if (light.type != LightType::POINT) {
+                continue;
+            }
+            accumulateFromLight(light.position, std::max(light.intensity, 0.0f));
+        }
+    }
+    return glm::max(lighting, glm::vec3(0.0f));
+}
+
+Pixel ShadeRetroColor(const Color& baseColor,
+                      const glm::vec3& lightingColor,
+                      const Config& cfg,
+                      const Texture* paletteTexture = nullptr) {
+    const glm::vec3 clampedLighting = glm::max(lightingColor, glm::vec3(0.0f));
+    const float lightAmount = std::clamp(glm::dot(clampedLighting, glm::vec3(0.2126f, 0.7152f, 0.0722f)), 0.0f, 1.0f);
     const int lightingBands = cfg.retro.lightingBands;
-    const float bandedLight = lightingBands > 0 ? RetroPalette::QuantizeUnitToBands(lit, lightingBands) : lit;
+    const float bandedLight = lightingBands > 0 ? RetroPalette::QuantizeUnitToBands(lightAmount, lightingBands) : lightAmount;
     const Config::PaletteType palette = cfg.retro.palette;
     const bool useTexturePalette = UseTextureAutoPalette(paletteTexture, cfg);
 
@@ -114,9 +178,12 @@ Pixel ShadeRetroColor(const Color& baseColor, float lightAmount, const Config& c
         return RetroPalette::SampleRampPixel(palette, baseIndex, bandedLight, lightingBands > 0 ? lightingBands : 4, baseColor.a);
     }
 
-    const uint8_t shadedR = static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.r) * bandedLight), 0L, 255L));
-    const uint8_t shadedG = static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.g) * bandedLight), 0L, 255L));
-    const uint8_t shadedB = static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.b) * bandedLight), 0L, 255L));
+    const uint8_t shadedR = static_cast<uint8_t>(
+        std::clamp(std::lround(static_cast<double>(baseColor.r) * clampedLighting.r), 0L, 255L));
+    const uint8_t shadedG = static_cast<uint8_t>(
+        std::clamp(std::lround(static_cast<double>(baseColor.g) * clampedLighting.g), 0L, 255L));
+    const uint8_t shadedB = static_cast<uint8_t>(
+        std::clamp(std::lround(static_cast<double>(baseColor.b) * clampedLighting.b), 0L, 255L));
     if (useTexturePalette) {
         const Color shaded(Color::Uint8Tag{}, shadedR, shadedG, shadedB, baseColor.a);
         return paletteTexture->FindNearestAutoPalettePixel(shaded);
@@ -321,7 +388,9 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
                               Buffer<float>& depthBuffer,
                               std::array<RasterVertex, 3>& vertices,
                               const Config& cfg,
-                              float lightAmount,
+                              const std::vector<LightSnapshot>& lights,
+                              const SoftwareMaterialState& materialState,
+                              const glm::vec3& viewPosition,
                               const Texture* texture) {
 
     // Convert vertices to viewport space.
@@ -360,15 +429,17 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
     case Config::RasterizationPolygonMode::FILL:
         switch (cfg.software.rasterizer.fillMode) {
         case Config::RasterizationFillMode::BARYCENTRIC:
-            if (texture == nullptr && HasUniformVertexColor(vertices)) {
-                const Pixel fillColor = ShadeRetroColor(MakeColorFromVec3(vertices[0].color), lightAmount, cfg, texture);
-                DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
-            } else {
-                DrawBarycentricTriangle(framebuffer, depthBuffer, vertices, viewportVertices, cfg, lightAmount, texture);
-            }
+            DrawBarycentricTriangle(framebuffer, depthBuffer, vertices, viewportVertices, cfg, lights, materialState, viewPosition, texture);
             break;
         default: {
-            const Pixel fillColor = ShadeRetroColor(ComputeAverageVertexColor(vertices), lightAmount, cfg, texture);
+            const glm::vec3 lighting = ComputePhongLighting(
+                ComputeAverageWorldPosition(vertices),
+                ComputeAverageNormal(vertices),
+                viewPosition,
+                lights,
+                materialState,
+                cfg);
+            const Pixel fillColor = ShadeRetroColor(ComputeAverageVertexColor(vertices), lighting, cfg, texture);
             DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             break;
         }
@@ -395,7 +466,9 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                          const std::array<RasterVertex, 3>& vertices,
                                          std::array<glm::vec3, 3>& viewportVertices,
                                          const Config& cfg,
-                                         float lightAmount,
+                                         const std::vector<LightSnapshot>& lights,
+                                         const SoftwareMaterialState& materialState,
+                                         const glm::vec3& viewPosition,
                                          const Texture* texture) {
     std::array<RasterVertex, 3> shadeVertices = vertices;
     glm::vec2 v0 = {viewportVertices[0].x, viewportVertices[0].y};
@@ -479,7 +552,14 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                         static_cast<uint8_t>((static_cast<unsigned int>(baseColor.b) * static_cast<unsigned int>(texel.b)) / 255U),
                         static_cast<uint8_t>((static_cast<unsigned int>(baseColor.a) * static_cast<unsigned int>(texel.a)) / 255U));
                 }
-                const Pixel fillColor = ShadeRetroColor(baseColor, lightAmount, cfg, texture);
+                const glm::vec3 lighting = ComputePhongLighting(
+                    interpolants.worldPosition,
+                    interpolants.normal,
+                    viewPosition,
+                    lights,
+                    materialState,
+                    cfg);
+                const Pixel fillColor = ShadeRetroColor(baseColor, lighting, cfg, texture);
                 WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, nullptr, texture);
             }
             w0 += w0StepX;
