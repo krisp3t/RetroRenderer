@@ -17,8 +17,9 @@
 #include <SDL.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui_impl_opengl3.h>
-#include <utility>
+#include <algorithm>
 #include <cinttypes>
+#include <utility>
 
 #ifdef __ANDROID__
 #include "../native/AndroidBridge.h"
@@ -27,6 +28,7 @@
 #include "../Base/Event.h"
 #include "../Base/InputActions.h"
 #include "../Engine.h"
+#include "../Renderer/RetroPalette.h"
 #include "ConfigPanel.h"
 
 #ifdef __EMSCRIPTEN__
@@ -80,6 +82,69 @@ const char* RenderPresetDescription(Config::RenderPreset preset) {
         return "Low-resolution software preset aimed at picoCAD-style low-poly rendering, flat face lighting, reduced textures, texture-derived palettes, affine mapping, and vertex snap.";
     }
     return "";
+}
+
+ImVec4 PixelToImVec4(const Pixel& pixel) {
+    return {
+        static_cast<float>(pixel.r) / 255.0f,
+        static_cast<float>(pixel.g) / 255.0f,
+        static_cast<float>(pixel.b) / 255.0f,
+        static_cast<float>(pixel.a) / 255.0f,
+    };
+}
+
+Pixel ImVec4ToOpaquePixel(const ImVec4& color) {
+    return Pixel{
+        static_cast<uint8_t>(std::clamp(color.x, 0.0f, 1.0f) * 255.0f),
+        static_cast<uint8_t>(std::clamp(color.y, 0.0f, 1.0f) * 255.0f),
+        static_cast<uint8_t>(std::clamp(color.z, 0.0f, 1.0f) * 255.0f),
+        255,
+    };
+}
+
+void DrawPalettePreviewGrid(const std::array<Color, RetroPalette::kPico8PaletteSize>& paletteColors) {
+    for (size_t i = 0; i < paletteColors.size(); i++) {
+        ImGui::PushID(static_cast<int>(i));
+        ImGui::ColorButton("##palettePreview", paletteColors[i].ToImVec4(), ImGuiColorEditFlags_NoTooltip, ImVec2(28.0f, 28.0f));
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%02zu  #%02X%02X%02X", i, paletteColors[i].r, paletteColors[i].g, paletteColors[i].b);
+        }
+        ImGui::PopID();
+        if ((i & 3) != 3) {
+            ImGui::SameLine();
+        }
+    }
+}
+
+bool DrawCustomPaletteEditor(Config::RetroStyleSettings& retro) {
+    bool changed = false;
+    for (size_t i = 0; i < retro.customPalette.size(); i++) {
+        ImVec4 color = PixelToImVec4(retro.customPalette[i]);
+        float colorValues[3] = {color.x, color.y, color.z};
+        ImGui::PushID(static_cast<int>(i));
+        if (ImGui::ColorEdit3(
+                "##customPaletteColor",
+                colorValues,
+                ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha |
+                    ImGuiColorEditFlags_DisplayRGB)) {
+            retro.customPalette[i] = ImVec4ToOpaquePixel(ImVec4(colorValues[0], colorValues[1], colorValues[2], 1.0f));
+            retro.customPaletteRevision++;
+            changed = true;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "%02zu  #%02X%02X%02X",
+                i,
+                retro.customPalette[i].r,
+                retro.customPalette[i].g,
+                retro.customPalette[i].b);
+        }
+        ImGui::PopID();
+        if ((i & 3) != 3) {
+            ImGui::SameLine();
+        }
+    }
+    return changed;
 }
 } // namespace
 
@@ -746,16 +811,54 @@ void ConfigPanel::DisplayEnvironmentSettings() {
 void ConfigPanel::DisplayPostFxSettings() {
     auto& retro = p_config_->retro;
     bool manualChange = false;
+    static int customPalettePresetIndex = 0;
+    static constexpr Config::PaletteType kCustomPalettePresets[] = {
+        Config::PaletteType::PICO8,
+        Config::PaletteType::DB16,
+        Config::PaletteType::SWEETIE16,
+    };
+    static const char* kCustomPalettePresetLabels[] = {
+        "PICO-8",
+        "DB16",
+        "Sweetie-16",
+    };
 
     ImGui::SeparatorText("Retro style");
     ImGui::Text("Preset: %s", Config::RenderPresetLabel(retro.preset));
 
-    const char* paletteItems[] = {"None", "PICO-8"};
+    const char* paletteItems[] = {"None", "PICO-8", "DB16", "Sweetie-16", "Custom"};
     int paletteIndex = static_cast<int>(retro.palette);
     if (ImGui::Combo("Palette", &paletteIndex, paletteItems, IM_ARRAYSIZE(paletteItems))) {
         retro.palette = static_cast<Config::PaletteType>(paletteIndex);
         manualChange = true;
     }
+
+    if (retro.palette != Config::PaletteType::NONE) {
+        ImGui::Text("Active palette preview");
+        DrawPalettePreviewGrid(RetroPalette::GetPaletteColors(retro));
+    } else {
+        ImGui::TextDisabled("No fixed palette selected.");
+    }
+
+    if (retro.palette == Config::PaletteType::CUSTOM) {
+        ImGui::Spacing();
+        ImGui::Text("Custom palette");
+        if (ImGui::Combo("Load preset", &customPalettePresetIndex, kCustomPalettePresetLabels, IM_ARRAYSIZE(kCustomPalettePresetLabels))) {
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Reset custom from preset")) {
+            RetroPalette::CopyPaletteToCustom(retro, kCustomPalettePresets[customPalettePresetIndex]);
+            manualChange = true;
+        }
+        manualChange |= DrawCustomPaletteEditor(retro);
+    } else if (retro.palette != Config::PaletteType::NONE) {
+        if (ImGui::Button("Copy active palette to custom")) {
+            RetroPalette::CopyPaletteToCustom(retro, retro.palette);
+            retro.palette = Config::PaletteType::CUSTOM;
+            manualChange = true;
+        }
+    }
+
     manualChange |= ImGui::Checkbox("Enable palette quantization", &retro.enablePalette);
     manualChange |= ImGui::Checkbox("Derive palette from texture", &retro.useTextureDerivedPalette);
     manualChange |= ImGui::Checkbox("Enable color ramps", &retro.enableColorRamps);
@@ -769,6 +872,9 @@ void ConfigPanel::DisplayPostFxSettings() {
     ImGui::Spacing();
     ImGui::TextWrapped("Palette quantization, texture-derived palettes, reduced texture sampling, flat face lighting, "
                        "ordered dithering, vertex snapping, and affine mapping are active on the software retro path.");
+    if (retro.useTextureDerivedPalette) {
+        ImGui::TextWrapped("Texture-derived palette overrides the fixed palette when a software-sampled texture has an auto-derived palette.");
+    }
 
     if (manualChange) {
         MarkRendererPresetCustom();

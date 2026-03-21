@@ -169,7 +169,7 @@ Pixel ShadeRetroColor(const Color& baseColor,
     const float lightAmount = std::clamp(glm::dot(clampedLighting, glm::vec3(0.2126f, 0.7152f, 0.0722f)), 0.0f, 1.0f);
     const int lightingBands = cfg.retro.lightingBands;
     const float bandedLight = lightingBands > 0 ? RetroPalette::QuantizeUnitToBands(lightAmount, lightingBands) : lightAmount;
-    const Config::PaletteType palette = cfg.retro.palette;
+    const Config::RetroStyleSettings& retro = cfg.retro;
     const bool useTexturePalette = UseTextureAutoPalette(paletteTexture, cfg);
 
     if (cfg.retro.enableColorRamps && useTexturePalette) {
@@ -177,9 +177,9 @@ Pixel ShadeRetroColor(const Color& baseColor,
         return paletteTexture->SampleAutoRampPixel(baseIndex, bandedLight, lightingBands > 0 ? lightingBands : 4, baseColor.a);
     }
 
-    if (cfg.retro.enableColorRamps && cfg.retro.enablePalette && palette != Config::PaletteType::NONE) {
-        const uint8_t baseIndex = RetroPalette::FindNearestPaletteIndex(baseColor, palette);
-        return RetroPalette::SampleRampPixel(palette, baseIndex, bandedLight, lightingBands > 0 ? lightingBands : 4, baseColor.a);
+    if (cfg.retro.enableColorRamps && cfg.retro.enablePalette && retro.palette != Config::PaletteType::NONE) {
+        const uint8_t baseIndex = RetroPalette::FindNearestPaletteIndex(baseColor, retro);
+        return RetroPalette::SampleRampPixel(retro, baseIndex, bandedLight, lightingBands > 0 ? lightingBands : 4, baseColor.a);
     }
 
     const uint8_t shadedR = static_cast<uint8_t>(
@@ -193,10 +193,10 @@ Pixel ShadeRetroColor(const Color& baseColor,
         return paletteTexture->FindNearestAutoPalettePixel(shaded);
     }
 
-    if (cfg.retro.enablePalette && palette != Config::PaletteType::NONE) {
+    if (cfg.retro.enablePalette && retro.palette != Config::PaletteType::NONE) {
         const Color& quantized = RetroPalette::GetPaletteColor(
-            palette,
-            RetroPalette::FindNearestPaletteIndex(shadedR, shadedG, shadedB, palette));
+            retro,
+            RetroPalette::FindNearestPaletteIndex(shadedR, shadedG, shadedB, retro));
         return Pixel{quantized.r, quantized.g, quantized.b, baseColor.a};
     }
     return Pixel{shadedR, shadedG, shadedB, baseColor.a};
@@ -214,17 +214,15 @@ Pixel ApplyRetroFillStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Co
         return pixel;
     }
 
-    const Config::PaletteType palette =
-        cfg.retro.enablePalette ? cfg.retro.palette : Config::PaletteType::NONE;
-    if (palette != Config::PaletteType::NONE) {
-        const uint8_t paletteIndex = RetroPalette::FindNearestPaletteIndex(inputColor.r, inputColor.g, inputColor.b, palette);
-        Pixel pixel = RetroPalette::GetOrderedDitherPattern4x4(palette, paletteIndex)[DitherPatternIndex(pixelPos.x, pixelPos.y)];
+    if (cfg.retro.enablePalette && cfg.retro.palette != Config::PaletteType::NONE) {
+        const uint8_t paletteIndex = RetroPalette::FindNearestPaletteIndex(inputColor.r, inputColor.g, inputColor.b, cfg.retro);
+        Pixel pixel = RetroPalette::GetOrderedDitherPattern4x4(cfg.retro, paletteIndex)[DitherPatternIndex(pixelPos.x, pixelPos.y)];
         pixel.a = inputColor.a;
         return pixel;
     }
 
     const Color color(Color::Uint8Tag{}, inputColor.r, inputColor.g, inputColor.b, inputColor.a);
-    return RetroPalette::ApplyOrderedDither4x4(color, pixelPos, palette).ToPixel();
+    return RetroPalette::ApplyOrderedDither4x4(color, pixelPos, cfg.retro).ToPixel();
 }
 
 DitherPattern BuildRetroFillPattern(Pixel inputColor, const Config& cfg, const Texture* paletteTexture = nullptr) {
@@ -245,11 +243,9 @@ DitherPattern BuildRetroFillPattern(Pixel inputColor, const Config& cfg, const T
         return texturePattern;
     }
 
-    const Config::PaletteType palette =
-        cfg.retro.enablePalette ? cfg.retro.palette : Config::PaletteType::NONE;
-    if (palette != Config::PaletteType::NONE) {
-        const uint8_t paletteIndex = RetroPalette::FindNearestPaletteIndex(inputColor.r, inputColor.g, inputColor.b, palette);
-        DitherPattern pattern = RetroPalette::GetOrderedDitherPattern4x4(palette, paletteIndex);
+    if (cfg.retro.enablePalette && cfg.retro.palette != Config::PaletteType::NONE) {
+        const uint8_t paletteIndex = RetroPalette::FindNearestPaletteIndex(inputColor.r, inputColor.g, inputColor.b, cfg.retro);
+        DitherPattern pattern = RetroPalette::GetOrderedDitherPattern4x4(cfg.retro, paletteIndex);
         if (inputColor.a != 255) {
             for (Pixel& pixel : pattern) {
                 pixel.a = inputColor.a;
@@ -549,7 +545,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                         if (useTexturePalette) {
                             texel = texture->FindNearestAutoPalettePixel(MakeColorFromPixel(texel));
                         } else if (cfg.retro.palette != Config::PaletteType::NONE) {
-                            texel = RetroPalette::FindNearestPalettePixel(MakeColorFromPixel(texel), cfg.retro.palette);
+                            texel = RetroPalette::FindNearestPalettePixel(MakeColorFromPixel(texel), cfg.retro);
                         }
                     }
                     baseColor = Color(
