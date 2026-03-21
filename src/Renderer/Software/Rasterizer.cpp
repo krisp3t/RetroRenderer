@@ -44,6 +44,10 @@ Color WhiteColor() {
     return Color(Color::Uint8Tag{}, 255, 255, 255, 255);
 }
 
+Color GetStableUntexturedBaseColor(const Config& cfg) {
+    return cfg.retro.useStableUntexturedBaseColor ? cfg.retro.untexturedBaseColor : WhiteColor();
+}
+
 glm::vec3 ComputeAverageWorldPosition(const std::array<RasterVertex, 3>& vertices) {
     return (vertices[0].worldPosition + vertices[1].worldPosition + vertices[2].worldPosition) / 3.0f;
 }
@@ -441,7 +445,7 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
                 lights,
                 materialState,
                 cfg);
-            const Color baseColor = materialState.useVertexColor ? ComputeAverageVertexColor(vertices) : WhiteColor();
+            const Color baseColor = materialState.useVertexColor ? ComputeAverageVertexColor(vertices) : GetStableUntexturedBaseColor(cfg);
             const Pixel fillColor = ShadeRetroColor(baseColor, lighting, cfg, shadingTexture);
             DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             break;
@@ -535,7 +539,8 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                 const float b2 = w2 * invArea;
                 const float z = viewportVertices[0].z * b0 + viewportVertices[1].z * b1 + viewportVertices[2].z * b2;
                 const FragmentInterpolants interpolants = InterpolateFragmentAttributes(shadeVertices, b0, b1, b2, cfg);
-                Color baseColor = materialState.useVertexColor ? MakeColorFromVec3(interpolants.color) : WhiteColor();
+                Color baseColor =
+                    materialState.useVertexColor ? MakeColorFromVec3(interpolants.color) : GetStableUntexturedBaseColor(cfg);
                 if (texture && texture->HasCpuPixels()) {
                     Pixel texel = cfg.retro.textureMaxDimension > 0
                                       ? texture->SampleReducedNearestRepeat(interpolants.texCoords, cfg.retro.textureMaxDimension)

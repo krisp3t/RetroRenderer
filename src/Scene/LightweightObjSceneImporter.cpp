@@ -2,6 +2,7 @@
 
 #include <KrisLogger/Logger.h>
 #include <glm/geometric.hpp>
+#include <algorithm>
 #include <charconv>
 #include <fstream>
 #include <iterator>
@@ -108,6 +109,27 @@ bool ParseFaceVertexToken(std::string_view token,
     return true;
 }
 
+glm::vec3 ComputeFaceNormal(const std::vector<FaceVertexRef>& faceRefs, const std::vector<glm::vec3>& positions) {
+    glm::vec3 faceNormal(0.0f);
+    if (faceRefs.size() < 3) {
+        return glm::vec3(0.0f, 1.0f, 0.0f);
+    }
+
+    for (size_t i = 0; i < faceRefs.size(); i++) {
+        const glm::vec3& current = positions[faceRefs[i].positionIndex];
+        const glm::vec3& next = positions[faceRefs[(i + 1) % faceRefs.size()].positionIndex];
+        faceNormal.x += (current.y - next.y) * (current.z + next.z);
+        faceNormal.y += (current.z - next.z) * (current.x + next.x);
+        faceNormal.z += (current.x - next.x) * (current.y + next.y);
+    }
+
+    const float normalLen = glm::length(faceNormal);
+    if (normalLen > 1e-6f) {
+        return faceNormal / normalLen;
+    }
+    return glm::vec3(0.0f, 1.0f, 0.0f);
+}
+
 bool ParseObjText(std::string_view sourceText, ImportedSceneData& outSceneData) {
     std::vector<glm::vec3> positions;
     std::vector<glm::vec3> normals;
@@ -196,24 +218,19 @@ bool ParseObjText(std::string_view sourceText, ImportedSceneData& outSceneData) 
             continue;
         }
 
+        const bool needsComputedFaceNormal = std::any_of(faceRefs.begin(), faceRefs.end(), [](const FaceVertexRef& ref) {
+            return !ref.hasNormal;
+        });
+        const glm::vec3 computedFaceNormal =
+            needsComputedFaceNormal ? ComputeFaceNormal(faceRefs, positions) : glm::vec3(0.0f, 1.0f, 0.0f);
+
         for (size_t i = 1; i + 1 < faceRefs.size(); i++) {
             const FaceVertexRef triRefs[3] = {faceRefs[0], faceRefs[i], faceRefs[i + 1]};
-            const glm::vec3 triPositions[3] = {positions[triRefs[0].positionIndex],
-                                               positions[triRefs[1].positionIndex],
-                                               positions[triRefs[2].positionIndex]};
-            glm::vec3 computedNormal = glm::cross(triPositions[1] - triPositions[0], triPositions[2] - triPositions[0]);
-            const float normalLen = glm::length(computedNormal);
-            if (normalLen > 1e-6f) {
-                computedNormal /= normalLen;
-            } else {
-                computedNormal = glm::vec3(0.0f, 1.0f, 0.0f);
-            }
-
             for (const FaceVertexRef& ref : triRefs) {
                 Vertex vertex{};
                 vertex.position = glm::vec4(positions[ref.positionIndex], 1.0f);
                 vertex.texCoords = ref.hasTexCoord ? texCoords[ref.texCoordIndex] : glm::vec2(0.0f, 0.0f);
-                vertex.normal = ref.hasNormal ? normals[ref.normalIndex] : computedNormal;
+                vertex.normal = ref.hasNormal ? normals[ref.normalIndex] : computedFaceNormal;
                 vertex.color = glm::vec3(1.0f);
 
                 mesh.indices.push_back(static_cast<unsigned int>(mesh.vertices.size()));

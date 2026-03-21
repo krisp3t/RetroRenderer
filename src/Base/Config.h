@@ -158,6 +158,8 @@ struct Config {
         bool enableOrderedDithering = false;
         int lightingBands = 0;
         bool flatFaceLighting = false;
+        bool useStableUntexturedBaseColor = false;
+        Color untexturedBaseColor = Color(Color::Uint8Tag{}, 0xC6, 0xB9, 0x95);
         int textureMaxDimension = 0;
         bool snapVertices = false;
         bool affineTextureMapping = false;
@@ -229,6 +231,8 @@ struct Config {
         config.retro.enableOrderedDithering = false;
         config.retro.lightingBands = 0;
         config.retro.flatFaceLighting = false;
+        config.retro.useStableUntexturedBaseColor = false;
+        config.retro.untexturedBaseColor = Color(Color::Uint8Tag{}, 0xC6, 0xB9, 0x95);
         config.retro.textureMaxDimension = 0;
         config.retro.snapVertices = false;
         config.retro.affineTextureMapping = false;
@@ -292,6 +296,7 @@ struct Config {
             config.retro.enableOrderedDithering = true;
             config.retro.lightingBands = 3;
             config.retro.flatFaceLighting = true;
+            config.retro.useStableUntexturedBaseColor = true;
             config.retro.textureMaxDimension = 16;
             config.retro.useTextureDerivedPalette = true;
             config.retro.snapVertices = true;

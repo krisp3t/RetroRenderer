@@ -865,6 +865,13 @@ void ConfigPanel::DisplayPostFxSettings() {
     manualChange |= ImGui::Checkbox("Enable ordered dithering", &retro.enableOrderedDithering);
     manualChange |= ImGui::SliderInt("Lighting bands", &retro.lightingBands, 0, 8);
     manualChange |= ImGui::Checkbox("Flat face lighting", &retro.flatFaceLighting);
+    manualChange |= ImGui::Checkbox("Use stable untextured base color", &retro.useStableUntexturedBaseColor);
+    ImVec4 untexturedBaseColor = retro.untexturedBaseColor.ToImVec4();
+    if (ImGui::ColorEdit3("Untextured base color", reinterpret_cast<float*>(&untexturedBaseColor))) {
+        retro.untexturedBaseColor = Color(untexturedBaseColor);
+        retro.untexturedBaseColor.a = 255;
+        manualChange = true;
+    }
     manualChange |= ImGui::SliderInt("Texture max dimension", &retro.textureMaxDimension, 0, 64);
     manualChange |= ImGui::Checkbox("Snap projected vertices", &retro.snapVertices);
     manualChange |= ImGui::Checkbox("Affine texture mapping", &retro.affineTextureMapping);

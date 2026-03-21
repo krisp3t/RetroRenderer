@@ -15,6 +15,18 @@ glm::vec3 ComputeTriangleLightingNormal(const glm::vec3& worldPos0,
                                         const glm::vec3& normal2,
                                         const Config& cfg) {
     if (cfg.retro.flatFaceLighting) {
+        const glm::vec3 averageNormal = normal0 + normal1 + normal2;
+        const float averageNormalLengthSq = glm::dot(averageNormal, averageNormal);
+        if (averageNormalLengthSq > 1e-8f) {
+            const glm::vec3 normalizedAverage = averageNormal * glm::inversesqrt(averageNormalLengthSq);
+            const float alignment0 = glm::dot(normalizedAverage, normal0);
+            const float alignment1 = glm::dot(normalizedAverage, normal1);
+            const float alignment2 = glm::dot(normalizedAverage, normal2);
+            if (alignment0 > 0.999f && alignment1 > 0.999f && alignment2 > 0.999f) {
+                return normalizedAverage;
+            }
+        }
+
         const glm::vec3 edge0 = worldPos1 - worldPos0;
         const glm::vec3 edge1 = worldPos2 - worldPos0;
         const glm::vec3 faceNormal = glm::cross(edge0, edge1);
