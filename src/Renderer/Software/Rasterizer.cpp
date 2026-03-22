@@ -168,6 +168,29 @@ FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex
     return interpolants;
 }
 
+glm::vec3 InterpolateVec3Attribute(const std::array<glm::vec3, 3>& values,
+                                   const std::array<RasterVertex, 3>& vertices,
+                                   float b0,
+                                   float b1,
+                                   float b2,
+                                   const Config& cfg) {
+    if (UsePerspectiveCorrectInterpolation(cfg)) {
+        const float rw0 = SafeReciprocalW(vertices[0].clipW);
+        const float rw1 = SafeReciprocalW(vertices[1].clipW);
+        const float rw2 = SafeReciprocalW(vertices[2].clipW);
+        const float w0 = b0 * rw0;
+        const float w1 = b1 * rw1;
+        const float w2 = b2 * rw2;
+        const float weightSum = w0 + w1 + w2;
+        if (std::abs(weightSum) > 1e-6f) {
+            const float invWeightSum = 1.0f / weightSum;
+            return (values[0] * w0 + values[1] * w1 + values[2] * w2) * invWeightSum;
+        }
+    }
+
+    return values[0] * b0 + values[1] * b1 + values[2] * b2;
+}
+
 glm::vec3 ComputePhongLighting(const glm::vec3& worldPosition,
                                const glm::vec3& normal,
                                const glm::vec3& viewPosition,
@@ -540,6 +563,19 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
         area = -area;
     }
 
+    std::array<glm::vec3, 3> vertexLighting{};
+    if (cfg.retro.useGouraudShading) {
+        for (size_t i = 0; i < shadeVertices.size(); i++) {
+            vertexLighting[i] = ComputePhongLighting(
+                shadeVertices[i].worldPosition,
+                shadeVertices[i].normal,
+                viewPosition,
+                lights,
+                materialState,
+                cfg);
+        }
+    }
+
     const bool rasterClip = cfg.cull.rasterClip;
     int minX = static_cast<int>(std::floor(std::min({v0.x, v1.x, v2.x}) - 0.5f));
     int minY = static_cast<int>(std::floor(std::min({v0.y, v1.y, v2.y}) - 0.5f));
@@ -607,13 +643,15 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                         static_cast<uint8_t>((static_cast<unsigned int>(baseColor.b) * static_cast<unsigned int>(texel.b)) / 255U),
                         static_cast<uint8_t>((static_cast<unsigned int>(baseColor.a) * static_cast<unsigned int>(texel.a)) / 255U));
                 }
-                const glm::vec3 lighting = ComputePhongLighting(
-                    interpolants.worldPosition,
-                    interpolants.normal,
-                    viewPosition,
-                    lights,
-                    materialState,
-                    cfg);
+                const glm::vec3 lighting = cfg.retro.useGouraudShading
+                                               ? InterpolateVec3Attribute(vertexLighting, shadeVertices, b0, b1, b2, cfg)
+                                               : ComputePhongLighting(
+                                                     interpolants.worldPosition,
+                                                     interpolants.normal,
+                                                     viewPosition,
+                                                     lights,
+                                                     materialState,
+                                                     cfg);
                 const Pixel fillColor = ShadeRetroColor(baseColor, lighting, cfg, texture);
                 WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, nullptr, texture);
             }
