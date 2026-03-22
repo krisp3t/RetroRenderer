@@ -341,7 +341,7 @@ struct Config {
             config.retro.depthPrecisionBits = 15;
             config.retro.vertexSnapStep = 1.0f;
             config.retro.useGouraudShading = true;
-            config.retro.enableFog = false;
+            config.retro.enableFog = true;
             config.retro.fogNear = 20.0f;
             config.retro.fogFar = 120.0f;
             config.retro.fogColor = Color(Color::Uint8Tag{}, 0x60, 0x70, 0x88);

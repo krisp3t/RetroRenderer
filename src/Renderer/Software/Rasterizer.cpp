@@ -59,6 +59,32 @@ Color GetStableUntexturedBaseColor(const Config& cfg) {
     return cfg.retro.useStableUntexturedBaseColor ? cfg.retro.untexturedBaseColor : WhiteColor();
 }
 
+Pixel ApplyDistanceFog(Pixel inputColor, const glm::vec3& worldPosition, const glm::vec3& viewPosition, const Config& cfg) {
+    if (!cfg.retro.enableFog) {
+        return inputColor;
+    }
+
+    const float fogNear = cfg.retro.fogNear;
+    const float fogFar = cfg.retro.fogFar;
+    if (fogFar <= fogNear) {
+        return Pixel{cfg.retro.fogColor.r, cfg.retro.fogColor.g, cfg.retro.fogColor.b, inputColor.a};
+    }
+
+    const float distanceToCamera = glm::length(viewPosition - worldPosition);
+    const float fogAmount = std::clamp((distanceToCamera - fogNear) / (fogFar - fogNear), 0.0f, 1.0f);
+    if (fogAmount <= 0.0f) {
+        return inputColor;
+    }
+
+    const float inverseFog = 1.0f - fogAmount;
+    return Pixel{
+        static_cast<uint8_t>(std::clamp(std::lround(inputColor.r * inverseFog + cfg.retro.fogColor.r * fogAmount), 0L, 255L)),
+        static_cast<uint8_t>(std::clamp(std::lround(inputColor.g * inverseFog + cfg.retro.fogColor.g * fogAmount), 0L, 255L)),
+        static_cast<uint8_t>(std::clamp(std::lround(inputColor.b * inverseFog + cfg.retro.fogColor.b * fogAmount), 0L, 255L)),
+        inputColor.a,
+    };
+}
+
 uint8_t QuantizeRgb555Channel(uint8_t channel, int ditherBias = 0) {
     const int adjusted = std::clamp(static_cast<int>(channel) + ditherBias, 0, 255);
     const int value5 = (adjusted * 31 + 127) / 255;
@@ -508,15 +534,16 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
                 framebuffer, depthBuffer, vertices, viewportVertices, cfg, lights, materialState, viewPosition, shadingTexture);
             break;
         default: {
+            const glm::vec3 averageWorldPosition = ComputeAverageWorldPosition(vertices);
             const glm::vec3 lighting = ComputePhongLighting(
-                ComputeAverageWorldPosition(vertices),
+                averageWorldPosition,
                 ComputeAverageNormal(vertices),
                 viewPosition,
                 lights,
                 materialState,
                 cfg);
             const Color baseColor = materialState.useVertexColor ? ComputeAverageVertexColor(vertices) : GetStableUntexturedBaseColor(cfg);
-            const Pixel fillColor = ShadeRetroColor(baseColor, lighting, cfg, shadingTexture);
+            const Pixel fillColor = ApplyDistanceFog(ShadeRetroColor(baseColor, lighting, cfg, shadingTexture), averageWorldPosition, viewPosition, cfg);
             DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             break;
         }
@@ -652,7 +679,11 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                                      lights,
                                                      materialState,
                                                      cfg);
-                const Pixel fillColor = ShadeRetroColor(baseColor, lighting, cfg, texture);
+                const Pixel fillColor = ApplyDistanceFog(
+                    ShadeRetroColor(baseColor, lighting, cfg, texture),
+                    interpolants.worldPosition,
+                    viewPosition,
+                    cfg);
                 WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, nullptr, texture);
             }
             w0 += w0StepX;
