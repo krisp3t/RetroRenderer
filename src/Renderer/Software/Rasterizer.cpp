@@ -4,6 +4,7 @@
 #include <KrisLogger/Logger.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 // TODO: possible parallel rasterizing?
 
@@ -20,6 +21,16 @@ struct FragmentInterpolants {
 
 size_t DitherPatternIndex(int x, int y) {
     return static_cast<size_t>(((y & 3) << 2) | (x & 3));
+}
+
+int Bayer4x4Value(int x, int y) {
+    static constexpr int kBayer4x4[16] = {
+        0, 8, 2, 10,
+        12, 4, 14, 6,
+        3, 11, 1, 9,
+        15, 7, 13, 5,
+    };
+    return kBayer4x4[DitherPatternIndex(x, y)];
 }
 
 Color MakeColorFromVec3(const glm::vec3& value, uint8_t alpha = 255) {
@@ -46,6 +57,41 @@ Color WhiteColor() {
 
 Color GetStableUntexturedBaseColor(const Config& cfg) {
     return cfg.retro.useStableUntexturedBaseColor ? cfg.retro.untexturedBaseColor : WhiteColor();
+}
+
+uint8_t QuantizeRgb555Channel(uint8_t channel, int ditherBias = 0) {
+    const int adjusted = std::clamp(static_cast<int>(channel) + ditherBias, 0, 255);
+    const int value5 = (adjusted * 31 + 127) / 255;
+    return static_cast<uint8_t>((value5 << 3) | (value5 >> 2));
+}
+
+Pixel ApplyPs1OutputStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Config& cfg) {
+    if (!cfg.retro.quantizeToRgb555) {
+        return inputColor;
+    }
+
+    const int ditherBias = cfg.retro.enablePs1OutputDither ? Bayer4x4Value(pixelPos.x, pixelPos.y) - 8 : 0;
+    return Pixel{
+        QuantizeRgb555Channel(inputColor.r, ditherBias),
+        QuantizeRgb555Channel(inputColor.g, ditherBias),
+        QuantizeRgb555Channel(inputColor.b, ditherBias),
+        inputColor.a,
+    };
+}
+
+float QuantizeDepth(float z, const Config& cfg) {
+    const int bits = cfg.retro.depthPrecisionBits;
+    if (bits <= 0) {
+        return z;
+    }
+
+    const uint32_t levels = (1u << std::min(bits, 24)) - 1u;
+    if (levels == 0u) {
+        return z;
+    }
+
+    const float clampedZ = std::clamp(z, 0.0f, 1.0f);
+    return std::round(clampedZ * static_cast<float>(levels)) / static_cast<float>(levels);
 }
 
 glm::vec3 ComputeAverageWorldPosition(const std::array<RasterVertex, 3>& vertices) {
@@ -282,13 +328,14 @@ void WriteTrianglePixel(Buffer<Pixel>& framebuffer,
     }
 
     const size_t pixelIndex = static_cast<size_t>(y) * framebuffer.width + static_cast<size_t>(x);
-    if (!cfg.cull.depthTest || z < depthBuffer.data[pixelIndex]) {
+    const float quantizedDepth = QuantizeDepth(z, cfg);
+    if (!cfg.cull.depthTest || quantizedDepth < depthBuffer.data[pixelIndex]) {
         if (cfg.cull.depthTest) {
-            depthBuffer.data[pixelIndex] = z;
+            depthBuffer.data[pixelIndex] = quantizedDepth;
         }
-        const Pixel finalColor =
+        const Pixel retroColor =
             fillPattern ? (*fillPattern)[DitherPatternIndex(x, y)] : ApplyRetroFillStyle(fillColor, glm::ivec2{x, y}, cfg, paletteTexture);
-        framebuffer.data[pixelIndex] = finalColor;
+        framebuffer.data[pixelIndex] = ApplyPs1OutputStyle(retroColor, glm::ivec2{x, y}, cfg);
     }
 }
 } // namespace

@@ -80,6 +80,8 @@ const char* RenderPresetDescription(Config::RenderPreset preset) {
         return "Low-resolution software preset aimed at palette reduction, color ramps, and ordered dithering.";
     case Config::RenderPreset::PICOCAD:
         return "Low-resolution software preset aimed at picoCAD-style low-poly rendering, flat face lighting, reduced textures, texture-derived palettes, affine mapping, and vertex snap.";
+    case Config::RenderPreset::PS1:
+        return "Low-resolution software preset aimed at PS1-style affine textures, barycentric shading, projected vertex wobble, RGB555 output, and optional fog.";
     }
     return "";
 }
@@ -679,7 +681,7 @@ void ConfigPanel::DisplayRendererSettings() {
     }
 
     ImGui::SeparatorText("Preset");
-    const char* presetItems[] = {"Custom", "Default", "PICO-8", "picoCAD"};
+    const char* presetItems[] = {"Custom", "Default", "PICO-8", "picoCAD", "PS1"};
     int presetIndex = static_cast<int>(p_config_->retro.preset);
     if (ImGui::Combo("Render preset", &presetIndex, presetItems, IM_ARRAYSIZE(presetItems))) {
         ApplyRendererPreset(static_cast<Config::RenderPreset>(presetIndex));
@@ -876,12 +878,35 @@ void ConfigPanel::DisplayPostFxSettings() {
     manualChange |= ImGui::Checkbox("Snap projected vertices", &retro.snapVertices);
     manualChange |= ImGui::Checkbox("Affine texture mapping", &retro.affineTextureMapping);
 
+    ImGui::SeparatorText("PS1 style");
+    manualChange |= ImGui::Checkbox("RGB555 output quantization", &retro.quantizeToRgb555);
+    manualChange |= ImGui::Checkbox("PS1 output dither", &retro.enablePs1OutputDither);
+    manualChange |= ImGui::SliderInt("Depth precision bits", &retro.depthPrecisionBits, 0, 24);
+    manualChange |= ImGui::SliderFloat("Vertex snap step", &retro.vertexSnapStep, 0.25f, 4.0f, "%.2f px");
+    manualChange |= ImGui::Checkbox("Use Gouraud shading", &retro.useGouraudShading);
+    manualChange |= ImGui::Checkbox("Enable fog", &retro.enableFog);
+    ImVec4 fogColor = retro.fogColor.ToImVec4();
+    if (ImGui::ColorEdit3("Fog color", reinterpret_cast<float*>(&fogColor))) {
+        retro.fogColor = Color(fogColor);
+        retro.fogColor.a = 255;
+        manualChange = true;
+    }
+    if (ImGui::SliderFloat("Fog near", &retro.fogNear, 0.0f, 1000.0f, "%.1f")) {
+        retro.fogNear = std::clamp(retro.fogNear, 0.0f, retro.fogFar);
+        manualChange = true;
+    }
+    if (ImGui::SliderFloat("Fog far", &retro.fogFar, 0.0f, 1000.0f, "%.1f")) {
+        retro.fogFar = std::max(retro.fogFar, retro.fogNear);
+        manualChange = true;
+    }
+
     ImGui::Spacing();
     ImGui::TextWrapped("Palette quantization, texture-derived palettes, reduced texture sampling, flat face lighting, "
                        "ordered dithering, vertex snapping, and affine mapping are active on the software retro path.");
     if (retro.useTextureDerivedPalette) {
         ImGui::TextWrapped("Texture-derived palette overrides the fixed palette when a software-sampled texture has an auto-derived palette.");
     }
+    ImGui::TextWrapped("PS1 controls configure RGB555 quantization, snap precision, Gouraud shading, depth precision, and fog for the software retro path.");
 
     if (manualChange) {
         MarkRendererPresetCustom();

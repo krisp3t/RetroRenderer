@@ -133,13 +133,14 @@ bool TryMakeRasterTriangle(const std::array<ClipVertex, 3>& clipVertices, std::a
     return true;
 }
 
-void SnapProjectedVertex(RasterVertex& vertex, size_t framebufferWidth, size_t framebufferHeight) {
+void SnapProjectedVertex(RasterVertex& vertex, size_t framebufferWidth, size_t framebufferHeight, float snapStep) {
     if (framebufferWidth == 0 || framebufferHeight == 0) {
         return;
     }
 
+    const float safeSnapStep = std::max(snapStep, 0.001f);
     const glm::vec2 viewport = Rasterizer::NDCToViewport(glm::vec2(vertex.position), framebufferWidth, framebufferHeight);
-    const glm::vec2 snappedViewport = glm::round(viewport);
+    const glm::vec2 snappedViewport = glm::round(viewport / safeSnapStep) * safeSnapStep;
     vertex.position.x = ((snappedViewport.x - 0.5f) / static_cast<float>(framebufferWidth)) * 2.0f - 1.0f;
     vertex.position.y = 1.0f - ((snappedViewport.y - 0.5f) / static_cast<float>(framebufferHeight)) * 2.0f;
 }
@@ -334,7 +335,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                     }
                     if (cfg.retro.snapVertices) {
                         for (auto& vertex : rasterVertices) {
-                            SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
+                            SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height, cfg.retro.vertexSnapStep);
                         }
                     }
                     Rasterizer::DrawTriangle(
@@ -363,7 +364,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                     }
                     if (cfg.retro.snapVertices) {
                         for (auto& vertex : rasterVertices) {
-                            SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
+                            SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height, cfg.retro.vertexSnapStep);
                         }
                     }
                     Rasterizer::DrawTriangle(
@@ -383,7 +384,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                 }
                 if (cfg.retro.snapVertices) {
                     for (auto& vertex : rasterVertices) {
-                        SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height);
+                        SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height, cfg.retro.vertexSnapStep);
                     }
                 }
                 Rasterizer::DrawTriangle(

@@ -37,7 +37,8 @@ struct Config {
         CUSTOM,
         DEFAULT,
         PICO8,
-        PICOCAD
+        PICOCAD,
+        PS1
     };
 
     enum class PaletteType {
@@ -163,6 +164,15 @@ struct Config {
         int textureMaxDimension = 0;
         bool snapVertices = false;
         bool affineTextureMapping = false;
+        bool quantizeToRgb555 = false;
+        bool enablePs1OutputDither = false;
+        int depthPrecisionBits = 0;
+        float vertexSnapStep = 1.0f;
+        bool useGouraudShading = false;
+        bool enableFog = false;
+        float fogNear = 10.0f;
+        float fogFar = 100.0f;
+        Color fogColor = Color(Color::Uint8Tag{}, 0x60, 0x70, 0x88);
     };
 
     // Shared between rendering modes
@@ -185,6 +195,8 @@ struct Config {
             return "PICO-8";
         case RenderPreset::PICOCAD:
             return "picoCAD";
+        case RenderPreset::PS1:
+            return "PS1";
         }
         return "Unknown";
     }
@@ -206,7 +218,7 @@ struct Config {
     }
 
     static constexpr bool IsRetroPreset(RenderPreset preset) {
-        return preset == RenderPreset::PICO8 || preset == RenderPreset::PICOCAD;
+        return preset == RenderPreset::PICO8 || preset == RenderPreset::PICOCAD || preset == RenderPreset::PS1;
     }
 
     static glm::ivec2 MakeAspectAwareResolution(const glm::ivec2& windowSize, int targetHeight) {
@@ -236,6 +248,15 @@ struct Config {
         config.retro.textureMaxDimension = 0;
         config.retro.snapVertices = false;
         config.retro.affineTextureMapping = false;
+        config.retro.quantizeToRgb555 = false;
+        config.retro.enablePs1OutputDither = false;
+        config.retro.depthPrecisionBits = 0;
+        config.retro.vertexSnapStep = 1.0f;
+        config.retro.useGouraudShading = false;
+        config.retro.enableFog = false;
+        config.retro.fogNear = 10.0f;
+        config.retro.fogFar = 100.0f;
+        config.retro.fogColor = Color(Color::Uint8Tag{}, 0x60, 0x70, 0x88);
 
         config.renderer.resolutionScale = 1.0f;
         config.renderer.aaType = AAType::NONE;
@@ -301,6 +322,29 @@ struct Config {
             config.retro.useTextureDerivedPalette = true;
             config.retro.snapVertices = true;
             config.retro.affineTextureMapping = true;
+            break;
+        case RenderPreset::PS1:
+            config.renderer.selectedRenderer = RendererType::SOFTWARE;
+            config.renderer.resolution = MakeAspectAwareResolution(config.window.size, 240);
+            config.renderer.enablePerspectiveCorrect = false;
+            config.renderer.nearestNeighborPresentation = true;
+            config.renderer.clearColor = ImVec4(96.0f / 255.0f, 112.0f / 255.0f, 136.0f / 255.0f, 1.0f);
+            config.environment.showGrid = false;
+            config.environment.showFloor = false;
+            config.environment.shadowMap = false;
+            config.cull.backfaceCulling = true;
+            config.software.rasterizer.fillMode = RasterizationFillMode::BARYCENTRIC;
+            config.retro.snapVertices = true;
+            config.retro.affineTextureMapping = true;
+            config.retro.quantizeToRgb555 = true;
+            config.retro.enablePs1OutputDither = true;
+            config.retro.depthPrecisionBits = 15;
+            config.retro.vertexSnapStep = 1.0f;
+            config.retro.useGouraudShading = true;
+            config.retro.enableFog = false;
+            config.retro.fogNear = 20.0f;
+            config.retro.fogFar = 120.0f;
+            config.retro.fogColor = Color(Color::Uint8Tag{}, 0x60, 0x70, 0x88);
             break;
         case RenderPreset::CUSTOM:
             break;
