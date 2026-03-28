@@ -173,6 +173,7 @@ struct Config {
         bool affineTextureMapping = false;
         bool usePs1ShadingModel = false;
         int textureCoordPrecisionBits = 0;
+        bool quantizePs1TextureColor = false;
         bool enablePs1SemiTransparency = false;
         Ps1SemiTransparencyMode ps1SemiTransparencyMode = Ps1SemiTransparencyMode::HALF_ADD;
         float ps1SemiTransparencyAlpha = 0.5f;
@@ -277,6 +278,7 @@ struct Config {
         config.retro.affineTextureMapping = false;
         config.retro.usePs1ShadingModel = false;
         config.retro.textureCoordPrecisionBits = 0;
+        config.retro.quantizePs1TextureColor = false;
         config.retro.enablePs1SemiTransparency = false;
         config.retro.ps1SemiTransparencyMode = Ps1SemiTransparencyMode::HALF_ADD;
         config.retro.ps1SemiTransparencyAlpha = 0.5f;
@@ -371,6 +373,7 @@ struct Config {
             config.retro.affineTextureMapping = true;
             config.retro.usePs1ShadingModel = true;
             config.retro.textureCoordPrecisionBits = 8;
+            config.retro.quantizePs1TextureColor = true;
             config.retro.enablePs1SemiTransparency = false;
             config.retro.ps1SemiTransparencyMode = Ps1SemiTransparencyMode::HALF_ADD;
             config.retro.ps1SemiTransparencyAlpha = 0.5f;

@@ -882,6 +882,7 @@ void ConfigPanel::DisplayPostFxSettings() {
     const char* ps1TransparencyModeItems[] = {"Half Add", "Add", "Subtract", "Add Quarter"};
     manualChange |= ImGui::Checkbox("Use PS1 shading model", &retro.usePs1ShadingModel);
     manualChange |= ImGui::SliderInt("Texture coord precision bits", &retro.textureCoordPrecisionBits, 0, 12);
+    manualChange |= ImGui::Checkbox("Quantize texture colors", &retro.quantizePs1TextureColor);
     manualChange |= ImGui::Checkbox("Enable semitransparency", &retro.enablePs1SemiTransparency);
     manualChange |= ImGui::Combo("Semitransparency mode",
                                  reinterpret_cast<int*>(&retro.ps1SemiTransparencyMode),
