@@ -152,6 +152,16 @@ bool UsePs1ShadingModel(const Config& cfg) {
     return cfg.retro.usePs1ShadingModel;
 }
 
+glm::vec2 QuantizeTextureCoords(const glm::vec2& uv, const Config& cfg) {
+    if (!UsePs1ShadingModel(cfg) || cfg.retro.textureCoordPrecisionBits <= 0) {
+        return uv;
+    }
+
+    const int clampedBits = std::min(cfg.retro.textureCoordPrecisionBits, 20);
+    const float scale = static_cast<float>(1 << clampedBits);
+    return glm::round(uv * scale) / scale;
+}
+
 FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex, 3>& vertices,
                                                    float b0,
                                                    float b1,
@@ -704,9 +714,10 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                 Color baseColor =
                     materialState.useVertexColor ? MakeColorFromVec3(interpolants.color) : GetStableUntexturedBaseColor(cfg);
                 if (texture && texture->HasCpuPixels()) {
+                    const glm::vec2 sampledTexCoords = QuantizeTextureCoords(interpolants.texCoords, cfg);
                     Pixel texel = cfg.retro.textureMaxDimension > 0
-                                      ? texture->SampleReducedNearestRepeat(interpolants.texCoords, cfg.retro.textureMaxDimension)
-                                      : texture->SampleNearestRepeat(interpolants.texCoords);
+                                      ? texture->SampleReducedNearestRepeat(sampledTexCoords, cfg.retro.textureMaxDimension)
+                                      : texture->SampleNearestRepeat(sampledTexCoords);
                     const bool useTexturePalette = UseTextureAutoPalette(texture, cfg);
                     if (!usePs1Shading && cfg.retro.enablePalette) {
                         if (useTexturePalette) {
