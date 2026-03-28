@@ -49,6 +49,13 @@ struct Config {
         CUSTOM
     };
 
+    enum class Ps1SemiTransparencyMode {
+        HALF_ADD,
+        ADD,
+        SUBTRACT,
+        ADD_QUARTER
+    };
+
     static std::array<Pixel, 16> DefaultCustomPalette() {
         return {{
             Pixel{0x00, 0x00, 0x00, 0xFF},
@@ -165,6 +172,10 @@ struct Config {
         bool snapVertices = false;
         bool affineTextureMapping = false;
         bool usePs1ShadingModel = false;
+        int textureCoordPrecisionBits = 0;
+        bool enablePs1SemiTransparency = false;
+        Ps1SemiTransparencyMode ps1SemiTransparencyMode = Ps1SemiTransparencyMode::HALF_ADD;
+        float ps1SemiTransparencyAlpha = 0.5f;
         bool quantizeToRgb555 = false;
         bool enablePs1OutputDither = false;
         int depthPrecisionBits = 0;
@@ -222,6 +233,20 @@ struct Config {
         return preset == RenderPreset::PICO8 || preset == RenderPreset::PICOCAD || preset == RenderPreset::PS1;
     }
 
+    static constexpr const char* Ps1SemiTransparencyLabel(Ps1SemiTransparencyMode mode) {
+        switch (mode) {
+        case Ps1SemiTransparencyMode::HALF_ADD:
+            return "Half Add";
+        case Ps1SemiTransparencyMode::ADD:
+            return "Add";
+        case Ps1SemiTransparencyMode::SUBTRACT:
+            return "Subtract";
+        case Ps1SemiTransparencyMode::ADD_QUARTER:
+            return "Add Quarter";
+        }
+        return "Unknown";
+    }
+
     static glm::ivec2 MakeAspectAwareResolution(const glm::ivec2& windowSize, int targetHeight) {
         const int safeWidth = std::max(windowSize.x, 1);
         const int safeHeight = std::max(windowSize.y, 1);
@@ -250,6 +275,10 @@ struct Config {
         config.retro.snapVertices = false;
         config.retro.affineTextureMapping = false;
         config.retro.usePs1ShadingModel = false;
+        config.retro.textureCoordPrecisionBits = 0;
+        config.retro.enablePs1SemiTransparency = false;
+        config.retro.ps1SemiTransparencyMode = Ps1SemiTransparencyMode::HALF_ADD;
+        config.retro.ps1SemiTransparencyAlpha = 0.5f;
         config.retro.quantizeToRgb555 = false;
         config.retro.enablePs1OutputDither = false;
         config.retro.depthPrecisionBits = 0;
@@ -339,6 +368,10 @@ struct Config {
             config.retro.snapVertices = true;
             config.retro.affineTextureMapping = true;
             config.retro.usePs1ShadingModel = true;
+            config.retro.textureCoordPrecisionBits = 8;
+            config.retro.enablePs1SemiTransparency = false;
+            config.retro.ps1SemiTransparencyMode = Ps1SemiTransparencyMode::HALF_ADD;
+            config.retro.ps1SemiTransparencyAlpha = 0.5f;
             config.retro.quantizeToRgb555 = true;
             config.retro.enablePs1OutputDither = true;
             config.retro.depthPrecisionBits = 15;

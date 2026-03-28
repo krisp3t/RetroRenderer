@@ -85,6 +85,62 @@ Pixel ApplyDistanceFog(Pixel inputColor, const glm::vec3& worldPosition, const g
     };
 }
 
+Pixel ApplyPs1SourceTransparency(Pixel inputColor, const Config& cfg) {
+    if (!cfg.retro.usePs1ShadingModel || !cfg.retro.enablePs1SemiTransparency) {
+        return inputColor;
+    }
+
+    Pixel output = inputColor;
+    output.a = static_cast<uint8_t>(std::clamp(
+        std::lround(static_cast<double>(output.a) * static_cast<double>(cfg.retro.ps1SemiTransparencyAlpha)),
+        0L,
+        255L));
+    return output;
+}
+
+Pixel BlendPs1SemiTransparent(Pixel destinationColor, Pixel sourceColor, const Config& cfg) {
+    const float alpha = static_cast<float>(sourceColor.a) / 255.0f;
+    if (alpha <= 0.0f) {
+        return destinationColor;
+    }
+
+    float destFactor = 1.0f;
+    float sourceFactor = alpha;
+    switch (cfg.retro.ps1SemiTransparencyMode) {
+    case Config::Ps1SemiTransparencyMode::HALF_ADD:
+        destFactor = 1.0f - 0.5f * alpha;
+        sourceFactor = 0.5f * alpha;
+        break;
+    case Config::Ps1SemiTransparencyMode::ADD:
+        destFactor = 1.0f;
+        sourceFactor = alpha;
+        break;
+    case Config::Ps1SemiTransparencyMode::SUBTRACT:
+        destFactor = 1.0f;
+        sourceFactor = -alpha;
+        break;
+    case Config::Ps1SemiTransparencyMode::ADD_QUARTER:
+        destFactor = 1.0f;
+        sourceFactor = 0.25f * alpha;
+        break;
+    }
+
+    const auto blendChannel = [&](uint8_t dst, uint8_t src) {
+        return static_cast<uint8_t>(std::clamp(
+            std::lround(static_cast<double>(dst) * static_cast<double>(destFactor) +
+                        static_cast<double>(src) * static_cast<double>(sourceFactor)),
+            0L,
+            255L));
+    };
+
+    return Pixel{
+        blendChannel(destinationColor.r, sourceColor.r),
+        blendChannel(destinationColor.g, sourceColor.g),
+        blendChannel(destinationColor.b, sourceColor.b),
+        255,
+    };
+}
+
 uint8_t QuantizeRgb555Channel(uint8_t channel, int ditherBias = 0) {
     const int adjusted = std::clamp(static_cast<int>(channel) + ditherBias, 0, 255);
     const int value5 = (adjusted * 31 + 127) / 255;
@@ -422,12 +478,21 @@ void WriteTrianglePixel(Buffer<Pixel>& framebuffer,
     const size_t pixelIndex = static_cast<size_t>(y) * framebuffer.width + static_cast<size_t>(x);
     const float quantizedDepth = QuantizeDepth(z, cfg);
     if (!cfg.cull.depthTest || quantizedDepth < depthBuffer.data[pixelIndex]) {
+        const Pixel retroColor =
+            fillPattern ? (*fillPattern)[DitherPatternIndex(x, y)] : ApplyRetroFillStyle(fillColor, glm::ivec2{x, y}, cfg, paletteTexture);
+        if (retroColor.a == 0) {
+            return;
+        }
         if (cfg.cull.depthTest) {
             depthBuffer.data[pixelIndex] = quantizedDepth;
         }
-        const Pixel retroColor =
-            fillPattern ? (*fillPattern)[DitherPatternIndex(x, y)] : ApplyRetroFillStyle(fillColor, glm::ivec2{x, y}, cfg, paletteTexture);
-        framebuffer.data[pixelIndex] = ApplyPs1OutputStyle(retroColor, glm::ivec2{x, y}, cfg);
+        const Pixel sourceColor = ApplyPs1OutputStyle(ApplyPs1SourceTransparency(retroColor, cfg), glm::ivec2{x, y}, cfg);
+        if (UsePs1ShadingModel(cfg) && cfg.retro.enablePs1SemiTransparency && sourceColor.a < 255) {
+            const Pixel blendedColor = BlendPs1SemiTransparent(framebuffer.data[pixelIndex], sourceColor, cfg);
+            framebuffer.data[pixelIndex] = ApplyPs1OutputStyle(blendedColor, glm::ivec2{x, y}, cfg);
+            return;
+        }
+        framebuffer.data[pixelIndex] = sourceColor;
     }
 }
 } // namespace

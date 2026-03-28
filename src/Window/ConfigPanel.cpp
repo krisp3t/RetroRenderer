@@ -879,7 +879,18 @@ void ConfigPanel::DisplayPostFxSettings() {
     manualChange |= ImGui::Checkbox("Affine texture mapping", &retro.affineTextureMapping);
 
     ImGui::SeparatorText("PS1 style");
+    const char* ps1TransparencyModeItems[] = {"Half Add", "Add", "Subtract", "Add Quarter"};
     manualChange |= ImGui::Checkbox("Use PS1 shading model", &retro.usePs1ShadingModel);
+    manualChange |= ImGui::SliderInt("Texture coord precision bits", &retro.textureCoordPrecisionBits, 0, 12);
+    manualChange |= ImGui::Checkbox("Enable semitransparency", &retro.enablePs1SemiTransparency);
+    manualChange |= ImGui::Combo("Semitransparency mode",
+                                 reinterpret_cast<int*>(&retro.ps1SemiTransparencyMode),
+                                 ps1TransparencyModeItems,
+                                 IM_ARRAYSIZE(ps1TransparencyModeItems));
+    if (ImGui::SliderFloat("Semitransparency alpha", &retro.ps1SemiTransparencyAlpha, 0.0f, 1.0f, "%.2f")) {
+        retro.ps1SemiTransparencyAlpha = std::clamp(retro.ps1SemiTransparencyAlpha, 0.0f, 1.0f);
+        manualChange = true;
+    }
     manualChange |= ImGui::Checkbox("RGB555 output quantization", &retro.quantizeToRgb555);
     manualChange |= ImGui::Checkbox("PS1 output dither", &retro.enablePs1OutputDither);
     manualChange |= ImGui::SliderInt("Depth precision bits", &retro.depthPrecisionBits, 0, 24);
@@ -907,7 +918,7 @@ void ConfigPanel::DisplayPostFxSettings() {
     if (retro.useTextureDerivedPalette) {
         ImGui::TextWrapped("Texture-derived palette overrides the fixed palette when a software-sampled texture has an auto-derived palette.");
     }
-    ImGui::TextWrapped("PS1 controls configure a dedicated PS1 shading path, RGB555 quantization, snap precision, Gouraud shading, depth precision, and fog for the software retro path.");
+    ImGui::TextWrapped("PS1 controls configure a dedicated PS1 shading path, UV precision, semitransparency, RGB555 quantization, snap precision, Gouraud shading, depth precision, and fog for the software retro path.");
 
     if (manualChange) {
         MarkRendererPresetCustom();
