@@ -891,6 +891,7 @@ void ConfigPanel::DisplayPostFxSettings() {
         retro.ps1SemiTransparencyAlpha = std::clamp(retro.ps1SemiTransparencyAlpha, 0.0f, 1.0f);
         manualChange = true;
     }
+    manualChange |= ImGui::SliderInt("Lighting precision bits", &retro.ps1LightingPrecisionBits, 0, 8);
     manualChange |= ImGui::Checkbox("RGB555 output quantization", &retro.quantizeToRgb555);
     manualChange |= ImGui::Checkbox("PS1 output dither", &retro.enablePs1OutputDither);
     manualChange |= ImGui::SliderInt("Depth precision bits", &retro.depthPrecisionBits, 0, 24);

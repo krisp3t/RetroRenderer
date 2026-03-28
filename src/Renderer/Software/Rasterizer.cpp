@@ -218,6 +218,21 @@ glm::vec2 QuantizeTextureCoords(const glm::vec2& uv, const Config& cfg) {
     return glm::round(uv * scale) / scale;
 }
 
+glm::vec3 QuantizePs1Lighting(const glm::vec3& lighting, const Config& cfg) {
+    if (!UsePs1ShadingModel(cfg) || cfg.retro.ps1LightingPrecisionBits <= 0) {
+        return lighting;
+    }
+
+    const int clampedBits = std::min(cfg.retro.ps1LightingPrecisionBits, 8);
+    const float levels = static_cast<float>((1 << clampedBits) - 1);
+    if (levels <= 0.0f) {
+        return lighting;
+    }
+
+    const glm::vec3 clampedLighting = glm::clamp(lighting, 0.0f, 1.0f);
+    return glm::round(clampedLighting * levels) / levels;
+}
+
 FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex, 3>& vertices,
                                                    float b0,
                                                    float b1,
@@ -346,7 +361,7 @@ glm::vec3 ComputePs1Lighting(const glm::vec3& worldPosition,
                              const std::vector<LightSnapshot>& lights,
                              const SoftwareMaterialState& materialState,
                              const Config& cfg) {
-    return ComputeLighting(worldPosition, normal, viewPosition, lights, materialState, cfg, false);
+    return QuantizePs1Lighting(ComputeLighting(worldPosition, normal, viewPosition, lights, materialState, cfg, false), cfg);
 }
 
 Pixel ShadeRetroColor(const Color& baseColor,
