@@ -879,6 +879,7 @@ void ConfigPanel::DisplayPostFxSettings() {
     manualChange |= ImGui::Checkbox("Affine texture mapping", &retro.affineTextureMapping);
 
     ImGui::SeparatorText("PS1 style");
+    manualChange |= ImGui::Checkbox("Use PS1 shading model", &retro.usePs1ShadingModel);
     manualChange |= ImGui::Checkbox("RGB555 output quantization", &retro.quantizeToRgb555);
     manualChange |= ImGui::Checkbox("PS1 output dither", &retro.enablePs1OutputDither);
     manualChange |= ImGui::SliderInt("Depth precision bits", &retro.depthPrecisionBits, 0, 24);
@@ -906,7 +907,7 @@ void ConfigPanel::DisplayPostFxSettings() {
     if (retro.useTextureDerivedPalette) {
         ImGui::TextWrapped("Texture-derived palette overrides the fixed palette when a software-sampled texture has an auto-derived palette.");
     }
-    ImGui::TextWrapped("PS1 controls configure RGB555 quantization, snap precision, Gouraud shading, depth precision, and fog for the software retro path.");
+    ImGui::TextWrapped("PS1 controls configure a dedicated PS1 shading path, RGB555 quantization, snap precision, Gouraud shading, depth precision, and fog for the software retro path.");
 
     if (manualChange) {
         MarkRendererPresetCustom();

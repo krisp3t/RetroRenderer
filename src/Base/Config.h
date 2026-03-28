@@ -164,6 +164,7 @@ struct Config {
         int textureMaxDimension = 0;
         bool snapVertices = false;
         bool affineTextureMapping = false;
+        bool usePs1ShadingModel = false;
         bool quantizeToRgb555 = false;
         bool enablePs1OutputDither = false;
         int depthPrecisionBits = 0;
@@ -248,6 +249,7 @@ struct Config {
         config.retro.textureMaxDimension = 0;
         config.retro.snapVertices = false;
         config.retro.affineTextureMapping = false;
+        config.retro.usePs1ShadingModel = false;
         config.retro.quantizeToRgb555 = false;
         config.retro.enablePs1OutputDither = false;
         config.retro.depthPrecisionBits = 0;
@@ -336,6 +338,7 @@ struct Config {
             config.software.rasterizer.fillMode = RasterizationFillMode::BARYCENTRIC;
             config.retro.snapVertices = true;
             config.retro.affineTextureMapping = true;
+            config.retro.usePs1ShadingModel = true;
             config.retro.quantizeToRgb555 = true;
             config.retro.enablePs1OutputDither = true;
             config.retro.depthPrecisionBits = 15;

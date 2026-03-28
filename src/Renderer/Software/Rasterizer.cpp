@@ -148,6 +148,10 @@ bool UseTextureAutoPalette(const Texture* texture, const Config& cfg) {
            cfg.retro.enablePalette;
 }
 
+bool UsePs1ShadingModel(const Config& cfg) {
+    return cfg.retro.usePs1ShadingModel;
+}
+
 FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex, 3>& vertices,
                                                    float b0,
                                                    float b1,
@@ -217,12 +221,13 @@ glm::vec3 InterpolateVec3Attribute(const std::array<glm::vec3, 3>& values,
     return values[0] * b0 + values[1] * b1 + values[2] * b2;
 }
 
-glm::vec3 ComputePhongLighting(const glm::vec3& worldPosition,
-                               const glm::vec3& normal,
-                               const glm::vec3& viewPosition,
-                               const std::vector<LightSnapshot>& lights,
-                               const SoftwareMaterialState& materialState,
-                               const Config& cfg) {
+glm::vec3 ComputeLighting(const glm::vec3& worldPosition,
+                          const glm::vec3& normal,
+                          const glm::vec3& viewPosition,
+                          const std::vector<LightSnapshot>& lights,
+                          const SoftwareMaterialState& materialState,
+                          const Config& cfg,
+                          bool allowSpecular) {
     const float normalLengthSq = glm::dot(normal, normal);
     const glm::vec3 safeNormal = normalLengthSq > 1e-8f ? normal * glm::inversesqrt(normalLengthSq) : glm::vec3(0.0f, 0.0f, 1.0f);
     const glm::vec3 viewVector = viewPosition - worldPosition;
@@ -240,7 +245,7 @@ glm::vec3 ComputePhongLighting(const glm::vec3& worldPosition,
         const glm::vec3 lightDir = lightVector * glm::inversesqrt(lightLengthSq);
         const float diff = std::max(glm::dot(safeNormal, lightDir), 0.0f);
         lighting += diff * materialState.lightColor * intensity;
-        if (materialState.enablePhong && materialState.specularStrength > 0.0f && diff > 0.0f) {
+        if (allowSpecular && materialState.enablePhong && materialState.specularStrength > 0.0f && diff > 0.0f) {
             const glm::vec3 reflectDir = glm::reflect(-lightDir, safeNormal);
             const float spec = std::pow(std::max(glm::dot(viewDir, reflectDir), 0.0f), std::max(materialState.shininess, 1.0f));
             lighting += materialState.specularStrength * spec * materialState.lightColor * intensity;
@@ -258,6 +263,24 @@ glm::vec3 ComputePhongLighting(const glm::vec3& worldPosition,
         }
     }
     return glm::max(lighting, glm::vec3(0.0f));
+}
+
+glm::vec3 ComputePhongLighting(const glm::vec3& worldPosition,
+                               const glm::vec3& normal,
+                               const glm::vec3& viewPosition,
+                               const std::vector<LightSnapshot>& lights,
+                               const SoftwareMaterialState& materialState,
+                               const Config& cfg) {
+    return ComputeLighting(worldPosition, normal, viewPosition, lights, materialState, cfg, true);
+}
+
+glm::vec3 ComputePs1Lighting(const glm::vec3& worldPosition,
+                             const glm::vec3& normal,
+                             const glm::vec3& viewPosition,
+                             const std::vector<LightSnapshot>& lights,
+                             const SoftwareMaterialState& materialState,
+                             const Config& cfg) {
+    return ComputeLighting(worldPosition, normal, viewPosition, lights, materialState, cfg, false);
 }
 
 Pixel ShadeRetroColor(const Color& baseColor,
@@ -299,6 +322,16 @@ Pixel ShadeRetroColor(const Color& baseColor,
         return Pixel{quantized.r, quantized.g, quantized.b, baseColor.a};
     }
     return Pixel{shadedR, shadedG, shadedB, baseColor.a};
+}
+
+Pixel ShadePs1Color(const Color& baseColor, const glm::vec3& lightingColor) {
+    const glm::vec3 clampedLighting = glm::max(lightingColor, glm::vec3(0.0f));
+    return Pixel{
+        static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.r) * clampedLighting.r), 0L, 255L)),
+        static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.g) * clampedLighting.g), 0L, 255L)),
+        static_cast<uint8_t>(std::clamp(std::lround(static_cast<double>(baseColor.b) * clampedLighting.b), 0L, 255L)),
+        baseColor.a,
+    };
 }
 
 Pixel ApplyRetroFillStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Config& cfg, const Texture* paletteTexture = nullptr) {
@@ -515,6 +548,7 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
 
     // TODO: add cfg.lineColor
     const Texture* shadingTexture = materialState.useVertexColor ? nullptr : texture;
+    const bool usePs1Shading = UsePs1ShadingModel(cfg);
     switch (cfg.software.rasterizer.polygonMode) {
     case Config::RasterizationPolygonMode::POINT:
         DrawPointTriangle(framebuffer, viewportVertices, cfg);
@@ -535,15 +569,24 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
             break;
         default: {
             const glm::vec3 averageWorldPosition = ComputeAverageWorldPosition(vertices);
-            const glm::vec3 lighting = ComputePhongLighting(
-                averageWorldPosition,
-                ComputeAverageNormal(vertices),
-                viewPosition,
-                lights,
-                materialState,
-                cfg);
+            const glm::vec3 lighting = usePs1Shading
+                                           ? ComputePs1Lighting(
+                                                 averageWorldPosition,
+                                                 ComputeAverageNormal(vertices),
+                                                 viewPosition,
+                                                 lights,
+                                                 materialState,
+                                                 cfg)
+                                           : ComputePhongLighting(
+                                                 averageWorldPosition,
+                                                 ComputeAverageNormal(vertices),
+                                                 viewPosition,
+                                                 lights,
+                                                 materialState,
+                                                 cfg);
             const Color baseColor = materialState.useVertexColor ? ComputeAverageVertexColor(vertices) : GetStableUntexturedBaseColor(cfg);
-            const Pixel fillColor = ApplyDistanceFog(ShadeRetroColor(baseColor, lighting, cfg, shadingTexture), averageWorldPosition, viewPosition, cfg);
+            const Pixel shadedColor = usePs1Shading ? ShadePs1Color(baseColor, lighting) : ShadeRetroColor(baseColor, lighting, cfg, shadingTexture);
+            const Pixel fillColor = ApplyDistanceFog(shadedColor, averageWorldPosition, viewPosition, cfg);
             DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
             break;
         }
@@ -575,6 +618,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                          const glm::vec3& viewPosition,
                                          const Texture* texture) {
     std::array<RasterVertex, 3> shadeVertices = vertices;
+    const bool usePs1Shading = UsePs1ShadingModel(cfg);
     glm::vec2 v0 = {viewportVertices[0].x, viewportVertices[0].y};
     glm::vec2 v1 = {viewportVertices[1].x, viewportVertices[1].y};
     glm::vec2 v2 = {viewportVertices[2].x, viewportVertices[2].y};
@@ -593,13 +637,21 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
     std::array<glm::vec3, 3> vertexLighting{};
     if (cfg.retro.useGouraudShading) {
         for (size_t i = 0; i < shadeVertices.size(); i++) {
-            vertexLighting[i] = ComputePhongLighting(
-                shadeVertices[i].worldPosition,
-                shadeVertices[i].normal,
-                viewPosition,
-                lights,
-                materialState,
-                cfg);
+            vertexLighting[i] = usePs1Shading
+                                    ? ComputePs1Lighting(
+                                          shadeVertices[i].worldPosition,
+                                          shadeVertices[i].normal,
+                                          viewPosition,
+                                          lights,
+                                          materialState,
+                                          cfg)
+                                    : ComputePhongLighting(
+                                          shadeVertices[i].worldPosition,
+                                          shadeVertices[i].normal,
+                                          viewPosition,
+                                          lights,
+                                          materialState,
+                                          cfg);
         }
     }
 
@@ -656,7 +708,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                       ? texture->SampleReducedNearestRepeat(interpolants.texCoords, cfg.retro.textureMaxDimension)
                                       : texture->SampleNearestRepeat(interpolants.texCoords);
                     const bool useTexturePalette = UseTextureAutoPalette(texture, cfg);
-                    if (cfg.retro.enablePalette) {
+                    if (!usePs1Shading && cfg.retro.enablePalette) {
                         if (useTexturePalette) {
                             texel = texture->FindNearestAutoPalettePixel(MakeColorFromPixel(texel));
                         } else if (cfg.retro.palette != Config::PaletteType::NONE) {
@@ -670,20 +722,25 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                         static_cast<uint8_t>((static_cast<unsigned int>(baseColor.b) * static_cast<unsigned int>(texel.b)) / 255U),
                         static_cast<uint8_t>((static_cast<unsigned int>(baseColor.a) * static_cast<unsigned int>(texel.a)) / 255U));
                 }
-                const glm::vec3 lighting = cfg.retro.useGouraudShading
-                                               ? InterpolateVec3Attribute(vertexLighting, shadeVertices, b0, b1, b2, cfg)
-                                               : ComputePhongLighting(
-                                                     interpolants.worldPosition,
-                                                     interpolants.normal,
-                                                     viewPosition,
-                                                     lights,
-                                                     materialState,
-                                                     cfg);
-                const Pixel fillColor = ApplyDistanceFog(
-                    ShadeRetroColor(baseColor, lighting, cfg, texture),
-                    interpolants.worldPosition,
-                    viewPosition,
-                    cfg);
+                const glm::vec3 lighting =
+                    cfg.retro.useGouraudShading
+                        ? InterpolateVec3Attribute(vertexLighting, shadeVertices, b0, b1, b2, cfg)
+                        : (usePs1Shading ? ComputePs1Lighting(
+                                               interpolants.worldPosition,
+                                               interpolants.normal,
+                                               viewPosition,
+                                               lights,
+                                               materialState,
+                                               cfg)
+                                         : ComputePhongLighting(
+                                               interpolants.worldPosition,
+                                               interpolants.normal,
+                                               viewPosition,
+                                               lights,
+                                               materialState,
+                                               cfg));
+                const Pixel shadedColor = usePs1Shading ? ShadePs1Color(baseColor, lighting) : ShadeRetroColor(baseColor, lighting, cfg, texture);
+                const Pixel fillColor = ApplyDistanceFog(shadedColor, interpolants.worldPosition, viewPosition, cfg);
                 WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, nullptr, texture);
             }
             w0 += w0StepX;
