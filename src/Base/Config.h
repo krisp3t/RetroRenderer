@@ -56,6 +56,16 @@ struct Config {
         ADD_QUARTER
     };
 
+    enum class Ps1MaterialMode {
+        MATERIAL_DRIVEN,
+        TEXTURED_LIT,
+        TEXTURED_UNLIT,
+        VERTEX_LIT,
+        VERTEX_UNLIT,
+        FLAT_COLOR_LIT,
+        FLAT_COLOR_UNLIT
+    };
+
     static std::array<Pixel, 16> DefaultCustomPalette() {
         return {{
             Pixel{0x00, 0x00, 0x00, 0xFF},
@@ -172,6 +182,7 @@ struct Config {
         bool snapVertices = false;
         bool affineTextureMapping = false;
         bool usePs1ShadingModel = false;
+        Ps1MaterialMode ps1MaterialMode = Ps1MaterialMode::MATERIAL_DRIVEN;
         int textureCoordPrecisionBits = 0;
         bool quantizePs1TextureColor = false;
         bool enablePs1SemiTransparency = false;
@@ -250,6 +261,26 @@ struct Config {
         return "Unknown";
     }
 
+    static constexpr const char* Ps1MaterialModeLabel(Ps1MaterialMode mode) {
+        switch (mode) {
+        case Ps1MaterialMode::MATERIAL_DRIVEN:
+            return "Material driven";
+        case Ps1MaterialMode::TEXTURED_LIT:
+            return "Textured lit";
+        case Ps1MaterialMode::TEXTURED_UNLIT:
+            return "Textured unlit";
+        case Ps1MaterialMode::VERTEX_LIT:
+            return "Vertex lit";
+        case Ps1MaterialMode::VERTEX_UNLIT:
+            return "Vertex unlit";
+        case Ps1MaterialMode::FLAT_COLOR_LIT:
+            return "Flat color lit";
+        case Ps1MaterialMode::FLAT_COLOR_UNLIT:
+            return "Flat color unlit";
+        }
+        return "Unknown";
+    }
+
     static glm::ivec2 MakeAspectAwareResolution(const glm::ivec2& windowSize, int targetHeight) {
         const int safeWidth = std::max(windowSize.x, 1);
         const int safeHeight = std::max(windowSize.y, 1);
@@ -278,6 +309,7 @@ struct Config {
         config.retro.snapVertices = false;
         config.retro.affineTextureMapping = false;
         config.retro.usePs1ShadingModel = false;
+        config.retro.ps1MaterialMode = Ps1MaterialMode::MATERIAL_DRIVEN;
         config.retro.textureCoordPrecisionBits = 0;
         config.retro.quantizePs1TextureColor = false;
         config.retro.enablePs1SemiTransparency = false;
@@ -374,6 +406,7 @@ struct Config {
             config.retro.snapVertices = true;
             config.retro.affineTextureMapping = true;
             config.retro.usePs1ShadingModel = true;
+            config.retro.ps1MaterialMode = Ps1MaterialMode::TEXTURED_LIT;
             config.retro.textureCoordPrecisionBits = 8;
             config.retro.quantizePs1TextureColor = true;
             config.retro.enablePs1SemiTransparency = false;

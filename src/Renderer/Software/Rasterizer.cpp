@@ -231,6 +231,77 @@ bool UsePs1ShadingModel(const Config& cfg) {
     return cfg.retro.usePs1ShadingModel;
 }
 
+bool Ps1ModeUsesTexture(Config::Ps1MaterialMode mode, const SoftwareMaterialState& materialState) {
+    switch (mode) {
+    case Config::Ps1MaterialMode::MATERIAL_DRIVEN:
+        return !materialState.useVertexColor;
+    case Config::Ps1MaterialMode::TEXTURED_LIT:
+    case Config::Ps1MaterialMode::TEXTURED_UNLIT:
+        return true;
+    case Config::Ps1MaterialMode::VERTEX_LIT:
+    case Config::Ps1MaterialMode::VERTEX_UNLIT:
+    case Config::Ps1MaterialMode::FLAT_COLOR_LIT:
+    case Config::Ps1MaterialMode::FLAT_COLOR_UNLIT:
+        return false;
+    }
+    return false;
+}
+
+bool Ps1ModeUsesVertexColor(Config::Ps1MaterialMode mode, const SoftwareMaterialState& materialState) {
+    switch (mode) {
+    case Config::Ps1MaterialMode::MATERIAL_DRIVEN:
+        return materialState.useVertexColor;
+    case Config::Ps1MaterialMode::VERTEX_LIT:
+    case Config::Ps1MaterialMode::VERTEX_UNLIT:
+        return true;
+    case Config::Ps1MaterialMode::TEXTURED_LIT:
+    case Config::Ps1MaterialMode::TEXTURED_UNLIT:
+    case Config::Ps1MaterialMode::FLAT_COLOR_LIT:
+    case Config::Ps1MaterialMode::FLAT_COLOR_UNLIT:
+        return false;
+    }
+    return false;
+}
+
+bool Ps1ModeAppliesLighting(Config::Ps1MaterialMode mode) {
+    switch (mode) {
+    case Config::Ps1MaterialMode::TEXTURED_UNLIT:
+    case Config::Ps1MaterialMode::VERTEX_UNLIT:
+    case Config::Ps1MaterialMode::FLAT_COLOR_UNLIT:
+        return false;
+    case Config::Ps1MaterialMode::MATERIAL_DRIVEN:
+    case Config::Ps1MaterialMode::TEXTURED_LIT:
+    case Config::Ps1MaterialMode::VERTEX_LIT:
+    case Config::Ps1MaterialMode::FLAT_COLOR_LIT:
+        return true;
+    }
+    return true;
+}
+
+Color GetPs1FallbackBaseColor(Config::Ps1MaterialMode mode, const Config& cfg) {
+    switch (mode) {
+    case Config::Ps1MaterialMode::FLAT_COLOR_LIT:
+    case Config::Ps1MaterialMode::FLAT_COLOR_UNLIT:
+        return cfg.retro.untexturedBaseColor;
+    case Config::Ps1MaterialMode::MATERIAL_DRIVEN:
+    case Config::Ps1MaterialMode::TEXTURED_LIT:
+    case Config::Ps1MaterialMode::TEXTURED_UNLIT:
+    case Config::Ps1MaterialMode::VERTEX_LIT:
+    case Config::Ps1MaterialMode::VERTEX_UNLIT:
+        return GetStableUntexturedBaseColor(cfg);
+    }
+    return GetStableUntexturedBaseColor(cfg);
+}
+
+Color MultiplyBaseColor(Color baseColor, const Pixel& texel) {
+    return Color(
+        Color::Uint8Tag{},
+        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.r) * static_cast<unsigned int>(texel.r)) / 255U),
+        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.g) * static_cast<unsigned int>(texel.g)) / 255U),
+        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.b) * static_cast<unsigned int>(texel.b)) / 255U),
+        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.a) * static_cast<unsigned int>(texel.a)) / 255U));
+}
+
 glm::vec2 QuantizeTextureCoords(const glm::vec2& uv, const Config& cfg) {
     if (!UsePs1ShadingModel(cfg) || cfg.retro.textureCoordPrecisionBits <= 0) {
         return uv;
@@ -669,8 +740,12 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
     }
 
     // TODO: add cfg.lineColor
-    const Texture* shadingTexture = materialState.useVertexColor ? nullptr : texture;
     const bool usePs1Shading = UsePs1ShadingModel(cfg);
+    const bool useVertexColor =
+        usePs1Shading ? Ps1ModeUsesVertexColor(cfg.retro.ps1MaterialMode, materialState) : materialState.useVertexColor;
+    const bool useLighting = !usePs1Shading || Ps1ModeAppliesLighting(cfg.retro.ps1MaterialMode);
+    const Texture* shadingTexture =
+        (usePs1Shading ? Ps1ModeUsesTexture(cfg.retro.ps1MaterialMode, materialState) : !materialState.useVertexColor) ? texture : nullptr;
     switch (cfg.software.rasterizer.polygonMode) {
     case Config::RasterizationPolygonMode::POINT:
         DrawPointTriangle(framebuffer, viewportVertices, cfg);
@@ -691,22 +766,28 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
             break;
         default: {
             const glm::vec3 averageWorldPosition = ComputeAverageWorldPosition(vertices);
-            const glm::vec3 lighting = usePs1Shading
-                                           ? ComputePs1Lighting(
-                                                 averageWorldPosition,
-                                                 ComputeAverageNormal(vertices),
-                                                 viewPosition,
-                                                 lights,
-                                                 materialState,
-                                                 cfg)
-                                           : ComputePhongLighting(
-                                                 averageWorldPosition,
-                                                 ComputeAverageNormal(vertices),
-                                                 viewPosition,
-                                                 lights,
-                                                 materialState,
-                                                 cfg);
-            const Color baseColor = materialState.useVertexColor ? ComputeAverageVertexColor(vertices) : GetStableUntexturedBaseColor(cfg);
+            const glm::vec3 lighting =
+                useLighting
+                    ? (usePs1Shading
+                           ? ComputePs1Lighting(
+                                 averageWorldPosition,
+                                 ComputeAverageNormal(vertices),
+                                 viewPosition,
+                                 lights,
+                                 materialState,
+                                 cfg)
+                           : ComputePhongLighting(
+                                 averageWorldPosition,
+                                 ComputeAverageNormal(vertices),
+                                 viewPosition,
+                                 lights,
+                                 materialState,
+                                 cfg))
+                    : glm::vec3(1.0f);
+            const Color baseColor =
+                useVertexColor
+                    ? ComputeAverageVertexColor(vertices)
+                    : (usePs1Shading ? GetPs1FallbackBaseColor(cfg.retro.ps1MaterialMode, cfg) : GetStableUntexturedBaseColor(cfg));
             const Pixel shadedColor = usePs1Shading ? ShadePs1Color(baseColor, lighting) : ShadeRetroColor(baseColor, lighting, cfg, shadingTexture);
             const Pixel fillColor = ApplyDistanceFog(shadedColor, averageWorldPosition, viewPosition, cfg);
             DrawFlatTriangle(framebuffer, depthBuffer, viewportVertices, cfg, fillColor);
@@ -741,6 +822,9 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                          const Texture* texture) {
     std::array<RasterVertex, 3> shadeVertices = vertices;
     const bool usePs1Shading = UsePs1ShadingModel(cfg);
+    const bool useVertexColor =
+        usePs1Shading ? Ps1ModeUsesVertexColor(cfg.retro.ps1MaterialMode, materialState) : materialState.useVertexColor;
+    const bool useLighting = !usePs1Shading || Ps1ModeAppliesLighting(cfg.retro.ps1MaterialMode);
     glm::vec2 v0 = {viewportVertices[0].x, viewportVertices[0].y};
     glm::vec2 v1 = {viewportVertices[1].x, viewportVertices[1].y};
     glm::vec2 v2 = {viewportVertices[2].x, viewportVertices[2].y};
@@ -757,7 +841,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
     }
 
     std::array<glm::vec3, 3> vertexLighting{};
-    if (cfg.retro.useGouraudShading) {
+    if (cfg.retro.useGouraudShading && useLighting) {
         for (size_t i = 0; i < shadeVertices.size(); i++) {
             vertexLighting[i] = usePs1Shading
                                     ? ComputePs1VertexLighting(
@@ -824,32 +908,35 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                 const float z = viewportVertices[0].z * b0 + viewportVertices[1].z * b1 + viewportVertices[2].z * b2;
                 const FragmentInterpolants interpolants = InterpolateFragmentAttributes(shadeVertices, b0, b1, b2, cfg);
                 Color baseColor =
-                    materialState.useVertexColor ? MakeColorFromVec3(interpolants.color) : GetStableUntexturedBaseColor(cfg);
+                    useVertexColor
+                        ? MakeColorFromVec3(interpolants.color)
+                        : (usePs1Shading ? GetPs1FallbackBaseColor(cfg.retro.ps1MaterialMode, cfg) : GetStableUntexturedBaseColor(cfg));
                 if (texture && texture->HasCpuPixels()) {
                     const glm::vec2 sampledTexCoords = QuantizeTextureCoords(interpolants.texCoords, cfg);
-                    Pixel texel = cfg.retro.textureMaxDimension > 0
-                                      ? texture->SampleReducedNearestRepeat(sampledTexCoords, cfg.retro.textureMaxDimension)
-                                      : texture->SampleNearestRepeat(sampledTexCoords);
-                    if (usePs1Shading) {
-                        texel = QuantizePs1TexturePixel(texel, cfg);
-                    }
-                    const bool useTexturePalette = UseTextureAutoPalette(texture, cfg);
-                    if (!usePs1Shading && cfg.retro.enablePalette) {
-                        if (useTexturePalette) {
-                            texel = texture->FindNearestAutoPalettePixel(MakeColorFromPixel(texel));
-                        } else if (cfg.retro.palette != Config::PaletteType::NONE) {
-                            texel = RetroPalette::FindNearestPalettePixel(MakeColorFromPixel(texel), cfg.retro);
+                    const bool sampleTexture =
+                        usePs1Shading ? Ps1ModeUsesTexture(cfg.retro.ps1MaterialMode, materialState) : !materialState.useVertexColor;
+                    if (sampleTexture) {
+                        Pixel texel = cfg.retro.textureMaxDimension > 0
+                                          ? texture->SampleReducedNearestRepeat(sampledTexCoords, cfg.retro.textureMaxDimension)
+                                          : texture->SampleNearestRepeat(sampledTexCoords);
+                        if (usePs1Shading) {
+                            texel = QuantizePs1TexturePixel(texel, cfg);
                         }
+                        const bool useTexturePalette = UseTextureAutoPalette(texture, cfg);
+                        if (!usePs1Shading && cfg.retro.enablePalette) {
+                            if (useTexturePalette) {
+                                texel = texture->FindNearestAutoPalettePixel(MakeColorFromPixel(texel));
+                            } else if (cfg.retro.palette != Config::PaletteType::NONE) {
+                                texel = RetroPalette::FindNearestPalettePixel(MakeColorFromPixel(texel), cfg.retro);
+                            }
+                        }
+                        baseColor = MultiplyBaseColor(baseColor, texel);
                     }
-                    baseColor = Color(
-                        Color::Uint8Tag{},
-                        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.r) * static_cast<unsigned int>(texel.r)) / 255U),
-                        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.g) * static_cast<unsigned int>(texel.g)) / 255U),
-                        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.b) * static_cast<unsigned int>(texel.b)) / 255U),
-                        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.a) * static_cast<unsigned int>(texel.a)) / 255U));
                 }
                 const glm::vec3 lighting =
-                    cfg.retro.useGouraudShading
+                    !useLighting
+                        ? glm::vec3(1.0f)
+                        : cfg.retro.useGouraudShading
                         ? (usePs1Shading
                                ? QuantizePs1Lighting(InterpolateVec3Attribute(vertexLighting, shadeVertices, b0, b1, b2, cfg), cfg)
                                : InterpolateVec3Attribute(vertexLighting, shadeVertices, b0, b1, b2, cfg))

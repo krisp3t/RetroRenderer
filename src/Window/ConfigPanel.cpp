@@ -879,8 +879,22 @@ void ConfigPanel::DisplayPostFxSettings() {
     manualChange |= ImGui::Checkbox("Affine texture mapping", &retro.affineTextureMapping);
 
     ImGui::SeparatorText("PS1 style");
+    const char* ps1MaterialModeItems[] = {
+        "Material driven",
+        "Textured lit",
+        "Textured unlit",
+        "Vertex lit",
+        "Vertex unlit",
+        "Flat color lit",
+        "Flat color unlit",
+    };
     const char* ps1TransparencyModeItems[] = {"Half Add", "Add", "Subtract", "Add Quarter"};
     manualChange |= ImGui::Checkbox("Use PS1 shading model", &retro.usePs1ShadingModel);
+    manualChange |= ImGui::Combo(
+        "Material mode",
+        reinterpret_cast<int*>(&retro.ps1MaterialMode),
+        ps1MaterialModeItems,
+        IM_ARRAYSIZE(ps1MaterialModeItems));
     manualChange |= ImGui::SliderInt("Texture coord precision bits", &retro.textureCoordPrecisionBits, 0, 12);
     manualChange |= ImGui::Checkbox("Quantize texture colors", &retro.quantizePs1TextureColor);
     manualChange |= ImGui::Checkbox("Enable semitransparency", &retro.enablePs1SemiTransparency);
@@ -922,6 +936,9 @@ void ConfigPanel::DisplayPostFxSettings() {
         ImGui::TextWrapped("Texture-derived palette overrides the fixed palette when a software-sampled texture has an auto-derived palette.");
     }
     ImGui::TextWrapped("PS1 controls configure a dedicated PS1 shading path, UV precision, semitransparency, RGB555 quantization, snap precision, Gouraud shading, depth precision, and fog for the software retro path.");
+    if (retro.usePs1ShadingModel) {
+        ImGui::TextWrapped("PS1 material mode overrides how the software PS1 path chooses textured, vertex-colored, or flat-color shading, and whether lighting is applied at all.");
+    }
 
     if (manualChange) {
         MarkRendererPresetCustom();
