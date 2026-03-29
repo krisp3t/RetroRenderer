@@ -145,6 +145,18 @@ void SnapProjectedVertex(RasterVertex& vertex, size_t framebufferWidth, size_t f
     vertex.position.y = 1.0f - ((snappedViewport.y - 0.5f) / static_cast<float>(framebufferHeight)) * 2.0f;
 }
 
+bool ShouldDeferPs1Triangles(const Config& cfg) {
+    return cfg.software.rasterizer.polygonMode == Config::RasterizationPolygonMode::FILL &&
+           cfg.retro.usePs1ShadingModel &&
+           cfg.retro.enablePs1SemiTransparency;
+}
+
+float ComputeDeferredTriangleSortKey(const std::array<RasterVertex, 3>& vertices, const glm::vec3& cameraPosition) {
+    const glm::vec3 centroid = (vertices[0].worldPosition + vertices[1].worldPosition + vertices[2].worldPosition) / 3.0f;
+    const glm::vec3 delta = centroid - cameraPosition;
+    return glm::dot(delta, delta);
+}
+
 ClippedPolygon ClipPolygonClipSpace(const std::array<ClipVertex, 3>& inputTriangle) {
     static const ClipPlane kPlanes[] = {
         {{1.0f, 0.0f, 0.0f, 1.0f}},   // x >= -w
@@ -274,6 +286,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
             "Mesh is not triangulated");
 
         const auto& cfg = m_FrameConfigSnapshot;
+        const bool deferPs1Triangles = ShouldDeferPs1Triangles(cfg);
         std::vector<glm::vec4> clipPositions(mesh.m_Vertices.size());
         std::vector<glm::vec3> transformedNormals(mesh.m_Vertices.size());
         std::vector<glm::vec3> worldPositions(mesh.m_Vertices.size());
@@ -288,6 +301,31 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
         if (diffuseTexture == nullptr && !mesh.m_Textures.empty()) {
             diffuseTexture = &mesh.m_Textures[0];
         }
+        if (deferPs1Triangles) {
+            m_DeferredPs1Triangles.reserve(m_DeferredPs1Triangles.size() + mesh.m_numFaces);
+        }
+
+        const auto submitTriangle = [&](const std::array<RasterVertex, 3>& rasterVertices) {
+            if (deferPs1Triangles) {
+                DeferredTriangle deferredTriangle{};
+                deferredTriangle.vertices = rasterVertices;
+                deferredTriangle.texture = diffuseTexture;
+                deferredTriangle.sortKey = ComputeDeferredTriangleSortKey(rasterVertices, p_Camera->m_Position);
+                m_DeferredPs1Triangles.push_back(deferredTriangle);
+                return;
+            }
+
+            std::array<RasterVertex, 3> drawVertices = rasterVertices;
+            Rasterizer::DrawTriangle(
+                *m_FrameBuffer,
+                *m_DepthBuffer,
+                drawVertices,
+                cfg,
+                m_FrameLights,
+                m_FrameMaterialState,
+                p_Camera->m_Position,
+                diffuseTexture);
+        };
 
         for (unsigned int i = 0; i < mesh.m_numFaces; i++) {
             // Input Assembler
@@ -338,15 +376,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                             SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height, cfg.retro.vertexSnapStep);
                         }
                     }
-                    Rasterizer::DrawTriangle(
-                        *m_FrameBuffer,
-                        *m_DepthBuffer,
-                        rasterVertices,
-                        cfg,
-                        m_FrameLights,
-                        m_FrameMaterialState,
-                        p_Camera->m_Position,
-                        diffuseTexture);
+                    submitTriangle(rasterVertices);
                     continue;
                 }
 
@@ -367,15 +397,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                             SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height, cfg.retro.vertexSnapStep);
                         }
                     }
-                    Rasterizer::DrawTriangle(
-                        *m_FrameBuffer,
-                        *m_DepthBuffer,
-                        rasterVertices,
-                        cfg,
-                        m_FrameLights,
-                        m_FrameMaterialState,
-                        p_Camera->m_Position,
-                        diffuseTexture);
+                    submitTriangle(rasterVertices);
                 }
             } else {
                 std::array<RasterVertex, 3> rasterVertices{};
@@ -387,15 +409,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                         SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height, cfg.retro.vertexSnapStep);
                     }
                 }
-                Rasterizer::DrawTriangle(
-                    *m_FrameBuffer,
-                    *m_DepthBuffer,
-                    rasterVertices,
-                    cfg,
-                    m_FrameLights,
-                    m_FrameMaterialState,
-                    p_Camera->m_Position,
-                    diffuseTexture);
+                submitTriangle(rasterVertices);
             }
 
             // Stats
@@ -410,9 +424,32 @@ void SWRenderer::BeforeFrame(const Color& clearColor) {
     if (m_DepthBuffer) {
         m_DepthBuffer->Clear(1.0f);
     }
+    m_DeferredPs1Triangles.clear();
 }
 
 GLuint SWRenderer::EndFrame() {
+    if (!m_DeferredPs1Triangles.empty()) {
+        std::stable_sort(
+            m_DeferredPs1Triangles.begin(),
+            m_DeferredPs1Triangles.end(),
+            [](const DeferredTriangle& lhs, const DeferredTriangle& rhs) {
+                return lhs.sortKey > rhs.sortKey;
+            });
+
+        for (const DeferredTriangle& deferredTriangle : m_DeferredPs1Triangles) {
+            std::array<RasterVertex, 3> drawVertices = deferredTriangle.vertices;
+            Rasterizer::DrawTriangle(
+                *m_FrameBuffer,
+                *m_DepthBuffer,
+                drawVertices,
+                m_FrameConfigSnapshot,
+                m_FrameLights,
+                m_FrameMaterialState,
+                p_Camera->m_Position,
+                deferredTriangle.texture);
+        }
+        m_DeferredPs1Triangles.clear();
+    }
     return 0;
 }
 

@@ -34,6 +34,12 @@ class SWRenderer : public IRenderer {
     [[nodiscard]] const Buffer<Pixel>& GetFrameBuffer() const;
 
   private:
+    struct DeferredTriangle {
+        std::array<RasterVertex, 3> vertices{};
+        const Texture* texture = nullptr;
+        float sortKey = 0.0f;
+    };
+
     std::unique_ptr<Buffer<Pixel>> m_FrameBuffer = nullptr;
     std::unique_ptr<Buffer<float>> m_DepthBuffer = nullptr;
     Camera* p_Camera = nullptr;
@@ -41,6 +47,7 @@ class SWRenderer : public IRenderer {
     Config m_FrameConfigSnapshot{};
     SoftwareMaterialState m_FrameMaterialState{};
     const Texture* p_FrameFallbackTexture = nullptr;
+    std::vector<DeferredTriangle> m_DeferredPs1Triangles;
     std::unique_ptr<Rasterizer> m_Rasterizer = nullptr;
 };
 

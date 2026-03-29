@@ -401,6 +401,7 @@ void RenderSystem::SoftwareWorkerLoop() {
             continue;
         }
 
+        p_SWRenderer_->EndFrame();
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
         SoftwareCompletedFrame finishedFrame{};
         finishedFrame.width = buffer.width;
@@ -452,6 +453,7 @@ GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
             }
         }
     }
+    p_SWRenderer_->EndFrame();
     const auto& buffer = p_SWRenderer_->GetFrameBuffer();
     glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(buffer.width), static_cast<GLsizei>(buffer.height),
