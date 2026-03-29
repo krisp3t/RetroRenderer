@@ -177,6 +177,7 @@ struct Config {
         bool enablePs1SemiTransparency = false;
         Ps1SemiTransparencyMode ps1SemiTransparencyMode = Ps1SemiTransparencyMode::HALF_ADD;
         float ps1SemiTransparencyAlpha = 0.5f;
+        bool ps1SemiTransparencyWritesDepth = false;
         int ps1LightingPrecisionBits = 0;
         bool quantizeToRgb555 = false;
         bool enablePs1OutputDither = false;
@@ -282,6 +283,7 @@ struct Config {
         config.retro.enablePs1SemiTransparency = false;
         config.retro.ps1SemiTransparencyMode = Ps1SemiTransparencyMode::HALF_ADD;
         config.retro.ps1SemiTransparencyAlpha = 0.5f;
+        config.retro.ps1SemiTransparencyWritesDepth = false;
         config.retro.ps1LightingPrecisionBits = 0;
         config.retro.quantizeToRgb555 = false;
         config.retro.enablePs1OutputDither = false;
@@ -377,6 +379,7 @@ struct Config {
             config.retro.enablePs1SemiTransparency = false;
             config.retro.ps1SemiTransparencyMode = Ps1SemiTransparencyMode::HALF_ADD;
             config.retro.ps1SemiTransparencyAlpha = 0.5f;
+            config.retro.ps1SemiTransparencyWritesDepth = false;
             config.retro.ps1LightingPrecisionBits = 5;
             config.retro.quantizeToRgb555 = true;
             config.retro.enablePs1OutputDither = true;

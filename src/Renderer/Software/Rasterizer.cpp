@@ -141,6 +141,16 @@ Pixel BlendPs1SemiTransparent(Pixel destinationColor, Pixel sourceColor, const C
     };
 }
 
+bool ShouldWriteDepthForPixel(const Pixel& sourceColor, const Config& cfg) {
+    if (!cfg.cull.depthTest) {
+        return false;
+    }
+    if (UsePs1ShadingModel(cfg) && cfg.retro.enablePs1SemiTransparency && sourceColor.a < 255 && !cfg.retro.ps1SemiTransparencyWritesDepth) {
+        return false;
+    }
+    return true;
+}
+
 uint8_t QuantizeRgb555Channel(uint8_t channel, int ditherBias = 0) {
     const int adjusted = std::clamp(static_cast<int>(channel) + ditherBias, 0, 255);
     const int value5 = (adjusted * 31 + 127) / 255;
@@ -511,10 +521,10 @@ void WriteTrianglePixel(Buffer<Pixel>& framebuffer,
         if (retroColor.a == 0) {
             return;
         }
-        if (cfg.cull.depthTest) {
+        const Pixel sourceColor = ApplyPs1OutputStyle(ApplyPs1SourceTransparency(retroColor, cfg), glm::ivec2{x, y}, cfg);
+        if (ShouldWriteDepthForPixel(sourceColor, cfg)) {
             depthBuffer.data[pixelIndex] = quantizedDepth;
         }
-        const Pixel sourceColor = ApplyPs1OutputStyle(ApplyPs1SourceTransparency(retroColor, cfg), glm::ivec2{x, y}, cfg);
         if (UsePs1ShadingModel(cfg) && cfg.retro.enablePs1SemiTransparency && sourceColor.a < 255) {
             const Pixel blendedColor = BlendPs1SemiTransparent(framebuffer.data[pixelIndex], sourceColor, cfg);
             framebuffer.data[pixelIndex] = ApplyPs1OutputStyle(blendedColor, glm::ivec2{x, y}, cfg);
