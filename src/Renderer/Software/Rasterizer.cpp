@@ -387,6 +387,15 @@ glm::vec3 ComputePs1Lighting(const glm::vec3& worldPosition,
     return QuantizePs1Lighting(ComputeLighting(worldPosition, normal, viewPosition, lights, materialState, cfg, false), cfg);
 }
 
+glm::vec3 ComputePs1VertexLighting(const glm::vec3& worldPosition,
+                                   const glm::vec3& normal,
+                                   const glm::vec3& viewPosition,
+                                   const std::vector<LightSnapshot>& lights,
+                                   const SoftwareMaterialState& materialState,
+                                   const Config& cfg) {
+    return ComputeLighting(worldPosition, normal, viewPosition, lights, materialState, cfg, false);
+}
+
 Pixel ShadeRetroColor(const Color& baseColor,
                       const glm::vec3& lightingColor,
                       const Config& cfg,
@@ -751,7 +760,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
     if (cfg.retro.useGouraudShading) {
         for (size_t i = 0; i < shadeVertices.size(); i++) {
             vertexLighting[i] = usePs1Shading
-                                    ? ComputePs1Lighting(
+                                    ? ComputePs1VertexLighting(
                                           shadeVertices[i].worldPosition,
                                           shadeVertices[i].normal,
                                           viewPosition,
@@ -841,7 +850,9 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                 }
                 const glm::vec3 lighting =
                     cfg.retro.useGouraudShading
-                        ? InterpolateVec3Attribute(vertexLighting, shadeVertices, b0, b1, b2, cfg)
+                        ? (usePs1Shading
+                               ? QuantizePs1Lighting(InterpolateVec3Attribute(vertexLighting, shadeVertices, b0, b1, b2, cfg), cfg)
+                               : InterpolateVec3Attribute(vertexLighting, shadeVertices, b0, b1, b2, cfg))
                         : (usePs1Shading ? ComputePs1Lighting(
                                                interpolants.worldPosition,
                                                interpolants.normal,
