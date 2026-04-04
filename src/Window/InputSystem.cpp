@@ -8,6 +8,17 @@
 #include <KrisLogger/Logger.h>
 
 namespace RetroRenderer {
+namespace {
+bool ShouldBlockKeyboardGameInput() {
+    if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
+        return false;
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    return io.WantTextInput || ImGui::IsAnyItemActive();
+}
+} // namespace
+
 bool InputSystem::Init() {
     return true;
 }
@@ -28,7 +39,7 @@ InputActionMask InputSystem::HandleInput() {
                 m_inputState_ |= static_cast<InputActionMask>(InputAction::QUIT);
                 return m_inputState_;
             }
-            if (io.WantCaptureKeyboard || io.WantTextInput) {
+            if (ShouldBlockKeyboardGameInput()) {
                 break;
             }
             HandleKeyDown(event.key.keysym.sym, *p_config);
@@ -41,41 +52,12 @@ InputActionMask InputSystem::HandleInput() {
             break;
         }
     }
+    PollContinuousInput(ShouldBlockKeyboardGameInput());
     return m_inputState_;
 }
 
 void InputSystem::HandleKeyDown(SDL_Keycode key, Config& config) {
     switch (key) {
-    case SDLK_w:
-        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_FORWARD);
-        break;
-    case SDLK_s:
-        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_BACKWARD);
-        break;
-    case SDLK_a:
-        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_LEFT);
-        break;
-    case SDLK_d:
-        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_RIGHT);
-        break;
-    case SDLK_SPACE:
-        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_UP);
-        break;
-    case SDLK_c:
-        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_DOWN);
-        break;
-    case SDLK_LEFT:
-        m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_LEFT);
-        break;
-    case SDLK_RIGHT:
-        m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_RIGHT);
-        break;
-    case SDLK_UP:
-        m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_UP);
-        break;
-    case SDLK_DOWN:
-        m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_DOWN);
-        break;
     case SDLK_h:
         config.window.showConfigPanel = !config.window.showConfigPanel;
         // m_inputState_ |= static_cast<InputActionMask>(InputAction::TOGGLE_CONFIG_PANEL);
@@ -83,6 +65,48 @@ void InputSystem::HandleKeyDown(SDL_Keycode key, Config& config) {
     case SDLK_1:
         m_inputState_ |= static_cast<InputActionMask>(InputAction::TOGGLE_WIREFRAME);
         break;
+    }
+}
+
+void InputSystem::PollContinuousInput(bool keyboardCaptured) {
+    if (keyboardCaptured) {
+        return;
+    }
+
+    const Uint8* keyState = SDL_GetKeyboardState(nullptr);
+    if (!keyState) {
+        return;
+    }
+
+    if (keyState[SDL_SCANCODE_W]) {
+        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_FORWARD);
+    }
+    if (keyState[SDL_SCANCODE_S]) {
+        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_BACKWARD);
+    }
+    if (keyState[SDL_SCANCODE_A]) {
+        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_LEFT);
+    }
+    if (keyState[SDL_SCANCODE_D]) {
+        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_RIGHT);
+    }
+    if (keyState[SDL_SCANCODE_SPACE]) {
+        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_UP);
+    }
+    if (keyState[SDL_SCANCODE_C]) {
+        m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_DOWN);
+    }
+    if (keyState[SDL_SCANCODE_LEFT]) {
+        m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_LEFT);
+    }
+    if (keyState[SDL_SCANCODE_RIGHT]) {
+        m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_RIGHT);
+    }
+    if (keyState[SDL_SCANCODE_UP]) {
+        m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_UP);
+    }
+    if (keyState[SDL_SCANCODE_DOWN]) {
+        m_inputState_ |= static_cast<InputActionMask>(InputAction::ROTATE_DOWN);
     }
 }
 

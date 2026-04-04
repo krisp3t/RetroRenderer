@@ -17,6 +17,7 @@ class InputSystem {
 
   private:
     void HandleKeyDown(SDL_Keycode key, Config& config);
+    void PollContinuousInput(bool keyboardCaptured);
     void HandleMouseMotion(const SDL_MouseMotionEvent& event);
 
     InputActionMask m_inputState_ = 0;
