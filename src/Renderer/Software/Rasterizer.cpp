@@ -12,6 +12,8 @@ namespace RetroRenderer {
 namespace {
 using DitherPattern = std::array<Pixel, 16>;
 
+bool UsePs1ShadingModel(const Config& cfg);
+
 struct FragmentInterpolants {
     glm::vec3 worldPosition = glm::vec3(0.0f);
     glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
@@ -204,7 +206,14 @@ float QuantizeDepth(float z, const Config& cfg) {
     }
 
     const float clampedZ = std::clamp(z, 0.0f, 1.0f);
-    return std::round(clampedZ * static_cast<float>(levels)) / static_cast<float>(levels);
+    const float quantized = std::round(clampedZ * static_cast<float>(levels)) / static_cast<float>(levels);
+    if (!UsePs1ShadingModel(cfg)) {
+        return quantized;
+    }
+
+    // Preserve correct front-to-back ordering inside the same quantized depth bucket.
+    const float bucketEpsilon = 1.0f / (static_cast<float>(levels) * 4096.0f);
+    return std::min(1.0f, quantized + clampedZ * bucketEpsilon);
 }
 
 glm::vec3 ComputeAverageWorldPosition(const std::array<RasterVertex, 3>& vertices) {
@@ -729,20 +738,19 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
 
     // Convert vertices to viewport space.
     std::array<glm::vec3, 3> viewportVertices{};
-    std::array<glm::vec3, 3> cullViewportVertices{};
+    std::array<glm::vec3, 3> cullVertices{};
     for (int i = 0; i < 3; i++) {
         const glm::vec2 viewportPos = NDCToViewport(vertices[i].position, framebuffer.width, framebuffer.height);
-        const glm::vec2 cullViewportPos = NDCToViewport(vertices[i].cullPosition, framebuffer.width, framebuffer.height);
         // Map NDC z [-1, 1] into depth [0, 1].
         const float depth = vertices[i].position.z * 0.5f + 0.5f;
-        const float cullDepth = vertices[i].cullPosition.z * 0.5f + 0.5f;
         viewportVertices[i] = glm::vec3(viewportPos.x, viewportPos.y, depth);
-        cullViewportVertices[i] = glm::vec3(cullViewportPos.x, cullViewportPos.y, cullDepth);
+        cullVertices[i] = vertices[i].cullPosition;
     }
 
-    // Backface cull in screen space before any retro vertex snap can perturb winding.
+    // Backface cull in unsnapped NDC space. Viewport conversion flips Y in our framebuffer coordinates,
+    // so doing the winding test after NDCToViewport would invert the front-face convention.
     if (cfg.cull.backfaceCulling) {
-        if (IsTriangleDegenerate(cullViewportVertices) || IsBackface(cullViewportVertices)) {
+        if (IsTriangleDegenerate(cullVertices) || IsBackface(cullVertices)) {
             return;
         }
     }
@@ -1021,7 +1029,8 @@ bool Rasterizer::IsTriangleDegenerate(std::array<glm::vec3, 3>& vertices) {
     // Cross product is zero exactly when:
     // 1. Two vectors are parallel/anti-parallel (linearly dependent)
     // 2. One of the vectors is zero
-    return glm::cross(glm::vec3(vertices[1] - vertices[0]), glm::vec3(vertices[2] - vertices[0])).z == 0.0f;
+    const float signedAreaTwice = glm::cross(glm::vec3(vertices[1] - vertices[0]), glm::vec3(vertices[2] - vertices[0])).z;
+    return std::abs(signedAreaTwice) <= 1e-8f;
 }
 
 bool Rasterizer::IsBackface(std::array<glm::vec3, 3>& vertices) {
@@ -1029,7 +1038,7 @@ bool Rasterizer::IsBackface(std::array<glm::vec3, 3>& vertices) {
     const glm::vec2& v1 = vertices[1];
     const glm::vec2& v2 = vertices[2];
     const float area = (v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x);
-    return area <= 0.0f;
+    return area <= 1e-8f;
 }
 
 void Rasterizer::DrawFlatTriangle(Buffer<Pixel>& framebuffer,

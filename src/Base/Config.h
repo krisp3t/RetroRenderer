@@ -422,8 +422,8 @@ struct Config {
             config.retro.ps1LightingPrecisionBits = 4;
             config.retro.quantizeToRgb555 = true;
             config.retro.enablePs1OutputDither = true;
-            config.retro.depthPrecisionBits = 14;
-            config.retro.vertexSnapStep = 0.75f;
+            config.retro.depthPrecisionBits = 16;
+            config.retro.vertexSnapStep = 0.5f;
             config.retro.useGouraudShading = true;
             config.retro.enableFog = true;
             config.retro.fogNear = 24.0f;
