@@ -183,6 +183,7 @@ struct Config {
         bool affineTextureMapping = false;
         bool usePs1ShadingModel = false;
         Ps1MaterialMode ps1MaterialMode = Ps1MaterialMode::MATERIAL_DRIVEN;
+        bool usePs1TextureClut = false;
         int textureCoordPrecisionBits = 0;
         bool quantizePs1TextureColor = false;
         bool enablePs1SemiTransparency = false;
@@ -310,6 +311,7 @@ struct Config {
         config.retro.affineTextureMapping = false;
         config.retro.usePs1ShadingModel = false;
         config.retro.ps1MaterialMode = Ps1MaterialMode::MATERIAL_DRIVEN;
+        config.retro.usePs1TextureClut = false;
         config.retro.textureCoordPrecisionBits = 0;
         config.retro.quantizePs1TextureColor = false;
         config.retro.enablePs1SemiTransparency = false;
@@ -407,6 +409,7 @@ struct Config {
             config.retro.affineTextureMapping = true;
             config.retro.usePs1ShadingModel = true;
             config.retro.ps1MaterialMode = Ps1MaterialMode::TEXTURED_LIT;
+            config.retro.usePs1TextureClut = true;
             config.retro.textureCoordPrecisionBits = 8;
             config.retro.quantizePs1TextureColor = true;
             config.retro.enablePs1SemiTransparency = false;

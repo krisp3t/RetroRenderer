@@ -184,6 +184,14 @@ Pixel QuantizePs1TexturePixel(Pixel inputColor, const Config& cfg) {
     };
 }
 
+Pixel ApplyPs1TextureStyle(Pixel inputColor, const Texture* texture, const Config& cfg) {
+    Pixel styledColor = inputColor;
+    if (UsePs1ShadingModel(cfg) && cfg.retro.usePs1TextureClut && texture != nullptr && texture->HasAutoPalette()) {
+        styledColor = texture->FindNearestAutoPalettePixel(MakeColorFromPixel(styledColor));
+    }
+    return QuantizePs1TexturePixel(styledColor, cfg);
+}
+
 float QuantizeDepth(float z, const Config& cfg) {
     const int bits = cfg.retro.depthPrecisionBits;
     if (bits <= 0) {
@@ -920,7 +928,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                           ? texture->SampleReducedNearestRepeat(sampledTexCoords, cfg.retro.textureMaxDimension)
                                           : texture->SampleNearestRepeat(sampledTexCoords);
                         if (usePs1Shading) {
-                            texel = QuantizePs1TexturePixel(texel, cfg);
+                            texel = ApplyPs1TextureStyle(texel, texture, cfg);
                         }
                         const bool useTexturePalette = UseTextureAutoPalette(texture, cfg);
                         if (!usePs1Shading && cfg.retro.enablePalette) {

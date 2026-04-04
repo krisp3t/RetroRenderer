@@ -81,7 +81,7 @@ const char* RenderPresetDescription(Config::RenderPreset preset) {
     case Config::RenderPreset::PICOCAD:
         return "Low-resolution software preset aimed at picoCAD-style low-poly rendering, flat face lighting, reduced textures, texture-derived palettes, affine mapping, and vertex snap.";
     case Config::RenderPreset::PS1:
-        return "Low-resolution software preset aimed at PS1-style affine textures, barycentric shading, projected vertex wobble, RGB555 output, and optional fog.";
+        return "Low-resolution software preset aimed at PS1-style affine textures, 4-bit CLUT-like texture reduction, barycentric shading, projected vertex wobble, RGB555 output, and optional fog.";
     }
     return "";
 }
@@ -110,6 +110,21 @@ void DrawPalettePreviewGrid(const std::array<Color, RetroPalette::kPico8PaletteS
         ImGui::ColorButton("##palettePreview", paletteColors[i].ToImVec4(), ImGuiColorEditFlags_NoTooltip, ImVec2(28.0f, 28.0f));
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%02zu  #%02X%02X%02X", i, paletteColors[i].r, paletteColors[i].g, paletteColors[i].b);
+        }
+        ImGui::PopID();
+        if ((i & 3) != 3) {
+            ImGui::SameLine();
+        }
+    }
+}
+
+void DrawPixelPalettePreviewGrid(const std::array<Pixel, Texture::kAutoPaletteSize>& palettePixels) {
+    for (size_t i = 0; i < palettePixels.size(); i++) {
+        ImGui::PushID(static_cast<int>(i));
+        const ImVec4 color = PixelToImVec4(palettePixels[i]);
+        ImGui::ColorButton("##pixelPalettePreview", color, ImGuiColorEditFlags_NoTooltip, ImVec2(28.0f, 28.0f));
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%02zu  #%02X%02X%02X", i, palettePixels[i].r, palettePixels[i].g, palettePixels[i].b);
         }
         ImGui::PopID();
         if ((i & 3) != 3) {
@@ -895,6 +910,16 @@ void ConfigPanel::DisplayPostFxSettings() {
         reinterpret_cast<int*>(&retro.ps1MaterialMode),
         ps1MaterialModeItems,
         IM_ARRAYSIZE(ps1MaterialModeItems));
+    manualChange |= ImGui::Checkbox("Use 4-bit CLUT texture mode", &retro.usePs1TextureClut);
+    if (retro.usePs1TextureClut) {
+        const auto& currentMaterial = Engine::Get().GetMaterialManager().GetCurrentMaterial();
+        if (currentMaterial.texture.has_value() && currentMaterial.texture->HasAutoPalette()) {
+            ImGui::Text("Active texture CLUT preview");
+            DrawPixelPalettePreviewGrid(currentMaterial.texture->GetAutoPalettePixels());
+        } else {
+            ImGui::TextDisabled("Load a texture to preview the derived 16-color CLUT.");
+        }
+    }
     manualChange |= ImGui::SliderInt("Texture coord precision bits", &retro.textureCoordPrecisionBits, 0, 12);
     manualChange |= ImGui::Checkbox("Quantize texture colors", &retro.quantizePs1TextureColor);
     manualChange |= ImGui::Checkbox("Enable semitransparency", &retro.enablePs1SemiTransparency);
@@ -935,7 +960,7 @@ void ConfigPanel::DisplayPostFxSettings() {
     if (retro.useTextureDerivedPalette) {
         ImGui::TextWrapped("Texture-derived palette overrides the fixed palette when a software-sampled texture has an auto-derived palette.");
     }
-    ImGui::TextWrapped("PS1 controls configure a dedicated PS1 shading path, UV precision, semitransparency, RGB555 quantization, snap precision, Gouraud shading, depth precision, and fog for the software retro path.");
+    ImGui::TextWrapped("PS1 controls configure a dedicated PS1 shading path, CLUT-like texture reduction, UV precision, semitransparency, RGB555 quantization, snap precision, Gouraud shading, depth precision, and fog for the software retro path.");
     if (retro.usePs1ShadingModel) {
         ImGui::TextWrapped("PS1 material mode overrides how the software PS1 path chooses textured, vertex-colored, or flat-color shading, and whether lighting is applied at all.");
     }

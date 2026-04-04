@@ -53,6 +53,9 @@ class Texture {
     Pixel FindNearestAutoPalettePixel(const Color& color) const;
     Pixel SampleAutoRampPixel(uint8_t basePaletteIndex, float value, int bandCount = 4, uint8_t alpha = 255) const;
     const std::array<Pixel, 16>& GetAutoDitherPattern4x4(uint8_t paletteIndex) const;
+    const std::array<Pixel, kAutoPaletteSize>& GetAutoPalettePixels() const {
+        return m_AutoPalette;
+    }
 
   private:
     static constexpr size_t kRgb5LutSize = 32 * 32 * 32;
