@@ -2,6 +2,7 @@
 #include <SDL_image.h>
 #include <KrisLogger/Logger.h>
 #include <glm/gtx/string_cast.hpp>
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <string>
@@ -341,6 +342,95 @@ Pixel SampleSkyboxCubemap(const std::array<std::vector<Pixel>, 6>& faces, int fa
     return SampleSkyboxFace(faces[faceIndex], faceSize, u, v);
 }
 
+size_t ComputeSkyboxSampleStep(size_t width, size_t height) {
+    return std::max<size_t>(1, (std::max(width, height) + 319) / 320);
+}
+
+bool NearlyEqual(float a, float b, float epsilon = 1e-4f) {
+    return std::abs(a - b) <= epsilon;
+}
+
+bool NearlyEqual(const glm::vec3& a, const glm::vec3& b, float epsilon = 1e-4f) {
+    return glm::all(glm::lessThanEqual(glm::abs(a - b), glm::vec3(epsilon)));
+}
+
+bool SkyboxCacheMatches(const Camera& camera,
+                        size_t width,
+                        size_t height,
+                        CameraType cachedType,
+                        const glm::vec3& cachedDirection,
+                        float cachedFov,
+                        float cachedOrthoSize,
+                        size_t cachedWidth,
+                        size_t cachedHeight) {
+    return cachedWidth == width &&
+           cachedHeight == height &&
+           cachedType == camera.m_Type &&
+           NearlyEqual(cachedDirection, glm::normalize(camera.m_Direction)) &&
+           NearlyEqual(cachedFov, camera.m_Fov) &&
+           NearlyEqual(cachedOrthoSize, camera.m_OrthoSize);
+}
+
+void BuildSkyboxCache(std::vector<Pixel>& outPixels,
+                      size_t width,
+                      size_t height,
+                      const Camera& camera,
+                      const std::array<std::vector<Pixel>, 6>& faces,
+                      int faceSize) {
+    if (width == 0 || height == 0) {
+        outPixels.clear();
+        return;
+    }
+
+    outPixels.resize(width * height);
+    Pixel* pixels = outPixels.data();
+    const glm::vec3 forward = glm::normalize(camera.m_Direction);
+    const glm::vec3 right = glm::normalize(glm::cross(forward, camera.m_Up));
+    const glm::vec3 up = glm::normalize(glm::cross(right, forward));
+    const float widthF = static_cast<float>(width);
+    const float heightF = static_cast<float>(height);
+    const float aspect = heightF > 0.0f ? widthF / heightF : 1.0f;
+    const size_t sampleStep = ComputeSkyboxSampleStep(width, height);
+
+    const auto fillSkyboxBlock = [&](size_t startX, size_t startY, const Pixel& color) {
+        const size_t endX = std::min(startX + sampleStep, width);
+        const size_t endY = std::min(startY + sampleStep, height);
+        for (size_t fillY = startY; fillY < endY; fillY++) {
+            Pixel* row = pixels + fillY * width;
+            std::fill_n(row + startX, endX - startX, color);
+        }
+    };
+
+    if (camera.m_Type == CameraType::PERSPECTIVE) {
+        const float tanHalfFov = std::tan(glm::radians(camera.m_Fov) * 0.5f);
+        for (size_t y = 0; y < height; y += sampleStep) {
+            const size_t sampleY = std::min(y + sampleStep / 2, height - 1);
+            const float ndcY = 1.0f - ((static_cast<float>(sampleY) + 0.5f) / heightF) * 2.0f;
+            for (size_t x = 0; x < width; x += sampleStep) {
+                const size_t sampleX = std::min(x + sampleStep / 2, width - 1);
+                const float ndcX = ((static_cast<float>(sampleX) + 0.5f) / widthF) * 2.0f - 1.0f;
+                const glm::vec3 rayDir =
+                    glm::normalize(forward + right * (ndcX * aspect * tanHalfFov) + up * (ndcY * tanHalfFov));
+                fillSkyboxBlock(x, y, SampleSkyboxCubemap(faces, faceSize, rayDir));
+            }
+        }
+        return;
+    }
+
+    const float orthoScale = std::max(camera.m_OrthoSize, 0.001f);
+    for (size_t y = 0; y < height; y += sampleStep) {
+        const size_t sampleY = std::min(y + sampleStep / 2, height - 1);
+        const float ndcY = 1.0f - ((static_cast<float>(sampleY) + 0.5f) / heightF) * 2.0f;
+        for (size_t x = 0; x < width; x += sampleStep) {
+            const size_t sampleX = std::min(x + sampleStep / 2, width - 1);
+            const float ndcX = ((static_cast<float>(sampleX) + 0.5f) / widthF) * 2.0f - 1.0f;
+            const glm::vec3 rayDir =
+                glm::normalize(forward + right * (ndcX * aspect * orthoScale) + up * (ndcY * orthoScale));
+            fillSkyboxBlock(x, y, SampleSkyboxCubemap(faces, faceSize, rayDir));
+        }
+    }
+}
+
 } // namespace
 bool SWRenderer::Init(int w, int h) {
     auto fb = std::unique_ptr<Buffer<Pixel>>(new(std::nothrow) Buffer<Pixel>(w, h));
@@ -355,6 +445,7 @@ bool SWRenderer::Init(int w, int h) {
     if (!m_HasSkybox) {
         LOGW("Failed to load software skybox from %s", DefaultSkyboxCrossPath().c_str());
     }
+    m_SkyboxCacheValid = false;
     return true;
 }
 
@@ -366,6 +457,10 @@ bool SWRenderer::Resize(int w, int h) {
     }
     m_FrameBuffer = std::move(newBuffer);
     m_DepthBuffer = std::make_unique<Buffer<float>>(w, h);
+    m_SkyboxCachePixels.clear();
+    m_SkyboxCacheWidth = 0;
+    m_SkyboxCacheHeight = 0;
+    m_SkyboxCacheValid = false;
     return true;
 }
 
@@ -593,51 +688,37 @@ void SWRenderer::DrawSkybox() {
         return;
     }
 
-    const glm::vec3 forward = glm::normalize(p_Camera->m_Direction);
-    const glm::vec3 right = glm::normalize(glm::cross(forward, p_Camera->m_Up));
-    const glm::vec3 up = glm::normalize(glm::cross(right, forward));
-    const float width = static_cast<float>(m_FrameBuffer->width);
-    const float height = static_cast<float>(m_FrameBuffer->height);
-    const float aspect = height > 0.0f ? width / height : 1.0f;
-    const size_t sampleStep = std::max<size_t>(1, (std::max(m_FrameBuffer->width, m_FrameBuffer->height) + 319) / 320);
+    if (!m_SkyboxCacheValid ||
+        !SkyboxCacheMatches(
+            *p_Camera,
+            m_FrameBuffer->width,
+            m_FrameBuffer->height,
+            m_SkyboxCacheCameraType,
+            m_SkyboxCacheDirection,
+            m_SkyboxCacheFov,
+            m_SkyboxCacheOrthoSize,
+            m_SkyboxCacheWidth,
+            m_SkyboxCacheHeight)) {
+        BuildSkyboxCache(
+            m_SkyboxCachePixels,
+            m_FrameBuffer->width,
+            m_FrameBuffer->height,
+            *p_Camera,
+            m_SkyboxFaces,
+            m_SkyboxFaceSize);
+        m_SkyboxCacheCameraType = p_Camera->m_Type;
+        m_SkyboxCacheDirection = glm::normalize(p_Camera->m_Direction);
+        m_SkyboxCacheFov = p_Camera->m_Fov;
+        m_SkyboxCacheOrthoSize = p_Camera->m_OrthoSize;
+        m_SkyboxCacheWidth = m_FrameBuffer->width;
+        m_SkyboxCacheHeight = m_FrameBuffer->height;
+        m_SkyboxCacheValid = true;
+    }
 
-    const auto fillSkyboxBlock = [&](size_t startX, size_t startY, const Pixel& color) {
-        const size_t endX = std::min(startX + sampleStep, m_FrameBuffer->width);
-        const size_t endY = std::min(startY + sampleStep, m_FrameBuffer->height);
-        for (size_t fillY = startY; fillY < endY; fillY++) {
-            Pixel* row = m_FrameBuffer->data + fillY * m_FrameBuffer->width;
-            for (size_t fillX = startX; fillX < endX; fillX++) {
-                row[fillX] = color;
-            }
-        }
-    };
-
-    if (p_Camera->m_Type == CameraType::PERSPECTIVE) {
-        const float tanHalfFov = std::tan(glm::radians(p_Camera->m_Fov) * 0.5f);
-        for (size_t y = 0; y < m_FrameBuffer->height; y += sampleStep) {
-            const size_t sampleY = std::min(y + sampleStep / 2, m_FrameBuffer->height - 1);
-            const float ndcY = 1.0f - ((static_cast<float>(sampleY) + 0.5f) / height) * 2.0f;
-            for (size_t x = 0; x < m_FrameBuffer->width; x += sampleStep) {
-                const size_t sampleX = std::min(x + sampleStep / 2, m_FrameBuffer->width - 1);
-                const float ndcX = ((static_cast<float>(sampleX) + 0.5f) / width) * 2.0f - 1.0f;
-                const glm::vec3 rayDir = glm::normalize(forward + right * (ndcX * aspect * tanHalfFov) + up * (ndcY * tanHalfFov));
-                fillSkyboxBlock(x, y, SampleSkyboxCubemap(m_SkyboxFaces, m_SkyboxFaceSize, rayDir));
-            }
-        }
+    if (m_SkyboxCachePixels.size() != m_FrameBuffer->GetCount()) {
         return;
     }
-
-    const float orthoScale = std::max(p_Camera->m_OrthoSize, 0.001f);
-    for (size_t y = 0; y < m_FrameBuffer->height; y += sampleStep) {
-        const size_t sampleY = std::min(y + sampleStep / 2, m_FrameBuffer->height - 1);
-        const float ndcY = 1.0f - ((static_cast<float>(sampleY) + 0.5f) / height) * 2.0f;
-        for (size_t x = 0; x < m_FrameBuffer->width; x += sampleStep) {
-            const size_t sampleX = std::min(x + sampleStep / 2, m_FrameBuffer->width - 1);
-            const float ndcX = ((static_cast<float>(sampleX) + 0.5f) / width) * 2.0f - 1.0f;
-            const glm::vec3 rayDir = glm::normalize(forward + right * (ndcX * aspect * orthoScale) + up * (ndcY * orthoScale));
-            fillSkyboxBlock(x, y, SampleSkyboxCubemap(m_SkyboxFaces, m_SkyboxFaceSize, rayDir));
-        }
-    }
+    std::copy_n(m_SkyboxCachePixels.data(), m_SkyboxCachePixels.size(), m_FrameBuffer->data);
 }
 
 const Buffer<Pixel>& SWRenderer::GetFrameBuffer() const {

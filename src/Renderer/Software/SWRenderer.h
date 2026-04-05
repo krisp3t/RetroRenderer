@@ -8,7 +8,9 @@
 #include "../IRenderer.h"
 #include "SoftwareLighting.h"
 #include "Rasterizer.h"
+#include <array>
 #include <memory>
+#include <vector>
 
 namespace RetroRenderer {
 class SWRenderer : public IRenderer {
@@ -52,6 +54,14 @@ class SWRenderer : public IRenderer {
     bool m_HasSkybox = false;
     int m_SkyboxFaceSize = 0;
     std::array<std::vector<Pixel>, 6> m_SkyboxFaces{};
+    std::vector<Pixel> m_SkyboxCachePixels;
+    CameraType m_SkyboxCacheCameraType = CameraType::PERSPECTIVE;
+    glm::vec3 m_SkyboxCacheDirection = glm::vec3(0.0f, 0.0f, -1.0f);
+    float m_SkyboxCacheFov = 90.0f;
+    float m_SkyboxCacheOrthoSize = 10.0f;
+    size_t m_SkyboxCacheWidth = 0;
+    size_t m_SkyboxCacheHeight = 0;
+    bool m_SkyboxCacheValid = false;
 };
 
 } // namespace RetroRenderer
