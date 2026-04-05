@@ -1,7 +1,10 @@
 #include "SWRenderer.h"
+#include <SDL_image.h>
 #include <KrisLogger/Logger.h>
 #include <glm/gtx/string_cast.hpp>
 #include <array>
+#include <cmath>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -210,6 +213,134 @@ ClippedPolygon ClipPolygonClipSpace(const std::array<ClipVertex, 3>& inputTriang
     return poly;
 }
 
+std::string DefaultSkyboxCrossPath() {
+#ifdef __ANDROID__
+    return "img/skybox-cubemap/Cubemap_Sky_23-512x512.png";
+#else
+    return "assets/img/skybox-cubemap/Cubemap_Sky_23-512x512.png";
+#endif
+}
+
+bool LoadSkyboxCrossImage(const std::string& path, int& outFaceSize, std::array<std::vector<Pixel>, 6>& outFaces) {
+    const int flags = IMG_INIT_PNG;
+    const int initted = IMG_Init(flags);
+    if ((initted & flags) != flags) {
+        LOGE("Failed to initialize SDL_image for software skybox: %s", IMG_GetError());
+        return false;
+    }
+
+    SDL_Surface* sourceSurface = IMG_Load(path.c_str());
+    if (!sourceSurface) {
+        LOGE("Failed to load software skybox %s: %s", path.c_str(), IMG_GetError());
+        return false;
+    }
+
+    SDL_Surface* rgbaSurface = SDL_ConvertSurfaceFormat(sourceSurface, SDL_PIXELFORMAT_RGBA32, 0);
+    SDL_FreeSurface(sourceSurface);
+    if (!rgbaSurface) {
+        return false;
+    }
+
+    const int fullWidth = rgbaSurface->w;
+    const int fullHeight = rgbaSurface->h;
+    const int faceSize = fullWidth / 4;
+    if (faceSize <= 0 || fullHeight != faceSize * 3) {
+        LOGE("Invalid software skybox cross layout dimensions: %dx%d", fullWidth, fullHeight);
+        SDL_FreeSurface(rgbaSurface);
+        return false;
+    }
+
+    const Pixel* surfacePixels = static_cast<const Pixel*>(rgbaSurface->pixels);
+    struct Offset {
+        int x;
+        int y;
+    };
+    static constexpr Offset kFaceOffsets[6] = {
+        {2, 1}, // +X
+        {0, 1}, // -X
+        {1, 0}, // +Y
+        {1, 2}, // -Y
+        {1, 1}, // +Z
+        {3, 1}, // -Z
+    };
+
+    for (size_t faceIndex = 0; faceIndex < outFaces.size(); faceIndex++) {
+        std::vector<Pixel>& facePixels = outFaces[faceIndex];
+        facePixels.resize(static_cast<size_t>(faceSize) * static_cast<size_t>(faceSize));
+
+        const int offsetX = kFaceOffsets[faceIndex].x * faceSize;
+        const int offsetY = kFaceOffsets[faceIndex].y * faceSize;
+        for (int y = 0; y < faceSize; y++) {
+            for (int x = 0; x < faceSize; x++) {
+                const int sourceX = offsetX + x;
+                const int sourceY = offsetY + y;
+                facePixels[static_cast<size_t>(y) * static_cast<size_t>(faceSize) + static_cast<size_t>(x)] =
+                    surfacePixels[static_cast<size_t>(sourceY) * static_cast<size_t>(fullWidth) + static_cast<size_t>(sourceX)];
+            }
+        }
+    }
+
+    outFaceSize = faceSize;
+    SDL_FreeSurface(rgbaSurface);
+    return true;
+}
+
+Pixel SampleSkyboxFace(const std::vector<Pixel>& facePixels, int faceSize, float u, float v) {
+    if (facePixels.empty() || faceSize <= 0) {
+        return Pixel{0, 0, 0, 255};
+    }
+
+    const float clampedU = std::clamp(u, 0.0f, 1.0f);
+    const float clampedV = std::clamp(v, 0.0f, 1.0f);
+    const int x = std::clamp(static_cast<int>(std::floor(clampedU * static_cast<float>(faceSize))), 0, faceSize - 1);
+    const int y = std::clamp(static_cast<int>(std::floor((1.0f - clampedV) * static_cast<float>(faceSize))), 0, faceSize - 1);
+    return facePixels[static_cast<size_t>(y) * static_cast<size_t>(faceSize) + static_cast<size_t>(x)];
+}
+
+Pixel SampleSkyboxCubemap(const std::array<std::vector<Pixel>, 6>& faces, int faceSize, const glm::vec3& direction) {
+    const glm::vec3 dir = glm::normalize(direction);
+    const float absX = std::abs(dir.x);
+    const float absY = std::abs(dir.y);
+    const float absZ = std::abs(dir.z);
+
+    size_t faceIndex = 0;
+    float u = 0.5f;
+    float v = 0.5f;
+    if (absX >= absY && absX >= absZ) {
+        if (dir.x >= 0.0f) {
+            faceIndex = 0; // +X
+            u = (-dir.z / absX + 1.0f) * 0.5f;
+            v = (-dir.y / absX + 1.0f) * 0.5f;
+        } else {
+            faceIndex = 1; // -X
+            u = (dir.z / absX + 1.0f) * 0.5f;
+            v = (-dir.y / absX + 1.0f) * 0.5f;
+        }
+    } else if (absY >= absX && absY >= absZ) {
+        if (dir.y >= 0.0f) {
+            faceIndex = 2; // +Y
+            u = (dir.x / absY + 1.0f) * 0.5f;
+            v = (dir.z / absY + 1.0f) * 0.5f;
+        } else {
+            faceIndex = 3; // -Y
+            u = (dir.x / absY + 1.0f) * 0.5f;
+            v = (-dir.z / absY + 1.0f) * 0.5f;
+        }
+    } else {
+        if (dir.z >= 0.0f) {
+            faceIndex = 4; // +Z
+            u = (dir.x / absZ + 1.0f) * 0.5f;
+            v = (-dir.y / absZ + 1.0f) * 0.5f;
+        } else {
+            faceIndex = 5; // -Z
+            u = (-dir.x / absZ + 1.0f) * 0.5f;
+            v = (-dir.y / absZ + 1.0f) * 0.5f;
+        }
+    }
+
+    return SampleSkyboxFace(faces[faceIndex], faceSize, u, v);
+}
+
 } // namespace
 bool SWRenderer::Init(int w, int h) {
     auto fb = std::unique_ptr<Buffer<Pixel>>(new(std::nothrow) Buffer<Pixel>(w, h));
@@ -220,6 +351,10 @@ bool SWRenderer::Init(int w, int h) {
     m_FrameBuffer = std::move(fb);
     m_DepthBuffer = std::make_unique<Buffer<float>>(w, h);
     m_Rasterizer = std::make_unique<Rasterizer>();
+    m_HasSkybox = LoadSkyboxCrossImage(DefaultSkyboxCrossPath(), m_SkyboxFaceSize, m_SkyboxFaces);
+    if (!m_HasSkybox) {
+        LOGW("Failed to load software skybox from %s", DefaultSkyboxCrossPath().c_str());
+    }
     return true;
 }
 
@@ -454,6 +589,55 @@ GLuint SWRenderer::EndFrame() {
 }
 
 void SWRenderer::DrawSkybox() {
+    if (!m_HasSkybox || !p_Camera || !m_FrameBuffer) {
+        return;
+    }
+
+    const glm::vec3 forward = glm::normalize(p_Camera->m_Direction);
+    const glm::vec3 right = glm::normalize(glm::cross(forward, p_Camera->m_Up));
+    const glm::vec3 up = glm::normalize(glm::cross(right, forward));
+    const float width = static_cast<float>(m_FrameBuffer->width);
+    const float height = static_cast<float>(m_FrameBuffer->height);
+    const float aspect = height > 0.0f ? width / height : 1.0f;
+    const size_t sampleStep = std::max<size_t>(1, (std::max(m_FrameBuffer->width, m_FrameBuffer->height) + 319) / 320);
+
+    const auto fillSkyboxBlock = [&](size_t startX, size_t startY, const Pixel& color) {
+        const size_t endX = std::min(startX + sampleStep, m_FrameBuffer->width);
+        const size_t endY = std::min(startY + sampleStep, m_FrameBuffer->height);
+        for (size_t fillY = startY; fillY < endY; fillY++) {
+            Pixel* row = m_FrameBuffer->data + fillY * m_FrameBuffer->width;
+            for (size_t fillX = startX; fillX < endX; fillX++) {
+                row[fillX] = color;
+            }
+        }
+    };
+
+    if (p_Camera->m_Type == CameraType::PERSPECTIVE) {
+        const float tanHalfFov = std::tan(glm::radians(p_Camera->m_Fov) * 0.5f);
+        for (size_t y = 0; y < m_FrameBuffer->height; y += sampleStep) {
+            const size_t sampleY = std::min(y + sampleStep / 2, m_FrameBuffer->height - 1);
+            const float ndcY = 1.0f - ((static_cast<float>(sampleY) + 0.5f) / height) * 2.0f;
+            for (size_t x = 0; x < m_FrameBuffer->width; x += sampleStep) {
+                const size_t sampleX = std::min(x + sampleStep / 2, m_FrameBuffer->width - 1);
+                const float ndcX = ((static_cast<float>(sampleX) + 0.5f) / width) * 2.0f - 1.0f;
+                const glm::vec3 rayDir = glm::normalize(forward + right * (ndcX * aspect * tanHalfFov) + up * (ndcY * tanHalfFov));
+                fillSkyboxBlock(x, y, SampleSkyboxCubemap(m_SkyboxFaces, m_SkyboxFaceSize, rayDir));
+            }
+        }
+        return;
+    }
+
+    const float orthoScale = std::max(p_Camera->m_OrthoSize, 0.001f);
+    for (size_t y = 0; y < m_FrameBuffer->height; y += sampleStep) {
+        const size_t sampleY = std::min(y + sampleStep / 2, m_FrameBuffer->height - 1);
+        const float ndcY = 1.0f - ((static_cast<float>(sampleY) + 0.5f) / height) * 2.0f;
+        for (size_t x = 0; x < m_FrameBuffer->width; x += sampleStep) {
+            const size_t sampleX = std::min(x + sampleStep / 2, m_FrameBuffer->width - 1);
+            const float ndcX = ((static_cast<float>(sampleX) + 0.5f) / width) * 2.0f - 1.0f;
+            const glm::vec3 rayDir = glm::normalize(forward + right * (ndcX * aspect * orthoScale) + up * (ndcY * orthoScale));
+            fillSkyboxBlock(x, y, SampleSkyboxCubemap(m_SkyboxFaces, m_SkyboxFaceSize, rayDir));
+        }
+    }
 }
 
 const Buffer<Pixel>& SWRenderer::GetFrameBuffer() const {
