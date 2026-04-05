@@ -111,6 +111,7 @@ struct Config {
         bool showSkybox = false;
         bool showGrid = true;
         bool showFloor = true;
+        bool showLightGizmos = true;
         bool shadowMap = true;
         glm::vec3 lightPosition = {0.0f, 0.0f, 5.0f};
     };
@@ -338,6 +339,7 @@ struct Config {
         config.environment.showSkybox = false;
         config.environment.showGrid = true;
         config.environment.showFloor = true;
+        config.environment.showLightGizmos = true;
         config.environment.shadowMap = true;
 
         config.cull.backfaceCulling = false;

@@ -104,6 +104,96 @@ Pixel ImVec4ToOpaquePixel(const ImVec4& color) {
     };
 }
 
+bool ProjectWorldToOutputImage(const glm::vec3& worldPosition,
+                               const Camera& camera,
+                               const ImVec2& imageMin,
+                               const ImVec2& imageSize,
+                               ImVec2& outScreenPosition,
+                               float& outNdcDepth) {
+    const glm::vec4 clipPosition = camera.m_ProjMat * camera.m_ViewMat * glm::vec4(worldPosition, 1.0f);
+    if (clipPosition.w <= 1e-6f) {
+        return false;
+    }
+
+    const glm::vec3 ndcPosition = glm::vec3(clipPosition) / clipPosition.w;
+    if (ndcPosition.z < -1.0f || ndcPosition.z > 1.0f) {
+        return false;
+    }
+    if (ndcPosition.x < -1.0f || ndcPosition.x > 1.0f || ndcPosition.y < -1.0f || ndcPosition.y > 1.0f) {
+        return false;
+    }
+
+    outScreenPosition.x = imageMin.x + (ndcPosition.x * 0.5f + 0.5f) * imageSize.x;
+    outScreenPosition.y = imageMin.y + (1.0f - (ndcPosition.y * 0.5f + 0.5f)) * imageSize.y;
+    outNdcDepth = ndcPosition.z;
+    return true;
+}
+
+void DrawLightGizmoOverlay(const Scene& scene, const Camera& camera, const Config& config, const ImVec2& imageMin, const ImVec2& imageSize) {
+    if (!config.environment.showLightGizmos || imageSize.x <= 0.0f || imageSize.y <= 0.0f) {
+        return;
+    }
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    const ImVec2 imageMax = ImVec2(imageMin.x + imageSize.x, imageMin.y + imageSize.y);
+    drawList->PushClipRect(imageMin, imageMax, true);
+
+    const auto& lights = scene.GetLights();
+    for (size_t i = 0; i < lights.size(); i++) {
+        const SceneLight& light = lights[i];
+        if (light.type != LightType::POINT) {
+            continue;
+        }
+
+        ImVec2 screenPosition{};
+        float ndcDepth = 0.0f;
+        if (!ProjectWorldToOutputImage(light.position, camera, imageMin, imageSize, screenPosition, ndcDepth)) {
+            continue;
+        }
+
+        const float alpha = std::clamp(1.15f - (ndcDepth * 0.5f + 0.5f), 0.35f, 1.0f);
+        const float radius = 7.0f + std::min(light.intensity, 3.0f) * 2.0f;
+        const ImU32 shadowColor = IM_COL32(0, 0, 0, static_cast<int>(alpha * 220.0f));
+        const ImU32 gizmoColor = ImGui::ColorConvertFloat4ToU32(ImVec4(
+            std::clamp(light.color.r, 0.0f, 1.0f),
+            std::clamp(light.color.g, 0.0f, 1.0f),
+            std::clamp(light.color.b, 0.0f, 1.0f),
+            alpha));
+
+        drawList->AddCircle(screenPosition, radius + 1.5f, shadowColor, 16, 3.0f);
+        drawList->AddCircle(screenPosition, radius, gizmoColor, 16, 2.0f);
+
+        const float arm = radius * 0.7f;
+        drawList->AddLine(
+            ImVec2(screenPosition.x - arm, screenPosition.y),
+            ImVec2(screenPosition.x + arm, screenPosition.y),
+            shadowColor,
+            3.0f);
+        drawList->AddLine(
+            ImVec2(screenPosition.x, screenPosition.y - arm),
+            ImVec2(screenPosition.x, screenPosition.y + arm),
+            shadowColor,
+            3.0f);
+        drawList->AddLine(
+            ImVec2(screenPosition.x - arm, screenPosition.y),
+            ImVec2(screenPosition.x + arm, screenPosition.y),
+            gizmoColor,
+            1.5f);
+        drawList->AddLine(
+            ImVec2(screenPosition.x, screenPosition.y - arm),
+            ImVec2(screenPosition.x, screenPosition.y + arm),
+            gizmoColor,
+            1.5f);
+
+        const std::string label = light.name.empty() ? ("Light " + std::to_string(i + 1)) : light.name;
+        const ImVec2 labelPosition = ImVec2(screenPosition.x + radius + 6.0f, screenPosition.y - radius - 2.0f);
+        drawList->AddText(ImVec2(labelPosition.x + 1.0f, labelPosition.y + 1.0f), shadowColor, label.c_str());
+        drawList->AddText(labelPosition, gizmoColor, label.c_str());
+    }
+
+    drawList->PopClipRect();
+}
+
 void DrawPalettePreviewGrid(const std::array<Color, RetroPalette::kPico8PaletteSize>& paletteColors) {
     for (size_t i = 0; i < paletteColors.size(); i++) {
         ImGui::PushID(static_cast<int>(i));
@@ -462,6 +552,7 @@ void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture) {
             }
         }
     }
+    const ImVec2 imageMin = ImGui::GetCursorScreenPos();
     switch (p_config_->renderer.selectedRenderer) {
     case Config::RendererType::SOFTWARE:
         ImGui::Image(p_framebufferTexture, contentSize);
@@ -473,6 +564,12 @@ void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture) {
     default:
         ImGui::Text("Renderer type %d not implemented!", p_config_->renderer.selectedRenderer);
         break;
+    }
+
+    if (auto camera = Engine::Get().GetCamera()) {
+        if (auto scene = Engine::Get().GetSceneManager().GetScene()) {
+            DrawLightGizmoOverlay(*scene, *camera, *p_config_, imageMin, contentSize);
+        }
     }
 
     ImGui::End();
@@ -817,6 +914,7 @@ void ConfigPanel::DisplayEnvironmentSettings() {
     presetChange |= ImGui::Checkbox("Show skybox", &e.showSkybox);
     presetChange |= ImGui::Checkbox("Show grid", &e.showGrid);
     presetChange |= ImGui::Checkbox("Show floor", &e.showFloor);
+    presetChange |= ImGui::Checkbox("Show light gizmos", &e.showLightGizmos);
     presetChange |= ImGui::Checkbox("Shadow mapping", &e.shadowMap);
     ImGui::TextWrapped("Scene lights now live in the Scene Graph window. Use that to inspect and move lights.");
 
