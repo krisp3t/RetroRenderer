@@ -21,6 +21,17 @@ struct FragmentInterpolants {
     glm::vec2 texCoords = glm::vec2(0.0f);
 };
 
+enum class InterpolationMode {
+    AFFINE,
+    PERSPECTIVE_CORRECT
+};
+
+struct InterpolationWeights {
+    std::array<float, 3> affine = {0.0f, 0.0f, 0.0f};
+    std::array<float, 3> perspective = {0.0f, 0.0f, 0.0f};
+    bool hasPerspectiveWeights = false;
+};
+
 size_t DitherPatternIndex(int x, int y) {
     return static_cast<size_t>(((y & 3) << 2) | (x & 3));
 }
@@ -233,8 +244,42 @@ float SafeReciprocalW(float clipW) {
     return std::abs(clipW) > 1e-6f ? 1.0f / clipW : 0.0f;
 }
 
-bool UsePerspectiveCorrectInterpolation(const Config& cfg) {
-    return cfg.renderer.enablePerspectiveCorrect && !cfg.retro.affineTextureMapping;
+InterpolationMode GetShadingInterpolationMode(const Config& cfg) {
+    return cfg.renderer.enablePerspectiveCorrect ? InterpolationMode::PERSPECTIVE_CORRECT : InterpolationMode::AFFINE;
+}
+
+InterpolationMode GetVaryingInterpolationMode(const Config& cfg) {
+    return (cfg.renderer.enablePerspectiveCorrect && !cfg.retro.affineTextureMapping)
+               ? InterpolationMode::PERSPECTIVE_CORRECT
+               : InterpolationMode::AFFINE;
+}
+
+InterpolationWeights ComputeInterpolationWeights(const std::array<RasterVertex, 3>& vertices, float b0, float b1, float b2) {
+    InterpolationWeights weights{};
+    weights.affine = {b0, b1, b2};
+
+    const float rw0 = SafeReciprocalW(vertices[0].clipW);
+    const float rw1 = SafeReciprocalW(vertices[1].clipW);
+    const float rw2 = SafeReciprocalW(vertices[2].clipW);
+    const float w0 = b0 * rw0;
+    const float w1 = b1 * rw1;
+    const float w2 = b2 * rw2;
+    const float weightSum = w0 + w1 + w2;
+    if (std::abs(weightSum) <= 1e-6f) {
+        return weights;
+    }
+
+    const float invWeightSum = 1.0f / weightSum;
+    weights.perspective = {w0 * invWeightSum, w1 * invWeightSum, w2 * invWeightSum};
+    weights.hasPerspectiveWeights = true;
+    return weights;
+}
+
+template <typename T>
+T InterpolateAttribute(const std::array<T, 3>& values, const InterpolationWeights& weights, InterpolationMode mode) {
+    const std::array<float, 3>& activeWeights =
+        (mode == InterpolationMode::PERSPECTIVE_CORRECT && weights.hasPerspectiveWeights) ? weights.perspective : weights.affine;
+    return values[0] * activeWeights[0] + values[1] * activeWeights[1] + values[2] * activeWeights[2];
 }
 
 bool UseTextureAutoPalette(const Texture* texture, const Config& cfg) {
@@ -350,39 +395,23 @@ FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex
                                                    float b2,
                                                    const Config& cfg) {
     FragmentInterpolants interpolants{};
-    if (UsePerspectiveCorrectInterpolation(cfg)) {
-        const float rw0 = SafeReciprocalW(vertices[0].clipW);
-        const float rw1 = SafeReciprocalW(vertices[1].clipW);
-        const float rw2 = SafeReciprocalW(vertices[2].clipW);
-        const float w0 = b0 * rw0;
-        const float w1 = b1 * rw1;
-        const float w2 = b2 * rw2;
-        const float weightSum = w0 + w1 + w2;
-        if (std::abs(weightSum) > 1e-6f) {
-            const float invWeightSum = 1.0f / weightSum;
-            interpolants.worldPosition =
-                (vertices[0].worldPosition * w0 + vertices[1].worldPosition * w1 + vertices[2].worldPosition * w2) * invWeightSum;
-            interpolants.normal =
-                (vertices[0].normal * w0 + vertices[1].normal * w1 + vertices[2].normal * w2) * invWeightSum;
-            interpolants.color = glm::clamp(
-                (vertices[0].color * w0 + vertices[1].color * w1 + vertices[2].color * w2) * invWeightSum,
-                0.0f,
-                1.0f);
-            interpolants.texCoords =
-                (vertices[0].texCoords * w0 + vertices[1].texCoords * w1 + vertices[2].texCoords * w2) * invWeightSum;
-            const float normalLengthSq = glm::dot(interpolants.normal, interpolants.normal);
-            if (normalLengthSq > 1e-8f) {
-                interpolants.normal *= glm::inversesqrt(normalLengthSq);
-            }
-            return interpolants;
-        }
-    }
+    const InterpolationWeights weights = ComputeInterpolationWeights(vertices, b0, b1, b2);
+    const InterpolationMode shadingMode = GetShadingInterpolationMode(cfg);
+    const InterpolationMode varyingMode = GetVaryingInterpolationMode(cfg);
 
-    interpolants.worldPosition =
-        vertices[0].worldPosition * b0 + vertices[1].worldPosition * b1 + vertices[2].worldPosition * b2;
-    interpolants.normal = vertices[0].normal * b0 + vertices[1].normal * b1 + vertices[2].normal * b2;
-    interpolants.color = glm::clamp(vertices[0].color * b0 + vertices[1].color * b1 + vertices[2].color * b2, 0.0f, 1.0f);
-    interpolants.texCoords = vertices[0].texCoords * b0 + vertices[1].texCoords * b1 + vertices[2].texCoords * b2;
+    const std::array<glm::vec3, 3> worldPositions = {
+        vertices[0].worldPosition, vertices[1].worldPosition, vertices[2].worldPosition};
+    const std::array<glm::vec3, 3> normals = {
+        vertices[0].normal, vertices[1].normal, vertices[2].normal};
+    const std::array<glm::vec3, 3> colors = {
+        vertices[0].color, vertices[1].color, vertices[2].color};
+    const std::array<glm::vec2, 3> texCoords = {
+        vertices[0].texCoords, vertices[1].texCoords, vertices[2].texCoords};
+
+    interpolants.worldPosition = InterpolateAttribute(worldPositions, weights, shadingMode);
+    interpolants.normal = InterpolateAttribute(normals, weights, shadingMode);
+    interpolants.color = glm::clamp(InterpolateAttribute(colors, weights, varyingMode), 0.0f, 1.0f);
+    interpolants.texCoords = InterpolateAttribute(texCoords, weights, varyingMode);
     const float normalLengthSq = glm::dot(interpolants.normal, interpolants.normal);
     if (normalLengthSq > 1e-8f) {
         interpolants.normal *= glm::inversesqrt(normalLengthSq);
@@ -395,22 +424,9 @@ glm::vec3 InterpolateVec3Attribute(const std::array<glm::vec3, 3>& values,
                                    float b0,
                                    float b1,
                                    float b2,
-                                   const Config& cfg) {
-    if (UsePerspectiveCorrectInterpolation(cfg)) {
-        const float rw0 = SafeReciprocalW(vertices[0].clipW);
-        const float rw1 = SafeReciprocalW(vertices[1].clipW);
-        const float rw2 = SafeReciprocalW(vertices[2].clipW);
-        const float w0 = b0 * rw0;
-        const float w1 = b1 * rw1;
-        const float w2 = b2 * rw2;
-        const float weightSum = w0 + w1 + w2;
-        if (std::abs(weightSum) > 1e-6f) {
-            const float invWeightSum = 1.0f / weightSum;
-            return (values[0] * w0 + values[1] * w1 + values[2] * w2) * invWeightSum;
-        }
-    }
-
-    return values[0] * b0 + values[1] * b1 + values[2] * b2;
+                                   InterpolationMode mode) {
+    const InterpolationWeights weights = ComputeInterpolationWeights(vertices, b0, b1, b2);
+    return InterpolateAttribute(values, weights, mode);
 }
 
 glm::vec3 ComputeLighting(const glm::vec3& worldPosition,
@@ -876,6 +892,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                           cfg);
         }
     }
+    const InterpolationMode gouraudInterpolationMode = GetVaryingInterpolationMode(cfg);
 
     const bool rasterClip = cfg.cull.rasterClip;
     int minX = static_cast<int>(std::floor(std::min({v0.x, v1.x, v2.x}) - 0.5f));
@@ -954,8 +971,12 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                         ? glm::vec3(1.0f)
                         : cfg.retro.useGouraudShading
                         ? (usePs1Shading
-                               ? QuantizePs1Lighting(InterpolateVec3Attribute(vertexLighting, shadeVertices, b0, b1, b2, cfg), cfg)
-                               : InterpolateVec3Attribute(vertexLighting, shadeVertices, b0, b1, b2, cfg))
+                               ? QuantizePs1Lighting(
+                                     InterpolateVec3Attribute(
+                                         vertexLighting, shadeVertices, b0, b1, b2, gouraudInterpolationMode),
+                                     cfg)
+                               : InterpolateVec3Attribute(
+                                     vertexLighting, shadeVertices, b0, b1, b2, gouraudInterpolationMode))
                         : (usePs1Shading ? ComputePs1Lighting(
                                                interpolants.worldPosition,
                                                interpolants.normal,
