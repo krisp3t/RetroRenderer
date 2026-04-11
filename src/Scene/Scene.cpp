@@ -2,10 +2,132 @@
 #include "ISceneImporter.h"
 #include "../Engine.h"
 #include <KrisLogger/Logger.h>
+#include <array>
 #include <filesystem>
+#include <limits>
 #include <utility>
 
 namespace RetroRenderer {
+namespace {
+struct FrustumPlane {
+    glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
+    float distance = 0.0f;
+};
+
+glm::vec4 GetMatrixRow(const glm::mat4& matrix, int row) {
+    return glm::vec4(matrix[0][row], matrix[1][row], matrix[2][row], matrix[3][row]);
+}
+
+FrustumPlane MakeNormalizedPlane(const glm::vec4& coefficients) {
+    const glm::vec3 normal(coefficients.x, coefficients.y, coefficients.z);
+    const float length = glm::length(normal);
+    if (length <= 1e-6f) {
+        return {};
+    }
+    return {normal / length, coefficients.w / length};
+}
+
+std::array<FrustumPlane, 6> ExtractFrustumPlanes(const glm::mat4& viewProjection) {
+    const glm::vec4 row0 = GetMatrixRow(viewProjection, 0);
+    const glm::vec4 row1 = GetMatrixRow(viewProjection, 1);
+    const glm::vec4 row2 = GetMatrixRow(viewProjection, 2);
+    const glm::vec4 row3 = GetMatrixRow(viewProjection, 3);
+
+    return {
+        MakeNormalizedPlane(row3 + row0), // left
+        MakeNormalizedPlane(row3 - row0), // right
+        MakeNormalizedPlane(row3 + row1), // bottom
+        MakeNormalizedPlane(row3 - row1), // top
+        MakeNormalizedPlane(row3 + row2), // near
+        MakeNormalizedPlane(row3 - row2), // far
+    };
+}
+
+bool ComputeModelLocalBounds(const Model& model, glm::vec3& outMin, glm::vec3& outMax) {
+    bool hasVertices = false;
+    glm::vec3 minBounds(std::numeric_limits<float>::max());
+    glm::vec3 maxBounds(std::numeric_limits<float>::lowest());
+
+    for (const Mesh& mesh : model.m_Meshes) {
+        for (const Vertex& vertex : mesh.m_Vertices) {
+            const glm::vec3 position = glm::vec3(vertex.position);
+            minBounds = glm::min(minBounds, position);
+            maxBounds = glm::max(maxBounds, position);
+            hasVertices = true;
+        }
+    }
+
+    if (!hasVertices) {
+        return false;
+    }
+
+    outMin = minBounds;
+    outMax = maxBounds;
+    return true;
+}
+
+void TransformBounds(const glm::mat4& transform, const glm::vec3& localMin, const glm::vec3& localMax, glm::vec3& outMin, glm::vec3& outMax) {
+    static constexpr std::array<glm::vec3, 8> kCorners = {
+        glm::vec3{0.0f, 0.0f, 0.0f},
+        glm::vec3{1.0f, 0.0f, 0.0f},
+        glm::vec3{0.0f, 1.0f, 0.0f},
+        glm::vec3{1.0f, 1.0f, 0.0f},
+        glm::vec3{0.0f, 0.0f, 1.0f},
+        glm::vec3{1.0f, 0.0f, 1.0f},
+        glm::vec3{0.0f, 1.0f, 1.0f},
+        glm::vec3{1.0f, 1.0f, 1.0f},
+    };
+
+    const glm::vec3 extent = localMax - localMin;
+    bool initialized = false;
+    for (const glm::vec3& cornerWeights : kCorners) {
+        const glm::vec3 localCorner = localMin + extent * cornerWeights;
+        const glm::vec3 worldCorner = glm::vec3(transform * glm::vec4(localCorner, 1.0f));
+        if (!initialized) {
+            outMin = worldCorner;
+            outMax = worldCorner;
+            initialized = true;
+            continue;
+        }
+        outMin = glm::min(outMin, worldCorner);
+        outMax = glm::max(outMax, worldCorner);
+    }
+}
+
+bool IsAabbOutsidePlane(const FrustumPlane& plane, const glm::vec3& boundsMin, const glm::vec3& boundsMax) {
+    glm::vec3 positiveVertex = boundsMin;
+    if (plane.normal.x >= 0.0f) {
+        positiveVertex.x = boundsMax.x;
+    }
+    if (plane.normal.y >= 0.0f) {
+        positiveVertex.y = boundsMax.y;
+    }
+    if (plane.normal.z >= 0.0f) {
+        positiveVertex.z = boundsMax.z;
+    }
+
+    return glm::dot(plane.normal, positiveVertex) + plane.distance < 0.0f;
+}
+
+bool IsModelVisibleInFrustum(const Model& model, const std::array<FrustumPlane, 6>& frustumPlanes) {
+    glm::vec3 localMin{};
+    glm::vec3 localMax{};
+    if (!ComputeModelLocalBounds(model, localMin, localMax)) {
+        return true;
+    }
+
+    glm::vec3 worldMin{};
+    glm::vec3 worldMax{};
+    TransformBounds(model.GetWorldTransform(), localMin, localMax, worldMin, worldMax);
+    for (const FrustumPlane& plane : frustumPlanes) {
+        if (IsAabbOutsidePlane(plane, worldMin, worldMax)) {
+            return false;
+        }
+    }
+    return true;
+}
+} // namespace
+
 Scene::Scene() : p_SceneImporter(CreateDefaultSceneImporter()) {
     InitializeDefaultLighting();
 }
@@ -163,8 +285,6 @@ std::vector<LightSnapshot> Scene::BuildLightSnapshots() const {
     return snapshots;
 }
 
-// TODO: current implementation uses the model origin only (no bounds)
-// TODO: mesh AABB?
 void Scene::FrustumCull(const Camera& camera) {
     m_VisibleModels.clear();
     m_VisibleModels.reserve(m_Models.size());
@@ -177,17 +297,9 @@ void Scene::FrustumCull(const Camera& camera) {
         return;
     }
 
-    const glm::mat4 vp = camera.m_ProjMat * camera.m_ViewMat;
+    const auto frustumPlanes = ExtractFrustumPlanes(camera.m_ProjMat * camera.m_ViewMat);
     for (size_t i = 0; i < m_Models.size(); i++) {
-        const glm::mat4 modelMat = m_Models[i].GetWorldTransform();
-        const glm::vec4 clipPos = vp * modelMat * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-        if (clipPos.w == 0.0f) {
-            continue;
-        }
-        const float w = clipPos.w;
-        if (clipPos.x < -w || clipPos.x > w ||
-            clipPos.y < -w || clipPos.y > w ||
-            clipPos.z < -w || clipPos.z > w) {
+        if (!IsModelVisibleInFrustum(m_Models[i], frustumPlanes)) {
             continue;
         }
         m_VisibleModels.push_back(i);
