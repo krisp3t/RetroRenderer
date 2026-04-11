@@ -48,6 +48,7 @@ struct ClipPlane {
 };
 
 constexpr size_t kMaxClippedPolygonVertices = 12;
+constexpr float kClipEpsilon = 1e-5f;
 
 struct ClipVertex {
     glm::vec4 clipPosition = glm::vec4(0.0f);
@@ -84,32 +85,27 @@ bool PushVertex(ClippedPolygon& polygon, const ClipVertex& vertex) {
     return true;
 }
 
-bool IsVertexInsideClipSpace(const ClipVertex& vertex) {
+bool IsVertexInsideDepthClipSpace(const ClipVertex& vertex) {
     const glm::vec4& p = vertex.clipPosition;
-    return p.x >= -p.w && p.x <= p.w &&
-           p.y >= -p.w && p.y <= p.w &&
-           p.z >= -p.w && p.z <= p.w;
+    return p.z >= -p.w - kClipEpsilon &&
+           p.z <= p.w + kClipEpsilon;
 }
 
-bool IsTriangleFullyInsideClipSpace(const std::array<ClipVertex, 3>& vertices) {
-    return IsVertexInsideClipSpace(vertices[0]) &&
-           IsVertexInsideClipSpace(vertices[1]) &&
-           IsVertexInsideClipSpace(vertices[2]);
+bool IsTriangleFullyInsideDepthClipSpace(const std::array<ClipVertex, 3>& vertices) {
+    return IsVertexInsideDepthClipSpace(vertices[0]) &&
+           IsVertexInsideDepthClipSpace(vertices[1]) &&
+           IsVertexInsideDepthClipSpace(vertices[2]);
 }
 
-bool IsTriangleTriviallyRejected(const std::array<ClipVertex, 3>& vertices) {
+bool IsTriangleTriviallyRejectedByDepth(const std::array<ClipVertex, 3>& vertices) {
     const auto allOutside = [&vertices](auto predicate) {
         return predicate(vertices[0].clipPosition) &&
                predicate(vertices[1].clipPosition) &&
                predicate(vertices[2].clipPosition);
     };
 
-    return allOutside([](const glm::vec4& p) { return p.x < -p.w; }) ||
-           allOutside([](const glm::vec4& p) { return p.x > p.w; }) ||
-           allOutside([](const glm::vec4& p) { return p.y < -p.w; }) ||
-           allOutside([](const glm::vec4& p) { return p.y > p.w; }) ||
-           allOutside([](const glm::vec4& p) { return p.z < -p.w; }) ||
-           allOutside([](const glm::vec4& p) { return p.z > p.w; });
+    return allOutside([](const glm::vec4& p) { return p.z < -p.w - kClipEpsilon; }) ||
+           allOutside([](const glm::vec4& p) { return p.z > p.w + kClipEpsilon; });
 }
 
 bool TryMakeRasterVertex(const ClipVertex& clipVertex, RasterVertex& outVertex) {
@@ -161,12 +157,8 @@ float ComputeDeferredTriangleSortKey(const std::array<RasterVertex, 3>& vertices
     return glm::dot(delta, delta);
 }
 
-ClippedPolygon ClipPolygonClipSpace(const std::array<ClipVertex, 3>& inputTriangle) {
+ClippedPolygon ClipPolygonDepthClipSpace(const std::array<ClipVertex, 3>& inputTriangle) {
     static const ClipPlane kPlanes[] = {
-        {{1.0f, 0.0f, 0.0f, 1.0f}},   // x >= -w
-        {{-1.0f, 0.0f, 0.0f, 1.0f}},  // x <= w
-        {{0.0f, 1.0f, 0.0f, 1.0f}},   // y >= -w
-        {{0.0f, -1.0f, 0.0f, 1.0f}},  // y <= w
         {{0.0f, 0.0f, 1.0f, 1.0f}},   // z >= -w
         {{0.0f, 0.0f, -1.0f, 1.0f}},  // z <= w
     };
@@ -185,15 +177,22 @@ ClippedPolygon ClipPolygonClipSpace(const std::array<ClipVertex, 3>& inputTriang
         output.count = 0;
         ClipVertex prev = poly.vertices[poly.count - 1];
         float prevDist = PlaneDistance(plane, prev);
-        bool prevInside = prevDist >= 0.0f;
+        bool prevInside = prevDist >= -kClipEpsilon;
 
         for (size_t i = 0; i < poly.count; i++) {
             const ClipVertex& curr = poly.vertices[i];
             float currDist = PlaneDistance(plane, curr);
-            bool currInside = currDist >= 0.0f;
+            bool currInside = currDist >= -kClipEpsilon;
 
             if (currInside != prevInside) {
-                float t = prevDist / (prevDist - currDist);
+                const float denominator = prevDist - currDist;
+                if (std::abs(denominator) <= 1e-8f) {
+                    prev = curr;
+                    prevDist = currDist;
+                    prevInside = currInside;
+                    continue;
+                }
+                const float t = std::clamp(prevDist / denominator, 0.0f, 1.0f);
                 if (!PushVertex(output, LerpVertex(prev, curr, t))) {
                     output.count = 0;
                     return output;
@@ -592,12 +591,12 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                 clipVertices[v].color = sourceVertex.color;
             }
 
-            if (cfg.cull.rasterClip && IsTriangleTriviallyRejected(clipVertices)) {
+            if (cfg.cull.rasterClip && IsTriangleTriviallyRejectedByDepth(clipVertices)) {
                 continue;
             }
             if (cfg.cull.geometricClip) {
                 std::array<RasterVertex, 3> rasterVertices{};
-                if (IsTriangleFullyInsideClipSpace(clipVertices)) {
+                if (IsTriangleFullyInsideDepthClipSpace(clipVertices)) {
                     if (!TryMakeRasterTriangle(clipVertices, rasterVertices)) {
                         continue;
                     }
@@ -610,7 +609,7 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                     continue;
                 }
 
-                const ClippedPolygon clipped = ClipPolygonClipSpace(clipVertices);
+                const ClippedPolygon clipped = ClipPolygonDepthClipSpace(clipVertices);
                 if (clipped.count < 3) {
                     continue;
                 }
