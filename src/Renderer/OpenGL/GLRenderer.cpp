@@ -78,22 +78,11 @@ bool GLRenderer::Init(GLuint fbTex, int w, int h) {
             glm::vec3 position;
             glm::vec3 color;
         };
-        const std::vector<GridGizmoVertex> gridVertices = BuildGridGizmoVertices();
-        std::vector<GridVertexGpu> packedVertices;
-        packedVertices.reserve(gridVertices.size());
-        for (const GridGizmoVertex& vertex : gridVertices) {
-            packedVertices.push_back({vertex.position, vertex.color});
-        }
-        m_GridVertexCount = static_cast<GLsizei>(packedVertices.size());
-
         glGenVertexArrays(1, &m_GridVAO);
         glGenBuffers(1, &m_GridVBO);
         glBindVertexArray(m_GridVAO);
         glBindBuffer(GL_ARRAY_BUFFER, m_GridVBO);
-        glBufferData(GL_ARRAY_BUFFER,
-                     static_cast<GLsizeiptr>(packedVertices.size() * sizeof(GridVertexGpu)),
-                     packedVertices.data(),
-                     GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GridVertexGpu), reinterpret_cast<void*>(offsetof(GridVertexGpu, position)));
         glEnableVertexAttribArray(1);
@@ -222,7 +211,22 @@ void GLRenderer::DrawTriangularMesh(const Model* model) {
 }
 
 void GLRenderer::DrawGridGizmo() {
-    if (p_Camera == nullptr || m_GridProgram == 0 || m_GridVAO == 0 || m_GridVertexCount == 0) {
+    if (p_Camera == nullptr || m_GridProgram == 0 || m_GridVAO == 0 || m_GridVBO == 0) {
+        return;
+    }
+
+    struct GridVertexGpu {
+        glm::vec3 position;
+        glm::vec3 color;
+    };
+    const std::vector<GridGizmoVertex> gridVertices = BuildGridGizmoVertices(p_Camera->m_Position);
+    std::vector<GridVertexGpu> packedVertices;
+    packedVertices.reserve(gridVertices.size());
+    for (const GridGizmoVertex& vertex : gridVertices) {
+        packedVertices.push_back({vertex.position, vertex.color});
+    }
+    m_GridVertexCount = static_cast<GLsizei>(packedVertices.size());
+    if (m_GridVertexCount == 0) {
         return;
     }
 
@@ -232,7 +236,14 @@ void GLRenderer::DrawGridGizmo() {
     glUniformMatrix4fv(glGetUniformLocation(m_GridProgram, "u_MVP"), 1, GL_FALSE, glm::value_ptr(mvp));
     glEnable(GL_DEPTH_TEST);
     glBindVertexArray(m_GridVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_GridVBO);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        static_cast<GLsizeiptr>(packedVertices.size() * sizeof(GridVertexGpu)),
+        packedVertices.data(),
+        GL_DYNAMIC_DRAW);
     glDrawArrays(GL_LINES, 0, m_GridVertexCount);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glUseProgram(0);

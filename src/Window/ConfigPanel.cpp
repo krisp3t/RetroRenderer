@@ -1092,6 +1092,9 @@ void ConfigPanel::DisplayControlsOverlay() {
 
     ImGui::SetNextWindowBgAlpha(0.35f);
     if (ImGui::Begin("Controls", &p_config_->window.showControls, windowFlags)) {
+        ImGui::Text("WASD - move");
+        ImGui::Text("Space / Left Shift - up / down");
+        ImGui::Text("Arrows or mouse drag on Output - look");
         ImGui::Text("h - toggle GUI");
         ImGui::Text("1 - show wireframe");
     }

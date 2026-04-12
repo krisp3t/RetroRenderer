@@ -93,7 +93,7 @@ void InputSystem::PollContinuousInput(bool keyboardCaptured) {
     if (keyState[SDL_SCANCODE_SPACE]) {
         m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_UP);
     }
-    if (keyState[SDL_SCANCODE_C]) {
+    if (keyState[SDL_SCANCODE_LSHIFT]) {
         m_inputState_ |= static_cast<InputActionMask>(InputAction::MOVE_DOWN);
     }
     if (keyState[SDL_SCANCODE_LEFT]) {

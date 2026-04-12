@@ -836,7 +836,7 @@ void SWRenderer::DrawGridGizmo() {
     }
 
     const glm::mat4 viewProjection = p_Camera->m_ProjMat * p_Camera->m_ViewMat;
-    static const std::vector<GridGizmoVertex> gridVertices = BuildGridGizmoVertices();
+    const std::vector<GridGizmoVertex> gridVertices = BuildGridGizmoVertices(p_Camera->m_Position);
     for (size_t i = 0; i + 1 < gridVertices.size(); i += 2) {
         glm::vec4 clipStart = viewProjection * glm::vec4(gridVertices[i].position, 1.0f);
         glm::vec4 clipEnd = viewProjection * glm::vec4(gridVertices[i + 1].position, 1.0f);
