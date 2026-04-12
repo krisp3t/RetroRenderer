@@ -140,6 +140,9 @@ GLuint RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& c
     if (p_config->environment.showSkybox) {
         p_activeRenderer_->DrawSkybox();
     }
+    if (p_config->environment.showGrid) {
+        p_activeRenderer_->DrawGridGizmo();
+    }
     auto& models = scene->m_Models;
     // LOGD("Render queue size: %d", renderQueue.size());
     for (int modelIx : renderQueue) {
@@ -369,6 +372,9 @@ void RenderSystem::SoftwareWorkerLoop() {
         if (job.configSnapshot.environment.showSkybox) {
             p_SWRenderer_->DrawSkybox();
         }
+        if (job.configSnapshot.environment.showGrid) {
+            p_SWRenderer_->DrawGridGizmo();
+        }
 
         bool cancelled = false;
         if (job.scene) {
@@ -440,6 +446,9 @@ GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
     p_SWRenderer_->SetActiveCamera(camera);
     if (configSnapshot.environment.showSkybox) {
         p_SWRenderer_->DrawSkybox();
+    }
+    if (configSnapshot.environment.showGrid) {
+        p_SWRenderer_->DrawGridGizmo();
     }
     if (scene) {
         auto& models = scene->m_Models;

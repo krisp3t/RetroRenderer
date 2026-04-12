@@ -25,6 +25,7 @@ class GLRenderer : public IRenderer {
     void DrawTriangularMesh(const Model* model) override;
 
     void DrawSkybox() override;
+    void DrawGridGizmo() override;
 
     void BeforeFrame(const Color& clearColor) override;
 
@@ -54,5 +55,9 @@ class GLRenderer : public IRenderer {
     GLuint m_SkyboxTexture = 0;
     GLuint m_SkyboxVAO = 0;
     ShaderProgram m_SkyboxProgram;
+    GLuint m_GridProgram = 0;
+    GLuint m_GridVAO = 0;
+    GLuint m_GridVBO = 0;
+    GLsizei m_GridVertexCount = 0;
 };
 } // namespace RetroRenderer

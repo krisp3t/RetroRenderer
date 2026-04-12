@@ -26,6 +26,7 @@ class SWRenderer : public IRenderer {
     void SetFallbackTexture(const Texture* texture);
     void DrawTriangularMesh(const Model* model) override;
     void DrawSkybox() override;
+    void DrawGridGizmo() override;
     void BeforeFrame(const Color& clearColor) override;
     GLuint EndFrame() override;
     GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override {

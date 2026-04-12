@@ -32,6 +32,9 @@ class IRenderer {
 
     virtual void DrawSkybox() = 0;
 
+    virtual void DrawGridGizmo() {
+    }
+
     [[nodiscard]] virtual GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) = 0;
 };
 } // namespace RetroRenderer

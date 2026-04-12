@@ -1,9 +1,11 @@
 #include "SWRenderer.h"
+#include "../GridGizmo.h"
 #include <SDL_image.h>
 #include <KrisLogger/Logger.h>
 #include <glm/gtx/string_cast.hpp>
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cmath>
 #include <string>
 #include <utility>
@@ -155,6 +157,114 @@ float ComputeDeferredTriangleSortKey(const std::array<RasterVertex, 3>& vertices
     const glm::vec3 centroid = (vertices[0].worldPosition + vertices[1].worldPosition + vertices[2].worldPosition) / 3.0f;
     const glm::vec3 delta = centroid - cameraPosition;
     return glm::dot(delta, delta);
+}
+
+Pixel GridColorToPixel(const glm::vec3& color) {
+    return Pixel{
+        static_cast<uint8_t>(std::clamp(std::lround(color.r * 255.0f), 0L, 255L)),
+        static_cast<uint8_t>(std::clamp(std::lround(color.g * 255.0f), 0L, 255L)),
+        static_cast<uint8_t>(std::clamp(std::lround(color.b * 255.0f), 0L, 255L)),
+        255};
+}
+
+float QuantizeGridDepth(float z, const Config& cfg) {
+    const int bits = cfg.retro.depthPrecisionBits;
+    if (bits <= 0) {
+        return z;
+    }
+
+    const uint32_t levels = (1u << std::min(bits, 24)) - 1u;
+    if (levels == 0u) {
+        return z;
+    }
+
+    const float clampedZ = std::clamp(z, 0.0f, 1.0f);
+    const float quantized = std::round(clampedZ * static_cast<float>(levels)) / static_cast<float>(levels);
+    if (!cfg.retro.usePs1ShadingModel) {
+        return quantized;
+    }
+
+    const float bucketEpsilon = 1.0f / (static_cast<float>(levels) * 4096.0f);
+    return std::min(1.0f, quantized + clampedZ * bucketEpsilon);
+}
+
+bool ClipLineSegmentClipSpace(glm::vec4& a, glm::vec4& b) {
+    static const ClipPlane kPlanes[] = {
+        {{1.0f, 0.0f, 0.0f, 1.0f}},   // x >= -w
+        {{-1.0f, 0.0f, 0.0f, 1.0f}},  // x <= w
+        {{0.0f, 1.0f, 0.0f, 1.0f}},   // y >= -w
+        {{0.0f, -1.0f, 0.0f, 1.0f}},  // y <= w
+        {{0.0f, 0.0f, 1.0f, 1.0f}},   // z >= -w
+        {{0.0f, 0.0f, -1.0f, 1.0f}},  // z <= w
+    };
+
+    for (const ClipPlane& plane : kPlanes) {
+        float distanceA = glm::dot(plane.equation, a);
+        float distanceB = glm::dot(plane.equation, b);
+        const bool aInside = distanceA >= -kClipEpsilon;
+        const bool bInside = distanceB >= -kClipEpsilon;
+        if (!aInside && !bInside) {
+            return false;
+        }
+        if (aInside && bInside) {
+            continue;
+        }
+
+        const float denominator = distanceA - distanceB;
+        if (std::abs(denominator) <= 1e-8f) {
+            return false;
+        }
+        const float t = std::clamp(distanceA / denominator, 0.0f, 1.0f);
+        const glm::vec4 intersection = glm::mix(a, b, t);
+        if (!aInside) {
+            a = intersection;
+            distanceA = 0.0f;
+        } else {
+            b = intersection;
+            distanceB = 0.0f;
+        }
+    }
+    return true;
+}
+
+void DrawDepthTestedLine(Buffer<Pixel>& framebuffer,
+                         Buffer<float>& depthBuffer,
+                         const glm::vec3& start,
+                         const glm::vec3& end,
+                         const Config& cfg,
+                         Pixel color) {
+    const float dx = end.x - start.x;
+    const float dy = end.y - start.y;
+    const float dz = end.z - start.z;
+    const int steps = std::max(1, static_cast<int>(std::ceil(std::max(std::abs(dx), std::abs(dy)))));
+
+    float x = start.x;
+    float y = start.y;
+    float z = start.z;
+    const float invSteps = 1.0f / static_cast<float>(steps);
+    const float xStep = dx * invSteps;
+    const float yStep = dy * invSteps;
+    const float zStep = dz * invSteps;
+
+    for (int i = 0; i <= steps; i++) {
+        const int pixelX = static_cast<int>(std::lround(x));
+        const int pixelY = static_cast<int>(std::lround(y));
+        if (pixelX >= 0 && pixelX < static_cast<int>(framebuffer.width) &&
+            pixelY >= 0 && pixelY < static_cast<int>(framebuffer.height)) {
+            const size_t pixelIndex = static_cast<size_t>(pixelY) * framebuffer.width + static_cast<size_t>(pixelX);
+            const float depth = QuantizeGridDepth(z, cfg);
+            if (!cfg.cull.depthTest || depth < depthBuffer.data[pixelIndex]) {
+                framebuffer.data[pixelIndex] = color;
+                if (cfg.cull.depthTest) {
+                    depthBuffer.data[pixelIndex] = depth;
+                }
+            }
+        }
+
+        x += xStep;
+        y += yStep;
+        z += zStep;
+    }
 }
 
 ClippedPolygon ClipPolygonDepthClipSpace(const std::array<ClipVertex, 3>& inputTriangle) {
@@ -718,6 +828,39 @@ void SWRenderer::DrawSkybox() {
         return;
     }
     std::copy_n(m_SkyboxCachePixels.data(), m_SkyboxCachePixels.size(), m_FrameBuffer->data);
+}
+
+void SWRenderer::DrawGridGizmo() {
+    if (!p_Camera || !m_FrameBuffer || !m_DepthBuffer) {
+        return;
+    }
+
+    const glm::mat4 viewProjection = p_Camera->m_ProjMat * p_Camera->m_ViewMat;
+    static const std::vector<GridGizmoVertex> gridVertices = BuildGridGizmoVertices();
+    for (size_t i = 0; i + 1 < gridVertices.size(); i += 2) {
+        glm::vec4 clipStart = viewProjection * glm::vec4(gridVertices[i].position, 1.0f);
+        glm::vec4 clipEnd = viewProjection * glm::vec4(gridVertices[i + 1].position, 1.0f);
+        if (!ClipLineSegmentClipSpace(clipStart, clipEnd)) {
+            continue;
+        }
+        if (std::abs(clipStart.w) <= 1e-6f || std::abs(clipEnd.w) <= 1e-6f) {
+            continue;
+        }
+
+        const glm::vec3 ndcStart = glm::vec3(clipStart) / clipStart.w;
+        const glm::vec3 ndcEnd = glm::vec3(clipEnd) / clipEnd.w;
+        const glm::vec2 viewportStart = Rasterizer::NDCToViewport(glm::vec2(ndcStart), m_FrameBuffer->width, m_FrameBuffer->height);
+        const glm::vec2 viewportEnd = Rasterizer::NDCToViewport(glm::vec2(ndcEnd), m_FrameBuffer->width, m_FrameBuffer->height);
+        const glm::vec3 lineStart(viewportStart.x, viewportStart.y, ndcStart.z * 0.5f + 0.5f);
+        const glm::vec3 lineEnd(viewportEnd.x, viewportEnd.y, ndcEnd.z * 0.5f + 0.5f);
+        DrawDepthTestedLine(
+            *m_FrameBuffer,
+            *m_DepthBuffer,
+            lineStart,
+            lineEnd,
+            m_FrameConfigSnapshot,
+            GridColorToPixel(gridVertices[i].color));
+    }
 }
 
 const Buffer<Pixel>& SWRenderer::GetFrameBuffer() const {

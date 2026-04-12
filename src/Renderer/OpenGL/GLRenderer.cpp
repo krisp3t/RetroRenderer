@@ -1,8 +1,11 @@
 #include "GLRenderer.h"
+#include "../GridGizmo.h"
 #include "../../Base/Debug.h"
 #include "../../Engine.h"
 #include <KrisLogger/Logger.h>
+#include <cstddef>
 #include <glm/gtc/type_ptr.hpp>
+#include <vector>
 
 namespace RetroRenderer {
 /**
@@ -51,6 +54,53 @@ bool GLRenderer::Init(GLuint fbTex, int w, int h) {
         m_SkyboxProgram = skyboxShader;
         m_SkyboxVAO = CreateSkyboxVAO();
     }
+
+    constexpr const char* kGridVertexShader =
+        "layout (location = 0) in vec3 aPos;\n"
+        "layout (location = 1) in vec3 aColor;\n"
+        "uniform mat4 u_MVP;\n"
+        "out vec3 vColor;\n"
+        "void main()\n"
+        "{\n"
+        "   gl_Position = u_MVP * vec4(aPos, 1.0);\n"
+        "   vColor = aColor;\n"
+        "}\n";
+    constexpr const char* kGridFragmentShader =
+        "in vec3 vColor;\n"
+        "out vec4 FragColor;\n"
+        "void main()\n"
+        "{\n"
+        "   FragColor = vec4(vColor, 1.0);\n"
+        "}\n";
+    m_GridProgram = CompileShaders(kGridVertexShader, kGridFragmentShader);
+    if (m_GridProgram != 0) {
+        struct GridVertexGpu {
+            glm::vec3 position;
+            glm::vec3 color;
+        };
+        const std::vector<GridGizmoVertex> gridVertices = BuildGridGizmoVertices();
+        std::vector<GridVertexGpu> packedVertices;
+        packedVertices.reserve(gridVertices.size());
+        for (const GridGizmoVertex& vertex : gridVertices) {
+            packedVertices.push_back({vertex.position, vertex.color});
+        }
+        m_GridVertexCount = static_cast<GLsizei>(packedVertices.size());
+
+        glGenVertexArrays(1, &m_GridVAO);
+        glGenBuffers(1, &m_GridVBO);
+        glBindVertexArray(m_GridVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, m_GridVBO);
+        glBufferData(GL_ARRAY_BUFFER,
+                     static_cast<GLsizeiptr>(packedVertices.size() * sizeof(GridVertexGpu)),
+                     packedVertices.data(),
+                     GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GridVertexGpu), reinterpret_cast<void*>(offsetof(GridVertexGpu, position)));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GridVertexGpu), reinterpret_cast<void*>(offsetof(GridVertexGpu, color)));
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
     glViewport(0, 0, w, h);
     return true;
 }
@@ -88,6 +138,18 @@ void GLRenderer::Destroy() {
     // glDeleteFramebuffers(1, &m_FrameBuffer);
     // glDeleteTextures(1, &m_RenderTexture);
     // glDeleteRenderbuffers(1, &m_DepthBuffer);
+    if (m_GridVBO != 0) {
+        glDeleteBuffers(1, &m_GridVBO);
+        m_GridVBO = 0;
+    }
+    if (m_GridVAO != 0) {
+        glDeleteVertexArrays(1, &m_GridVAO);
+        m_GridVAO = 0;
+    }
+    if (m_GridProgram != 0) {
+        glDeleteProgram(m_GridProgram);
+        m_GridProgram = 0;
+    }
 }
 
 void GLRenderer::SetActiveCamera(const Camera& camera) {
@@ -154,6 +216,23 @@ void GLRenderer::DrawTriangularMesh(const Model* model) {
         glDrawElements(GL_TRIANGLES, mesh.m_Indices.size(), GL_UNSIGNED_INT, nullptr);
     }
 
+    glBindVertexArray(0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glUseProgram(0);
+}
+
+void GLRenderer::DrawGridGizmo() {
+    if (p_Camera == nullptr || m_GridProgram == 0 || m_GridVAO == 0 || m_GridVertexCount == 0) {
+        return;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
+    glUseProgram(m_GridProgram);
+    const glm::mat4 mvp = p_Camera->m_ProjMat * p_Camera->m_ViewMat;
+    glUniformMatrix4fv(glGetUniformLocation(m_GridProgram, "u_MVP"), 1, GL_FALSE, glm::value_ptr(mvp));
+    glEnable(GL_DEPTH_TEST);
+    glBindVertexArray(m_GridVAO);
+    glDrawArrays(GL_LINES, 0, m_GridVertexCount);
     glBindVertexArray(0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glUseProgram(0);
