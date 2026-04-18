@@ -18,7 +18,9 @@ extern "C" EMSCRIPTEN_KEEPALIVE void OnWebFileSelected(uint8_t* data, int size) 
 
     free(data);
 
-    auto event = std::make_unique<RetroRenderer::SceneLoadEvent>(std::move(buffer), static_cast<size_t>(size));
+    const bool appendToCurrentScene = RetroRenderer::Engine::Get().GetSceneManager().GetScene() != nullptr;
+    auto event =
+        std::make_unique<RetroRenderer::SceneLoadEvent>(std::move(buffer), static_cast<size_t>(size), appendToCurrentScene);
 
     RetroRenderer::Engine::Get().EnqueueEvent(std::move(event));
 }

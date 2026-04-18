@@ -152,7 +152,7 @@ void Scene::SetImporter(std::unique_ptr<ISceneImporter> importer) {
     p_SceneImporter = std::move(importer);
 }
 
-bool Scene::Load(const uint8_t* data, const size_t size) {
+bool Scene::Load(const uint8_t* data, const size_t size, bool append) {
     if (!p_SceneImporter) {
         LOGE("Scene has no importer configured");
         return false;
@@ -161,10 +161,10 @@ bool Scene::Load(const uint8_t* data, const size_t size) {
     if (!p_SceneImporter->LoadFromMemory(data, size, sceneData)) {
         return false;
     }
-    return ProcessImportedScene(sceneData);
+    return ProcessImportedScene(sceneData, append);
 }
 
-bool Scene::Load(const std::string& path) {
+bool Scene::Load(const std::string& path, bool append) {
     if (!p_SceneImporter) {
         LOGE("Scene has no importer configured");
         return false;
@@ -173,11 +173,13 @@ bool Scene::Load(const std::string& path) {
     if (!p_SceneImporter->LoadFromFile(path, sceneData)) {
         return false;
     }
-    return ProcessImportedScene(sceneData);
+    return ProcessImportedScene(sceneData, append);
 }
 
-bool Scene::ProcessImportedScene(const ImportedSceneData& sceneData) {
-    m_Models.clear();
+bool Scene::ProcessImportedScene(const ImportedSceneData& sceneData, bool append) {
+    if (!append) {
+        m_Models.clear();
+    }
     m_VisibleModels.clear();
 
     if (sceneData.rootNodeIndex < 0 || sceneData.rootNodeIndex >= static_cast<int>(sceneData.nodes.size())) {
@@ -186,7 +188,9 @@ bool Scene::ProcessImportedScene(const ImportedSceneData& sceneData) {
     }
 
     if (ProcessImportedNode(sceneData.rootNodeIndex, sceneData, -1)) {
-        LOGI("Successfully processed scene: %s", sceneData.nodes[sceneData.rootNodeIndex].name.c_str());
+        LOGI("%s scene: %s",
+             append ? "Successfully appended" : "Successfully processed",
+             sceneData.nodes[sceneData.rootNodeIndex].name.c_str());
         return true;
     }
     return false;

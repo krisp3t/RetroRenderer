@@ -4,6 +4,7 @@
 #include <glm/geometric.hpp>
 #include <algorithm>
 #include <charconv>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -130,7 +131,7 @@ glm::vec3 ComputeFaceNormal(const std::vector<FaceVertexRef>& faceRefs, const st
     return glm::vec3(0.0f, 1.0f, 0.0f);
 }
 
-bool ParseObjText(std::string_view sourceText, ImportedSceneData& outSceneData) {
+bool ParseObjText(std::string_view sourceText, std::string_view rootNodeName, ImportedSceneData& outSceneData) {
     std::vector<glm::vec3> positions;
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> texCoords;
@@ -245,7 +246,7 @@ bool ParseObjText(std::string_view sourceText, ImportedSceneData& outSceneData) 
     }
 
     ImportedNode rootNode{};
-    rootNode.name = "OBJRoot";
+    rootNode.name = rootNodeName.empty() ? "Imported OBJ" : std::string(rootNodeName);
     rootNode.meshIndices.push_back(0);
 
     outSceneData = ImportedSceneData{};
@@ -262,10 +263,11 @@ bool LightweightObjSceneImporter::LoadFromMemory(const uint8_t* data, size_t siz
         return false;
     }
     const std::string_view source(reinterpret_cast<const char*>(data), size);
-    return ParseObjText(source, outSceneData);
+    return ParseObjText(source, "Imported OBJ", outSceneData);
 }
 
 bool LightweightObjSceneImporter::LoadFromFile(const std::string& path, ImportedSceneData& outSceneData) {
+    const std::string rootNodeName = std::filesystem::path(path).filename().string();
 #ifdef __ANDROID__
     AAsset* asset = AAssetManager_open(g_assetManager, path.c_str(), AASSET_MODE_BUFFER);
     if (!asset) {
@@ -276,7 +278,7 @@ bool LightweightObjSceneImporter::LoadFromFile(const std::string& path, Imported
     std::string source(fileSize, '\0');
     AAsset_read(asset, source.data(), fileSize);
     AAsset_close(asset);
-    return ParseObjText(source, outSceneData);
+    return ParseObjText(source, rootNodeName, outSceneData);
 #else
     std::ifstream file(path, std::ios::binary);
     if (!file.is_open()) {
@@ -284,7 +286,7 @@ bool LightweightObjSceneImporter::LoadFromFile(const std::string& path, Imported
         return false;
     }
     std::string source((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    return ParseObjText(source, outSceneData);
+    return ParseObjText(source, rootNodeName, outSceneData);
 #endif
 }
 

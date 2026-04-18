@@ -159,9 +159,9 @@ void Engine::Dispatch(const Event& event) {
         const SceneLoadEvent& e = static_cast<const SceneLoadEvent&>(event);
         if (!e.loadFromMemory) {
             LOGD("Attempting to load scene from path: %s", e.scenePath.c_str());
-            p_SceneManager->LoadScene(e.scenePath);
+            p_SceneManager->LoadScene(e.scenePath, e.appendToCurrentScene);
         } else {
-            p_SceneManager->LoadScene(e.sceneDataBuffer.data(), e.sceneDataSize);
+            p_SceneManager->LoadScene(e.sceneDataBuffer.data(), e.sceneDataSize, e.appendToCurrentScene);
         }
         p_RenderSystem->OnLoadScene(e); // TODO: send to all subscribers
         break;

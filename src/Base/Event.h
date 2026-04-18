@@ -70,24 +70,28 @@ struct SceneLoadEvent : public Event {
     std::vector<uint8_t> sceneDataBuffer;
     size_t sceneDataSize = 0;
     bool loadFromMemory = false;
+    bool appendToCurrentScene = false;
 
-    SceneLoadEvent(std::string path) {
+    SceneLoadEvent(std::string path, bool append = false) {
         type = EventType::Scene_Load;
         scenePath = std::move(path);
         loadFromMemory = false;
+        appendToCurrentScene = append;
     }
-    SceneLoadEvent(std::vector<uint8_t> buffer, size_t size) {
+    SceneLoadEvent(std::vector<uint8_t> buffer, size_t size, bool append = false) {
         type = EventType::Scene_Load;
         sceneDataBuffer = buffer;
         sceneDataSize = size;
         loadFromMemory = true;
+        appendToCurrentScene = append;
     }
-    SceneLoadEvent(const uint8_t* data, size_t size) {
+    SceneLoadEvent(const uint8_t* data, size_t size, bool append = false) {
         // TODO: implement
         type = EventType::Scene_Load;
         sceneData = data;
         sceneDataSize = size;
         loadFromMemory = true;
+        appendToCurrentScene = append;
     }
 };
 

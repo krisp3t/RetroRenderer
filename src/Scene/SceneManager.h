@@ -12,8 +12,8 @@ class SceneManager {
     SceneManager() = default;
     ~SceneManager();
     void ResetScene();
-    bool LoadScene(const uint8_t* data, const size_t size);
-    bool LoadScene(const std::string& path);
+    bool LoadScene(const uint8_t* data, const size_t size, bool append = false);
+    bool LoadScene(const std::string& path, bool append = false);
     bool ProcessInput(InputActionMask actions, unsigned int deltaTime);
     void Update(unsigned int deltaTime);
     void NewFrame();

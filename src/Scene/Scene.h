@@ -19,8 +19,8 @@ class Scene {
     Scene();
     ~Scene();
 
-    bool Load(const uint8_t* data, const size_t size);
-    bool Load(const std::string& path);
+    bool Load(const uint8_t* data, const size_t size, bool append = false);
+    bool Load(const std::string& path, bool append = false);
     void SetImporter(std::unique_ptr<ISceneImporter> importer);
     void FrustumCull(const Camera& camera);
     [[nodiscard]] std::vector<int>& GetVisibleModels();
@@ -35,7 +35,7 @@ class Scene {
 
   private:
     void InitializeDefaultLighting();
-    bool ProcessImportedScene(const ImportedSceneData& sceneData);
+    bool ProcessImportedScene(const ImportedSceneData& sceneData, bool append);
     bool ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneData, int parentIndex);
     void ProcessImportedMesh(const ImportedMesh& mesh,
                              const ImportedSceneData& sceneData,

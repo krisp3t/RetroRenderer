@@ -419,7 +419,8 @@ void ConfigPanel::DisplayExamplesDialog() {
         if (ImGuiFileDialog::Instance()->IsOk()) {
             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
             LOGD("Selected example file: %s", filePathName.c_str());
-            Engine::Get().DispatchImmediate(SceneLoadEvent{filePathName});
+            const bool appendToCurrentScene = Engine::Get().GetSceneManager().GetScene() != nullptr;
+            Engine::Get().DispatchImmediate(SceneLoadEvent{filePathName, appendToCurrentScene});
             // IGFD::FileManager::SetCurrentPath("tests-visual/basic-tests/");
         }
     }
@@ -642,7 +643,8 @@ void ConfigPanel::DisplayMainMenu() {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 LOGD("Selected model file: %s", filePathName.c_str());
-                Engine::Get().DispatchImmediate(SceneLoadEvent{filePathName});
+                const bool appendToCurrentScene = Engine::Get().GetSceneManager().GetScene() != nullptr;
+                Engine::Get().DispatchImmediate(SceneLoadEvent{filePathName, appendToCurrentScene});
             }
             ImGuiFileDialog::Instance()->Close();
         }

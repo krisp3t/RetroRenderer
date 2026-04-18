@@ -15,23 +15,35 @@ void SceneManager::ResetScene() {
     p_Camera = nullptr;
 }
 
-bool SceneManager::LoadScene(const uint8_t* data, const size_t size) {
-    ResetScene();
-    p_Scene = std::make_shared<Scene>();
-    p_Camera = std::make_unique<Camera>();
-    if (!p_Scene->Load(data, size)) {
-        p_Scene = nullptr;
+bool SceneManager::LoadScene(const uint8_t* data, const size_t size, bool append) {
+    const bool createNewScene = !append || !p_Scene || !p_Camera;
+    if (createNewScene) {
+        ResetScene();
+        p_Scene = std::make_shared<Scene>();
+        p_Camera = std::make_unique<Camera>();
+    }
+    if (!p_Scene->Load(data, size, append && !createNewScene)) {
+        if (createNewScene) {
+            p_Scene = nullptr;
+            p_Camera = nullptr;
+        }
         return false;
     }
     return true;
 }
 
-bool SceneManager::LoadScene(const std::string& path) {
-    ResetScene();
-    p_Scene = std::make_shared<Scene>();
-    p_Camera = std::make_unique<Camera>();
-    if (!p_Scene->Load(path)) {
-        p_Scene = nullptr;
+bool SceneManager::LoadScene(const std::string& path, bool append) {
+    const bool createNewScene = !append || !p_Scene || !p_Camera;
+    if (createNewScene) {
+        ResetScene();
+        p_Scene = std::make_shared<Scene>();
+        p_Camera = std::make_unique<Camera>();
+    }
+    if (!p_Scene->Load(path, append && !createNewScene)) {
+        if (createNewScene) {
+            p_Scene = nullptr;
+            p_Camera = nullptr;
+        }
         return false;
     }
     return true;
@@ -151,7 +163,8 @@ void SceneManager::RenderUIModelRecursive(int modelIndex) {
         nodeFlags |= ImGuiTreeNodeFlags_Selected;
     */
     bool opened = true;
-    if (ImGui::TreeNode(model.GetName().c_str())) {
+    const std::string label = model.GetName() + "##model_" + std::to_string(modelIndex);
+    if (ImGui::TreeNode(label.c_str())) {
         if (opened) {
             glm::vec3 lPos, lRot, lScl;
             glm::vec3 wPos, wRot, wScl;

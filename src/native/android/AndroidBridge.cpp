@@ -43,7 +43,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_krisp3t_retrorenderer_MainActivity_na
     env->GetByteArrayRegion(fileData, 0, length, reinterpret_cast<jbyte*>(buffer.data()));
     // const char* extStr = env->GetStringUTFChars(extension, nullptr);
 
-    auto event = std::make_unique<RetroRenderer::SceneLoadEvent>(std::move(buffer), length);
+    const bool appendToCurrentScene = RetroRenderer::Engine::Get().GetSceneManager().GetScene() != nullptr;
+    auto event = std::make_unique<RetroRenderer::SceneLoadEvent>(std::move(buffer), length, appendToCurrentScene);
     RetroRenderer::Engine::Get().EnqueueEvent(std::move(event));
 
     // env->ReleaseStringUTFChars(extension, extStr);
