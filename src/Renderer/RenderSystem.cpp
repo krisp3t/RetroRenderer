@@ -211,6 +211,10 @@ void RenderSystem::OnResetScene() {
     SyncSoftwareWorkerForSceneMutation();
 }
 
+void RenderSystem::OnSceneMutated() {
+    SyncSoftwareWorkerForSceneMutation();
+}
+
 GLuint RenderSystem::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
     return p_activeRenderer_->CompileShaders(vertexCode, fragmentCode);
 }

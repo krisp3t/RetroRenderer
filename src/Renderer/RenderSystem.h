@@ -44,6 +44,7 @@ class RenderSystem {
 
     void OnLoadScene(const SceneLoadEvent& e);
     void OnResetScene();
+    void OnSceneMutated();
 
     [[nodiscard]] GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode);
 

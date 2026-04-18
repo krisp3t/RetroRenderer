@@ -1,6 +1,7 @@
 #include "Model.h"
 #include "Scene.h"
 #include <glm/detail/type_quat.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 
@@ -43,6 +44,20 @@ void Model::SetParent(int parent) {
 void Model::SetLocalTransform(const glm::mat4& mat) {
     m_LocalMatrix = mat;
     MarkDirty();
+}
+
+void Model::SetLocalPosition(const glm::vec3& position) {
+    // Preserve the existing local basis and only move the translation column.
+    m_LocalMatrix[3] = glm::vec4(position, 1.0f);
+    MarkDirty();
+}
+
+void Model::SetLocalTRS(const glm::vec3& translation, const glm::vec3& rotationEulerDegrees, const glm::vec3& scale) {
+    glm::mat4 localTransform(1.0f);
+    localTransform = glm::translate(localTransform, translation);
+    localTransform *= glm::mat4_cast(glm::quat(glm::radians(rotationEulerDegrees)));
+    localTransform = glm::scale(localTransform, scale);
+    SetLocalTransform(localTransform);
 }
 
 const glm::mat4& Model::GetWorldTransform() const {

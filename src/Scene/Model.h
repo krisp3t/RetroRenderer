@@ -26,6 +26,8 @@ class Model {
     const std::string& GetName() const;
     void SetName(const std::string& name);
     void SetLocalTransform(const glm::mat4& mat);
+    void SetLocalPosition(const glm::vec3& position);
+    void SetLocalTRS(const glm::vec3& translation, const glm::vec3& rotationEulerDegrees, const glm::vec3& scale);
     void SetParent(int parent);
     const glm::mat4& GetWorldTransform() const;
     void MarkDirty();

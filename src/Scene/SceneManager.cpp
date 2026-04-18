@@ -1,4 +1,5 @@
 #include "SceneManager.h"
+#include "../Engine.h"
 #include <KrisLogger/Logger.h>
 
 #include <glm/gtc/type_ptr.inl>
@@ -155,7 +156,18 @@ void SceneManager::RenderUIModelRecursive(int modelIndex) {
             glm::vec3 lPos, lRot, lScl;
             glm::vec3 wPos, wRot, wScl;
             model.GetLocalTRS(lPos, lRot, lScl);
+            bool transformChanged = false;
+            transformChanged |= ImGui::DragFloat3("Local position", glm::value_ptr(lPos), 0.1f, 0.0f, 0.0f, "%.3f");
+            transformChanged |= ImGui::DragFloat3("Local rotation", glm::value_ptr(lRot), 0.5f, 0.0f, 0.0f, "%.2f");
+            transformChanged |= ImGui::DragFloat3("Local scale", glm::value_ptr(lScl), 0.01f, 0.0f, 0.0f, "%.3f");
+            if (transformChanged) {
+                model.SetLocalTRS(lPos, lRot, lScl);
+            }
+            if (transformChanged) {
+                Engine::Get().GetRenderSystem().OnSceneMutated();
+            }
             model.GetWorldTRS(wPos, wRot, wScl);
+            model.GetLocalTRS(lPos, lRot, lScl);
 
             ImGui::Text("Local pos:      (%.2f, %.2f, %.2f)", lPos.x, lPos.y, lPos.z);
             ImGui::SameLine();
