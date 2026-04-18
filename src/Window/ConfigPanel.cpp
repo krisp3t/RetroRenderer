@@ -79,7 +79,7 @@ const char* RenderPresetDescription(Config::RenderPreset preset) {
     case Config::RenderPreset::PICO8:
         return "Low-resolution software preset aimed at palette reduction, color ramps, and ordered dithering.";
     case Config::RenderPreset::PICOCAD:
-        return "Low-resolution software preset aimed at picoCAD-style low-poly rendering, flat face lighting, reduced textures, texture-derived palettes, affine mapping, and vertex snap.";
+        return "Low-resolution software preset aimed at picoCAD-style low-poly rendering, flat face lighting, reduced textures, texture-derived palettes, affine mapping, vertex snap, and outlines.";
     case Config::RenderPreset::PS1:
         return "Low-resolution software preset aimed at PS1-style affine textures, 4-bit CLUT-like texture reduction, barycentric shading, projected vertex wobble, RGB555 output, and optional fog.";
     }
@@ -980,6 +980,15 @@ void ConfigPanel::DisplayPostFxSettings() {
     manualChange |= ImGui::Checkbox("Enable ordered dithering", &retro.enableOrderedDithering);
     manualChange |= ImGui::SliderInt("Lighting bands", &retro.lightingBands, 0, 8);
     manualChange |= ImGui::Checkbox("Flat face lighting", &retro.flatFaceLighting);
+    manualChange |= ImGui::Checkbox("Enable outline pass", &retro.enableOutline);
+    manualChange |= ImGui::SliderInt("Outline thickness", &retro.outlineThickness, 1, 4);
+    ImVec4 outlineColor = retro.outlineColor.ToImVec4();
+    if (ImGui::ColorEdit3("Outline color", reinterpret_cast<float*>(&outlineColor))) {
+        retro.outlineColor = Color(outlineColor);
+        retro.outlineColor.a = 255;
+        manualChange = true;
+    }
+    ImGui::TextDisabled("Outline pass currently applies on the software retro path.");
     manualChange |= ImGui::Checkbox("Use stable untextured base color", &retro.useStableUntexturedBaseColor);
     ImVec4 untexturedBaseColor = retro.untexturedBaseColor.ToImVec4();
     if (ImGui::ColorEdit3("Untextured base color", reinterpret_cast<float*>(&untexturedBaseColor))) {

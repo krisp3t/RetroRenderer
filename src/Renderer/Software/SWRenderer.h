@@ -63,6 +63,8 @@ class SWRenderer : public IRenderer {
     size_t m_SkyboxCacheWidth = 0;
     size_t m_SkyboxCacheHeight = 0;
     bool m_SkyboxCacheValid = false;
+
+    void ApplyOutlinePass();
 };
 
 } // namespace RetroRenderer

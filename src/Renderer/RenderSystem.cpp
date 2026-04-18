@@ -140,9 +140,6 @@ GLuint RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& c
     if (p_config->environment.showSkybox) {
         p_activeRenderer_->DrawSkybox();
     }
-    if (p_config->environment.showGrid) {
-        p_activeRenderer_->DrawGridGizmo();
-    }
     auto& models = scene->m_Models;
     // LOGD("Render queue size: %d", renderQueue.size());
     for (int modelIx : renderQueue) {
@@ -154,6 +151,9 @@ GLuint RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& c
         if (!model->GetMeshes().empty()) {
             p_activeRenderer_->DrawTriangularMesh(model);
         }
+    }
+    if (p_config->environment.showGrid) {
+        p_activeRenderer_->DrawGridGizmo();
     }
     return p_activeRenderer_->EndFrame();
 }
@@ -372,10 +372,6 @@ void RenderSystem::SoftwareWorkerLoop() {
         if (job.configSnapshot.environment.showSkybox) {
             p_SWRenderer_->DrawSkybox();
         }
-        if (job.configSnapshot.environment.showGrid) {
-            p_SWRenderer_->DrawGridGizmo();
-        }
-
         bool cancelled = false;
         if (job.scene) {
             auto& models = job.scene->m_Models;
@@ -408,6 +404,9 @@ void RenderSystem::SoftwareWorkerLoop() {
         }
 
         p_SWRenderer_->EndFrame();
+        if (job.configSnapshot.environment.showGrid) {
+            p_SWRenderer_->DrawGridGizmo();
+        }
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
         SoftwareCompletedFrame finishedFrame{};
         finishedFrame.width = buffer.width;
@@ -447,9 +446,6 @@ GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
     if (configSnapshot.environment.showSkybox) {
         p_SWRenderer_->DrawSkybox();
     }
-    if (configSnapshot.environment.showGrid) {
-        p_SWRenderer_->DrawGridGizmo();
-    }
     if (scene) {
         auto& models = scene->m_Models;
         for (int modelIx : renderQueue) {
@@ -463,6 +459,9 @@ GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
         }
     }
     p_SWRenderer_->EndFrame();
+    if (configSnapshot.environment.showGrid) {
+        p_SWRenderer_->DrawGridGizmo();
+    }
     const auto& buffer = p_SWRenderer_->GetFrameBuffer();
     glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(buffer.width), static_cast<GLsizei>(buffer.height),

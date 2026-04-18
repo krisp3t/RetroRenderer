@@ -789,7 +789,68 @@ GLuint SWRenderer::EndFrame() {
         }
         m_DeferredPs1Triangles.clear();
     }
+    ApplyOutlinePass();
     return 0;
+}
+
+void SWRenderer::ApplyOutlinePass() {
+    if (!m_FrameBuffer ||
+        !m_DepthBuffer ||
+        !m_FrameConfigSnapshot.retro.enableOutline ||
+        m_FrameConfigSnapshot.software.rasterizer.polygonMode != Config::RasterizationPolygonMode::FILL) {
+        return;
+    }
+
+    const size_t width = m_FrameBuffer->width;
+    const size_t height = m_FrameBuffer->height;
+    if (width == 0 || height == 0) {
+        return;
+    }
+
+    const int radius = std::clamp(m_FrameConfigSnapshot.retro.outlineThickness, 1, 4);
+    const Pixel outlineColor = m_FrameConfigSnapshot.retro.outlineColor.ToPixel();
+    const float backgroundDepth = 1.0f - 1e-4f;
+    std::vector<uint8_t> outlineMask(width * height, 0);
+
+    for (size_t y = 0; y < height; y++) {
+        for (size_t x = 0; x < width; x++) {
+            const size_t pixelIndex = y * width + x;
+            if (m_DepthBuffer->data[pixelIndex] >= backgroundDepth) {
+                continue;
+            }
+
+            for (int dy = -radius; dy <= radius; dy++) {
+                const int ny = static_cast<int>(y) + dy;
+                if (ny < 0 || ny >= static_cast<int>(height)) {
+                    continue;
+                }
+                for (int dx = -radius; dx <= radius; dx++) {
+                    if (dx == 0 && dy == 0) {
+                        continue;
+                    }
+                    if (dx * dx + dy * dy > radius * radius) {
+                        continue;
+                    }
+
+                    const int nx = static_cast<int>(x) + dx;
+                    if (nx < 0 || nx >= static_cast<int>(width)) {
+                        continue;
+                    }
+
+                    const size_t neighborIndex = static_cast<size_t>(ny) * width + static_cast<size_t>(nx);
+                    if (m_DepthBuffer->data[neighborIndex] >= backgroundDepth) {
+                        outlineMask[neighborIndex] = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    for (size_t i = 0; i < outlineMask.size(); i++) {
+        if (outlineMask[i] != 0) {
+            m_FrameBuffer->data[i] = outlineColor;
+        }
+    }
 }
 
 void SWRenderer::DrawSkybox() {
