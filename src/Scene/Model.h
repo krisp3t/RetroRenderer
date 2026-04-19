@@ -31,6 +31,9 @@ class Model {
     void SetParent(int parent);
     const glm::mat4& GetWorldTransform() const;
     void MarkDirty();
+    void RecomputeLocalBounds();
+    bool HasLocalBounds() const;
+    void GetLocalBounds(glm::vec3& outMin, glm::vec3& outMax) const;
     void GetLocalTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, glm::vec3& outScale) const;
     void GetWorldTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, glm::vec3& outScale) const;
 
@@ -45,6 +48,9 @@ class Model {
     std::string m_Name;
     glm::mat4 m_WorldMatrix = glm::mat4(1.0f);
     glm::mat4 m_LocalMatrix = glm::mat4(1.0f);
+    bool m_HasLocalBounds = false;
+    glm::vec3 m_LocalBoundsMin = glm::vec3(0.0f);
+    glm::vec3 m_LocalBoundsMax = glm::vec3(0.0f);
 
     // TODO: replace with handles if needed to improve performance
 };

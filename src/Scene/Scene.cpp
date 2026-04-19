@@ -43,29 +43,6 @@ std::array<FrustumPlane, 6> ExtractFrustumPlanes(const glm::mat4& viewProjection
     };
 }
 
-bool ComputeModelLocalBounds(const Model& model, glm::vec3& outMin, glm::vec3& outMax) {
-    bool hasVertices = false;
-    glm::vec3 minBounds(std::numeric_limits<float>::max());
-    glm::vec3 maxBounds(std::numeric_limits<float>::lowest());
-
-    for (const Mesh& mesh : model.m_Meshes) {
-        for (const Vertex& vertex : mesh.m_Vertices) {
-            const glm::vec3 position = glm::vec3(vertex.position);
-            minBounds = glm::min(minBounds, position);
-            maxBounds = glm::max(maxBounds, position);
-            hasVertices = true;
-        }
-    }
-
-    if (!hasVertices) {
-        return false;
-    }
-
-    outMin = minBounds;
-    outMax = maxBounds;
-    return true;
-}
-
 void TransformBounds(const glm::mat4& transform, const glm::vec3& localMin, const glm::vec3& localMax, glm::vec3& outMin, glm::vec3& outMax) {
     static constexpr std::array<glm::vec3, 8> kCorners = {
         glm::vec3{0.0f, 0.0f, 0.0f},
@@ -112,9 +89,10 @@ bool IsAabbOutsidePlane(const FrustumPlane& plane, const glm::vec3& boundsMin, c
 bool IsModelVisibleInFrustum(const Model& model, const std::array<FrustumPlane, 6>& frustumPlanes) {
     glm::vec3 localMin{};
     glm::vec3 localMax{};
-    if (!ComputeModelLocalBounds(model, localMin, localMax)) {
+    if (!model.HasLocalBounds()) {
         return true;
     }
+    model.GetLocalBounds(localMin, localMax);
 
     glm::vec3 worldMin{};
     glm::vec3 worldMax{};
@@ -220,6 +198,7 @@ bool Scene::ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneDat
             newModel.m_Meshes.back().Init();
         }
     }
+    newModel.RecomputeLocalBounds();
 
     const int currentNodeIndex = static_cast<int>(m_Models.size());
     if (parentIndex != -1) {

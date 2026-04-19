@@ -376,7 +376,6 @@ void RenderSystem::SoftwareWorkerLoop() {
         if (job.configSnapshot.environment.showSkybox) {
             p_SWRenderer_->DrawSkybox();
         }
-        bool cancelled = false;
         if (job.scene) {
             auto& models = job.scene->m_Models;
             for (int modelIx : job.renderQueue) {
@@ -385,13 +384,6 @@ void RenderSystem::SoftwareWorkerLoop() {
                     if (m_SoftwareWorkerStopRequested) {
                         return;
                     }
-                    if (m_PendingSoftwareJob.has_value() && m_PendingSoftwareJob->jobId > job.jobId) {
-                        cancelled = true;
-                    }
-                }
-                if (cancelled) {
-                    p_stats->swJobsCancelled.fetch_add(1, std::memory_order_relaxed);
-                    break;
                 }
                 if (modelIx < 0 || static_cast<size_t>(modelIx) >= models.size()) {
                     continue;
@@ -402,11 +394,6 @@ void RenderSystem::SoftwareWorkerLoop() {
                 }
             }
         }
-        if (cancelled) {
-            p_SWRenderer_->SetFallbackTexture(nullptr);
-            continue;
-        }
-
         p_SWRenderer_->EndFrame();
         if (job.configSnapshot.environment.showGrid) {
             p_SWRenderer_->DrawGridGizmo();

@@ -52,6 +52,9 @@ class SWRenderer : public IRenderer {
     const Texture* p_FrameFallbackTexture = nullptr;
     std::vector<DeferredTriangle> m_DeferredPs1Triangles;
     std::unique_ptr<Rasterizer> m_Rasterizer = nullptr;
+    std::vector<glm::vec4> m_ClipPositionScratch;
+    std::vector<glm::vec3> m_NormalScratch;
+    std::vector<glm::vec3> m_WorldPositionScratch;
     bool m_HasSkybox = false;
     int m_SkyboxFaceSize = 0;
     std::array<std::vector<Pixel>, 6> m_SkyboxFaces{};

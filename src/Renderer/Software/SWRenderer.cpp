@@ -626,9 +626,12 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
 
         const auto& cfg = m_FrameConfigSnapshot;
         const bool deferPs1Triangles = ShouldDeferPs1Triangles(cfg);
-        std::vector<glm::vec4> clipPositions(mesh.m_Vertices.size());
-        std::vector<glm::vec3> transformedNormals(mesh.m_Vertices.size());
-        std::vector<glm::vec3> worldPositions(mesh.m_Vertices.size());
+        m_ClipPositionScratch.resize(mesh.m_Vertices.size());
+        m_NormalScratch.resize(mesh.m_Vertices.size());
+        m_WorldPositionScratch.resize(mesh.m_Vertices.size());
+        auto& clipPositions = m_ClipPositionScratch;
+        auto& transformedNormals = m_NormalScratch;
+        auto& worldPositions = m_WorldPositionScratch;
         for (size_t vertexIndex = 0; vertexIndex < mesh.m_Vertices.size(); vertexIndex++) {
             const Vertex& sourceVertex = mesh.m_Vertices[vertexIndex];
             clipPositions[vertexIndex] = mvp * sourceVertex.position;
