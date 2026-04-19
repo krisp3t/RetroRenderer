@@ -167,7 +167,6 @@ void SceneManager::RenderUIModelRecursive(int modelIndex) {
     if (ImGui::TreeNode(label.c_str())) {
         if (opened) {
             glm::vec3 lPos, lRot, lScl;
-            glm::vec3 wPos, wRot, wScl;
             model.GetLocalTRS(lPos, lRot, lScl);
             bool transformChanged = false;
             transformChanged |= ImGui::DragFloat3("Local position", glm::value_ptr(lPos), 0.1f, 0.0f, 0.0f, "%.3f");
@@ -179,20 +178,6 @@ void SceneManager::RenderUIModelRecursive(int modelIndex) {
             if (transformChanged) {
                 Engine::Get().GetRenderSystem().OnSceneMutated();
             }
-            model.GetWorldTRS(wPos, wRot, wScl);
-            model.GetLocalTRS(lPos, lRot, lScl);
-
-            ImGui::Text("Local pos:      (%.2f, %.2f, %.2f)", lPos.x, lPos.y, lPos.z);
-            ImGui::SameLine();
-            ImGui::Text("World pos:      (%.2f, %.2f, %.2f)", wPos.x, wPos.y, wPos.z);
-
-            ImGui::Text("Local rot:      (%.2f, %.2f, %.2f)", lRot.x, lRot.y, lRot.z);
-            ImGui::SameLine();
-            ImGui::Text("World rot:      (%.2f, %.2f, %.2f)", wRot.x, wRot.y, wRot.z);
-
-            ImGui::Text("Local scale:    (%.2f, %.2f, %.2f)", lScl.x, lScl.y, lScl.z);
-            ImGui::SameLine();
-            ImGui::Text("World scale:    (%.2f, %.2f, %.2f)", wScl.x, wScl.y, wScl.z);
 
             for (int childIndex : p_Scene->m_Models[modelIndex].m_Children) {
                 RenderUIModelRecursive(childIndex);
