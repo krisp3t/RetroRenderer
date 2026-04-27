@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include "TextureHandle.h"
 
 namespace RetroRenderer {
 
@@ -16,15 +16,15 @@ enum class RenderOutputOrigin {
 
 struct RenderOutput {
     RenderOutputKind kind = RenderOutputKind::None;
-    uintptr_t handle = 0;
+    TextureHandle textureHandle;
     RenderOutputOrigin origin = RenderOutputOrigin::TopLeft;
 
-    [[nodiscard]] static constexpr RenderOutput Texture(uintptr_t textureHandle, RenderOutputOrigin textureOrigin) {
+    [[nodiscard]] static constexpr RenderOutput Texture(TextureHandle textureHandle, RenderOutputOrigin textureOrigin) {
         return RenderOutput{RenderOutputKind::TextureHandle, textureHandle, textureOrigin};
     }
 
     [[nodiscard]] constexpr bool IsValid() const {
-        return kind != RenderOutputKind::None && handle != 0;
+        return kind != RenderOutputKind::None && textureHandle.IsValid();
     }
 };
 

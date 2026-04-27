@@ -207,7 +207,7 @@ void RenderSystem::OnTextureMutated() {
     SyncSoftwareWorkerForRenderDataMutation();
 }
 
-GLuint RenderSystem::GetTextureHandle(const Texture& texture) {
+TextureHandle RenderSystem::GetTextureHandle(const Texture& texture) {
     return p_GLRenderer_->GetTextureHandle(texture);
 }
 
@@ -227,7 +227,7 @@ void RenderSystem::SyncSoftwareWorkerForRenderDataMutation() {
 #if !defined(__EMSCRIPTEN__)
     StopSoftwareWorker();
     ClearSoftwareWorkerFrameState();
-    if (p_SWRenderer_ && m_SWFramePresenter.GetTextureHandle() != 0) {
+    if (p_SWRenderer_ && m_SWFramePresenter.GetTextureHandle().IsValid()) {
         p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
         m_SWFramePresenter.Upload(buffer);

@@ -7,6 +7,7 @@
 #include "../GLMeshResourceCache.h"
 #include "../GLTextureResourceCache.h"
 #include "../IRenderer.h"
+#include "../TextureHandle.h"
 
 namespace RetroRenderer {
 class GLRenderer : public IRenderer {
@@ -15,14 +16,14 @@ class GLRenderer : public IRenderer {
 
     ~GLRenderer() = default;
 
-    bool Init(GLuint fbTex, int w, int h);
+    bool Init(TextureHandle fbTex, int w, int h);
 
-    void Resize(GLuint newFbTex, int w, int h);
+    void Resize(TextureHandle newFbTex, int w, int h);
 
     void Destroy() override;
     void InvalidateSceneResources();
     void InvalidateTextureResources();
-    GLuint GetTextureHandle(const Texture& texture);
+    [[nodiscard]] TextureHandle GetTextureHandle(const Texture& texture);
 
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
@@ -42,7 +43,7 @@ class GLRenderer : public IRenderer {
   private:
     static void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
                               const GLchar* message, const void* userParam);
-    bool CreateFramebuffer(GLuint fbTex, int w, int h);
+    bool CreateFramebuffer(TextureHandle fbTex, int w, int h);
     GLuint CompileShader(GLenum shaderType, const char* shaderSource);
     void CheckShaderErrors(GLuint shader, const std::string& type);
     void CreateFallbackTexture();

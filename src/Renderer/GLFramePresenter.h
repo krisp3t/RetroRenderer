@@ -3,6 +3,7 @@
 #include "../Base/Color.h"
 #include "../include/kris_glheaders.h"
 #include "Buffer.h"
+#include "TextureHandle.h"
 #include <cstddef>
 
 namespace RetroRenderer {
@@ -21,8 +22,8 @@ class GLFramePresenter {
     bool Upload(const Buffer<Pixel>& buffer);
     bool UploadPixels(const Pixel* pixels, size_t width, size_t height);
 
-    [[nodiscard]] GLuint GetTextureHandle() const {
-        return m_TextureId;
+    [[nodiscard]] TextureHandle GetTextureHandle() const {
+        return TextureHandle{static_cast<uintptr_t>(m_TextureId)};
     }
 
   private:

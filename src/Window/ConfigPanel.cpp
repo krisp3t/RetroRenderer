@@ -19,7 +19,6 @@
 #include <imgui_impl_opengl3.h>
 #include <algorithm>
 #include <cinttypes>
-#include <type_traits>
 #include <utility>
 
 #ifdef __ANDROID__
@@ -31,6 +30,7 @@
 #include "../Engine.h"
 #include "../Renderer/RetroPalette.h"
 #include "ConfigPanel.h"
+#include "ImGuiTexture.h"
 
 #ifdef __EMSCRIPTEN__
 EM_JS(void, OpenWebFilePicker_JS, (), {
@@ -103,15 +103,6 @@ Pixel ImVec4ToOpaquePixel(const ImVec4& color) {
         static_cast<uint8_t>(std::clamp(color.z, 0.0f, 1.0f) * 255.0f),
         255,
     };
-}
-
-template <typename TextureId>
-TextureId ToTextureId(uintptr_t handle) {
-    if constexpr (std::is_pointer_v<TextureId>) {
-        return reinterpret_cast<TextureId>(handle);
-    } else {
-        return static_cast<TextureId>(handle);
-    }
 }
 
 bool ProjectWorldToOutputImage(const glm::vec3& worldPosition,
@@ -562,7 +553,7 @@ void ConfigPanel::DisplayRenderedImage(const RenderOutput& output) {
     }
     const ImVec2 imageMin = ImGui::GetCursorScreenPos();
     if (output.kind == RenderOutputKind::TextureHandle && output.IsValid()) {
-        const ImTextureID textureId = ToTextureId<ImTextureID>(output.handle);
+        const ImTextureID textureId = ToImTextureID(output.textureHandle);
         if (output.origin == RenderOutputOrigin::BottomLeft) {
             ImGui::Image(textureId, contentSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
         } else {

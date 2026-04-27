@@ -2,7 +2,9 @@
 
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "../Engine.h"
+#include "../Window/ImGuiTexture.h"
 #include "KrisLogger/Logger.h"
+#include <cinttypes>
 #include <cstdint>
 #include <fstream>
 #include <imgui.h>
@@ -130,9 +132,9 @@ void MaterialManager::RenderUI() {
 
         // Display current texture
         const auto textureHandle = Engine::Get().GetRenderSystem().GetTextureHandle(*currentMat.texture);
-        if (textureHandle != 0) {
-            ImGui::Text("Current Texture: handle %d (%s)", textureHandle, currentMat.texture->GetPath().c_str());
-            ImGui::Image(ImTextureID((void*)(intptr_t)textureHandle), ImVec2(128, 128));
+        if (textureHandle.IsValid()) {
+            ImGui::Text("Current Texture: handle %" PRIuPTR " (%s)", textureHandle.value, currentMat.texture->GetPath().c_str());
+            ImGui::Image(ToImTextureID(textureHandle), ImVec2(128, 128));
         } else {
             ImGui::Text("Current Texture: none");
         }

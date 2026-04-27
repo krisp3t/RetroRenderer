@@ -9,9 +9,13 @@ namespace {
 GLuint ToGLHandle(ShaderHandle handle) {
     return static_cast<GLuint>(handle.value);
 }
+
+GLuint ToGLHandle(TextureHandle handle) {
+    return static_cast<GLuint>(handle.value);
+}
 } // namespace
 
-bool GLESRenderer::Init(GLuint fbTex, int w, int h) {
+bool GLESRenderer::Init(TextureHandle fbTex, int w, int h) {
     if (!CreateFramebuffer(fbTex, w, h)) {
         return false;
     }
@@ -37,9 +41,9 @@ bool GLESRenderer::Init(GLuint fbTex, int w, int h) {
  * @param fbTex
  * @return
  */
-bool GLESRenderer::CreateFramebuffer(GLuint fbTex, int w, int h) {
+bool GLESRenderer::CreateFramebuffer(TextureHandle fbTex, int w, int h) {
     DestroyFramebufferResources();
-    p_FrameBufferTexture = fbTex;
+    p_FrameBufferTexture = ToGLHandle(fbTex);
     (void)w;
     (void)h;
 
@@ -64,7 +68,7 @@ bool GLESRenderer::CreateFramebuffer(GLuint fbTex, int w, int h) {
     return true;
 }
 
-void GLESRenderer::Resize(GLuint newFbTex, int w, int h) {
+void GLESRenderer::Resize(TextureHandle newFbTex, int w, int h) {
     glViewport(0, 0, w, h);
     if (!CreateFramebuffer(newFbTex, w, h)) {
         LOGE("Failed to resize GLES framebuffer to %d x %d", w, h);
@@ -124,8 +128,8 @@ void GLESRenderer::InvalidateTextureResources() {
     m_TextureResources.Clear();
 }
 
-GLuint GLESRenderer::GetTextureHandle(const Texture& texture) {
-    return m_TextureResources.GetOrCreate(texture);
+TextureHandle GLESRenderer::GetTextureHandle(const Texture& texture) {
+    return TextureHandle{static_cast<uintptr_t>(m_TextureResources.GetOrCreate(texture))};
 }
 
 void GLESRenderer::SetActiveCamera(const Camera& camera) {

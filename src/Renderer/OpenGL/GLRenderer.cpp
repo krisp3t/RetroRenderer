@@ -12,6 +12,10 @@ namespace {
 GLuint ToGLHandle(ShaderHandle handle) {
     return static_cast<GLuint>(handle.value);
 }
+
+GLuint ToGLHandle(TextureHandle handle) {
+    return static_cast<GLuint>(handle.value);
+}
 } // namespace
 
 /**
@@ -34,7 +38,7 @@ void APIENTRY GLRenderer::DebugCallback(GLenum source, GLenum type, GLuint id, G
 #endif
 }
 
-bool GLRenderer::Init(GLuint fbTex, int w, int h) {
+bool GLRenderer::Init(TextureHandle fbTex, int w, int h) {
     // Enable Debug Output
     if (glDebugMessageCallback == nullptr) {
         LOGW("glDebugMessageCallback not supported on this platform");
@@ -105,9 +109,9 @@ bool GLRenderer::Init(GLuint fbTex, int w, int h) {
  * @param fbTex
  * @return
  */
-bool GLRenderer::CreateFramebuffer(GLuint fbTex, int w, int h) {
+bool GLRenderer::CreateFramebuffer(TextureHandle fbTex, int w, int h) {
     DestroyFramebufferResources();
-    p_FrameBufferTexture = fbTex;
+    p_FrameBufferTexture = ToGLHandle(fbTex);
     glGenFramebuffers(1, &m_FrameBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, p_FrameBufferTexture, 0);
@@ -126,7 +130,7 @@ bool GLRenderer::CreateFramebuffer(GLuint fbTex, int w, int h) {
     return true;
 }
 
-void GLRenderer::Resize(GLuint newFbTex, int w, int h) {
+void GLRenderer::Resize(TextureHandle newFbTex, int w, int h) {
     glViewport(0, 0, w, h);
     if (!CreateFramebuffer(newFbTex, w, h)) {
         LOGE("Failed to resize GL framebuffer to %d x %d", w, h);
@@ -198,8 +202,8 @@ void GLRenderer::InvalidateTextureResources() {
     m_TextureResources.Clear();
 }
 
-GLuint GLRenderer::GetTextureHandle(const Texture& texture) {
-    return m_TextureResources.GetOrCreate(texture);
+TextureHandle GLRenderer::GetTextureHandle(const Texture& texture) {
+    return TextureHandle{static_cast<uintptr_t>(m_TextureResources.GetOrCreate(texture))};
 }
 
 void GLRenderer::SetActiveCamera(const Camera& camera) {
