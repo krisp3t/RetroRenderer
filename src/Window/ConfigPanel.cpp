@@ -28,6 +28,7 @@
 #include "../Base/Event.h"
 #include "../Base/InputActions.h"
 #include "../Engine.h"
+#include "../Renderer/GLFramePresenter.h"
 #include "../Renderer/RetroPalette.h"
 #include "../include/kris_glheaders.h"
 #include "ConfigPanel.h"
@@ -302,6 +303,7 @@ bool ConfigPanel::Init(SDL_Window* window, SDL_GLContext glContext, std::shared_
     p_Window_ = window;
     p_config_ = config;
     p_stats_ = stats;
+    m_cpuOutputPresenter_ = std::make_unique<GLFramePresenter>();
 
     return true;
 }
@@ -559,6 +561,24 @@ void ConfigPanel::DisplayRenderedImage(const RenderOutput& output) {
             ImGui::Image(textureId, contentSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
         } else {
             ImGui::Image(textureId, contentSize);
+        }
+    } else if (output.kind == RenderOutputKind::CpuPixels && output.IsValid()) {
+        const auto& pixels = output.cpuPixels;
+        if (pixels.format != RenderOutputPixelFormat::Rgba8) {
+            ImGui::Text("Renderer output pixel format is not supported");
+        } else if (!m_cpuOutputPresenter_ ||
+                   !m_cpuOutputPresenter_->Resize(static_cast<int>(pixels.width),
+                                                  static_cast<int>(pixels.height),
+                                                  p_config_->renderer.nearestNeighborPresentation) ||
+                   !m_cpuOutputPresenter_->UploadPixels(pixels.pixels, pixels.width, pixels.height)) {
+            ImGui::Text("Renderer CPU output is not available");
+        } else {
+            const ImTextureID textureId = ToImTextureID(m_cpuOutputPresenter_->GetTextureHandle());
+            if (output.origin == RenderOutputOrigin::BottomLeft) {
+                ImGui::Image(textureId, contentSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+            } else {
+                ImGui::Image(textureId, contentSize);
+            }
         }
     } else {
         ImGui::Text("Renderer output is not available");
@@ -1166,13 +1186,13 @@ void ConfigPanel::DisplayMetricsOverlay() {
             const uint64_t swJobsCompleted = p_stats_->swJobsCompleted.load(std::memory_order_relaxed);
             const uint64_t swJobsCancelled = p_stats_->swJobsCancelled.load(std::memory_order_relaxed);
             const uint64_t swJobsDroppedPending = p_stats_->swJobsDroppedPending.load(std::memory_order_relaxed);
-            const uint64_t swFramesUploaded = p_stats_->swFramesUploaded.load(std::memory_order_relaxed);
+            const uint64_t swFramesPresented = p_stats_->swFramesUploaded.load(std::memory_order_relaxed);
             const uint64_t swFramesDroppedReady = p_stats_->swFramesDroppedReady.load(std::memory_order_relaxed);
             ImGui::SeparatorText("SW Async");
             ImGui::Text("Jobs: submitted=%" PRIu64 " completed=%" PRIu64, swJobsSubmitted, swJobsCompleted);
             ImGui::Text("Jobs: cancelled=%" PRIu64 " dropped(pending)=%" PRIu64, swJobsCancelled,
                         swJobsDroppedPending);
-            ImGui::Text("Frames: uploaded=%" PRIu64 " dropped(ready)=%" PRIu64, swFramesUploaded,
+            ImGui::Text("Frames: presented=%" PRIu64 " dropped(ready)=%" PRIu64, swFramesPresented,
                         swFramesDroppedReady);
         }
         if (auto cam = Engine::Get().GetCamera()) {
@@ -1306,6 +1326,10 @@ void ConfigPanel::OnDraw() {
 }
 
 void ConfigPanel::Destroy() {
+    if (m_cpuOutputPresenter_) {
+        m_cpuOutputPresenter_->Destroy();
+        m_cpuOutputPresenter_.reset();
+    }
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();

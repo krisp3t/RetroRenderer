@@ -9,6 +9,8 @@
 #include <memory>
 
 namespace RetroRenderer {
+class IFramePresenter;
+
 struct VirtualStickState {
     bool active = false;
     ImVec2 origin;              // where finger first touched
@@ -31,6 +33,7 @@ class ConfigPanel {
     SDL_Window* p_Window_ = nullptr;
     std::shared_ptr<Config> p_config_ = nullptr;
     std::shared_ptr<Stats> p_stats_ = nullptr;
+    std::unique_ptr<IFramePresenter> m_cpuOutputPresenter_ = nullptr;
     std::vector<uint8_t> m_fontData_ = {}; // keep font bytes alive for the lifetime of imgui
     bool m_isDragging_ = false;
     bool m_isFileDialogOpen_ = false;

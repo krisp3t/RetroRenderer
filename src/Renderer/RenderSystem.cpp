@@ -46,7 +46,6 @@ bool RenderSystem::Init() {
     m_IsDestroyed = false;
     auto const& p_config = Engine::Get().GetConfig();
     p_SWRenderer_ = std::make_unique<SWRenderer>();
-    m_SWFramePresenter = std::make_unique<GLFramePresenter>();
     m_GLFramePresenter = std::make_unique<GLFramePresenter>();
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
     p_GLRenderer_ = std::make_unique<GLESRenderer>();
@@ -58,10 +57,6 @@ bool RenderSystem::Init() {
     auto& fbResolution = p_config->renderer.resolution;
     assert(fbResolution.x > 0 && fbResolution.y > 0 && "Tried to initialize renderers with invalid resolution");
 
-    if (!m_SWFramePresenter->Init(fbResolution.x, fbResolution.y, p_config->renderer.nearestNeighborPresentation)) {
-        LOGE("Failed to initialize software frame presenter");
-        return false;
-    }
     if (!m_GLFramePresenter->Init(fbResolution.x, fbResolution.y, p_config->renderer.nearestNeighborPresentation)) {
         LOGE("Failed to initialize GL frame presenter");
         return false;
@@ -126,8 +121,8 @@ RenderOutput RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Cam
         return RenderSoftwareSync(scene, camera, renderQueue);
 #else
         SubmitSoftwareJob(scene, camera, renderQueue);
-        UploadSoftwareFrameToTexture();
-        return RenderOutput::Texture(m_SWFramePresenter->GetTextureHandle(), RenderOutputOrigin::TopLeft);
+        PresentCompletedSoftwareFrame();
+        return MakeSoftwareRenderOutput();
 #endif
     }
 
@@ -166,7 +161,6 @@ void RenderSystem::Resize(const glm::ivec2& resolution) {
     StopSoftwareWorker();
 #endif
 
-    m_SWFramePresenter->Resize(resolution.x, resolution.y, p_config->renderer.nearestNeighborPresentation);
     m_GLFramePresenter->Resize(resolution.x, resolution.y, p_config->renderer.nearestNeighborPresentation);
     LOGI("Resizing output image to %d x %d", resolution.x, resolution.y);
     p_SWRenderer_->Resize(resolution.x, resolution.y);
@@ -190,9 +184,6 @@ void RenderSystem::Destroy() {
     }
     if (p_SWRenderer_) {
         p_SWRenderer_->Destroy();
-    }
-    if (m_SWFramePresenter) {
-        m_SWFramePresenter->Destroy();
     }
     if (m_GLFramePresenter) {
         m_GLFramePresenter->Destroy();
@@ -233,16 +224,17 @@ void RenderSystem::ClearSoftwareWorkerFrameState() {
     m_PendingSoftwareJob.reset();
     m_CompletedSoftwareFrames.clear();
 #endif
+    m_PresentedSoftwareFrame = {};
 }
 
 void RenderSystem::SyncSoftwareWorkerForRenderDataMutation() {
 #if !defined(__EMSCRIPTEN__)
     StopSoftwareWorker();
     ClearSoftwareWorkerFrameState();
-    if (p_SWRenderer_ && m_SWFramePresenter && m_SWFramePresenter->GetTextureHandle().IsValid()) {
+    if (p_SWRenderer_) {
         p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
-        m_SWFramePresenter->Upload(buffer);
+        StoreSoftwareFrame(buffer);
     }
     StartSoftwareWorker();
 #endif
@@ -311,7 +303,7 @@ void RenderSystem::SubmitSoftwareJob(const std::shared_ptr<Scene>& scene,
 #endif
 }
 
-void RenderSystem::UploadSoftwareFrameToTexture() {
+void RenderSystem::PresentCompletedSoftwareFrame() {
 #if !defined(__EMSCRIPTEN__)
     auto const& p_stats = Engine::Get().GetStats();
     assert(p_stats != nullptr && "Stats not initialized!");
@@ -338,9 +330,10 @@ void RenderSystem::UploadSoftwareFrameToTexture() {
         return;
     }
 
-    if (!m_SWFramePresenter->UploadPixels(completedFrame.pixels.data(), width, height)) {
-        return;
+    if (completedFrame.pitch == 0) {
+        completedFrame.pitch = completedFrame.width * sizeof(Pixel);
     }
+    m_PresentedSoftwareFrame = std::move(completedFrame);
 
     if (droppedReadyFrames > 0) {
         p_stats->swFramesDroppedReady.fetch_add(droppedReadyFrames, std::memory_order_relaxed);
@@ -406,6 +399,7 @@ void RenderSystem::SoftwareWorkerLoop() {
         SoftwareCompletedFrame finishedFrame{};
         finishedFrame.width = buffer.width;
         finishedFrame.height = buffer.height;
+        finishedFrame.pitch = buffer.pitch;
         finishedFrame.jobId = job.jobId;
         finishedFrame.pixels.resize(buffer.GetCount());
         if (!finishedFrame.pixels.empty()) {
@@ -458,8 +452,31 @@ RenderOutput RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scen
         p_SWRenderer_->DrawGridGizmo();
     }
     const auto& buffer = p_SWRenderer_->GetFrameBuffer();
-    m_SWFramePresenter->Upload(buffer);
+    StoreSoftwareFrame(buffer);
     p_SWRenderer_->SetFallbackTexture(nullptr);
-    return RenderOutput::Texture(m_SWFramePresenter->GetTextureHandle(), RenderOutputOrigin::TopLeft);
+    return MakeSoftwareRenderOutput();
+}
+
+RenderOutput RenderSystem::MakeSoftwareRenderOutput() const {
+    return RenderOutput::Pixels(
+        m_PresentedSoftwareFrame.pixels.data(),
+        m_PresentedSoftwareFrame.width,
+        m_PresentedSoftwareFrame.height,
+        m_PresentedSoftwareFrame.pitch,
+        RenderOutputOrigin::TopLeft);
+}
+
+void RenderSystem::StoreSoftwareFrame(const Buffer<Pixel>& buffer) {
+    m_PresentedSoftwareFrame = {};
+    m_PresentedSoftwareFrame.width = buffer.width;
+    m_PresentedSoftwareFrame.height = buffer.height;
+    m_PresentedSoftwareFrame.pitch = buffer.pitch;
+    m_PresentedSoftwareFrame.pixels.resize(buffer.GetCount());
+    if (!m_PresentedSoftwareFrame.pixels.empty()) {
+        std::memcpy(
+            m_PresentedSoftwareFrame.pixels.data(),
+            buffer.data,
+            m_PresentedSoftwareFrame.pixels.size() * sizeof(Pixel));
+    }
 }
 } // namespace RetroRenderer

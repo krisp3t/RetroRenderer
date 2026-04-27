@@ -65,15 +65,18 @@ class RenderSystem {
         std::vector<Pixel> pixels;
         size_t width = 0;
         size_t height = 0;
+        size_t pitch = 0;
         uint64_t jobId = 0;
     };
 
     void StartSoftwareWorker();
     void StopSoftwareWorker();
     void SubmitSoftwareJob(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
-    void UploadSoftwareFrameToTexture();
+    void PresentCompletedSoftwareFrame();
     void SoftwareWorkerLoop();
     RenderOutput RenderSoftwareSync(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
+    [[nodiscard]] RenderOutput MakeSoftwareRenderOutput() const;
+    void StoreSoftwareFrame(const Buffer<Pixel>& buffer);
     void ClearSoftwareWorkerFrameState();
     void SyncSoftwareWorkerForRenderDataMutation();
 
@@ -83,8 +86,8 @@ class RenderSystem {
     std::unique_ptr<IHardwareRenderer> p_GLRenderer_ = nullptr;
     IRenderer* p_activeRenderer_ = nullptr;
 
-    std::unique_ptr<IFramePresenter> m_SWFramePresenter;
     std::unique_ptr<IFramePresenter> m_GLFramePresenter;
+    SoftwareCompletedFrame m_PresentedSoftwareFrame;
     Color m_SoftwareClearColor = Color::DefaultBackground();
     bool m_IsDestroyed = false;
 
