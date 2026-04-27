@@ -112,6 +112,8 @@ bool GLRenderer::Init(TextureHandle fbTex, int w, int h) {
 bool GLRenderer::CreateFramebuffer(TextureHandle fbTex, int w, int h) {
     DestroyFramebufferResources();
     p_FrameBufferTexture = ToGLHandle(fbTex);
+    m_FrameWidth = w;
+    m_FrameHeight = h;
     glGenFramebuffers(1, &m_FrameBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, p_FrameBufferTexture, 0);
@@ -156,6 +158,8 @@ void GLRenderer::DestroyFramebufferResources() {
         m_DepthBuffer = 0;
     }
     p_FrameBufferTexture = 0;
+    m_FrameWidth = 0;
+    m_FrameHeight = 0;
 }
 
 void GLRenderer::DestroyRendererResources() {
@@ -325,6 +329,7 @@ void GLRenderer::DrawGridGizmo() {
 void GLRenderer::BeforeFrame(const Color& clearColor) {
     auto c = clearColor.ToImVec4();
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
+    glViewport(0, 0, m_FrameWidth, m_FrameHeight);
     glClearColor(c.x, c.y, c.z, c.w);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);

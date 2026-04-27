@@ -92,7 +92,6 @@ void RenderSystem::BeforeFrame(const Color& clearColor) {
         return;
     }
     assert(p_activeRenderer_ != nullptr && "Active renderer is null");
-    glViewport(0, 0, p_config->renderer.resolution.x, p_config->renderer.resolution.y);
     if (p_activeRenderer_ == p_SWRenderer_.get()) {
         m_SoftwareClearColor = clearColor;
 #if defined(__EMSCRIPTEN__)

@@ -59,6 +59,8 @@ class GLESRenderer : public IHardwareRenderer {
     GLuint m_SkyboxTexture = 0;
     GLuint m_SkyboxVAO = 0;
     GLuint m_SkyboxVBO = 0;
+    int m_FrameWidth = 0;
+    int m_FrameHeight = 0;
     ShaderProgram m_SkyboxProgram;
     GLMeshResourceCache m_MeshResources;
     GLTextureResourceCache m_TextureResources;

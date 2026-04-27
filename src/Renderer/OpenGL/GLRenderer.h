@@ -67,6 +67,8 @@ class GLRenderer : public IHardwareRenderer {
     GLuint m_GridVAO = 0;
     GLuint m_GridVBO = 0;
     GLsizei m_GridVertexCount = 0;
+    int m_FrameWidth = 0;
+    int m_FrameHeight = 0;
     GLMeshResourceCache m_MeshResources;
     GLTextureResourceCache m_TextureResources;
 };

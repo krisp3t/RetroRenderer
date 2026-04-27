@@ -44,8 +44,8 @@ bool GLESRenderer::Init(TextureHandle fbTex, int w, int h) {
 bool GLESRenderer::CreateFramebuffer(TextureHandle fbTex, int w, int h) {
     DestroyFramebufferResources();
     p_FrameBufferTexture = ToGLHandle(fbTex);
-    (void)w;
-    (void)h;
+    m_FrameWidth = w;
+    m_FrameHeight = h;
 
     // Create framebuffer
     glGenFramebuffers(1, &m_FrameBuffer);
@@ -94,6 +94,8 @@ void GLESRenderer::DestroyFramebufferResources() {
         m_DepthBuffer = 0;
     }
     p_FrameBufferTexture = 0;
+    m_FrameWidth = 0;
+    m_FrameHeight = 0;
 }
 
 void GLESRenderer::DestroyRendererResources() {
@@ -210,6 +212,7 @@ void GLESRenderer::DrawTriangularMesh(const Model* model) {
 void GLESRenderer::BeforeFrame(const Color& clearColor) {
     auto c = clearColor.ToImVec4();
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
+    glViewport(0, 0, m_FrameWidth, m_FrameHeight);
     glClearColor(c.x, c.y, c.z, c.w);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
