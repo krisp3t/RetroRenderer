@@ -333,7 +333,7 @@ void RenderSystem::PresentCompletedSoftwareFrame() {
     if (droppedReadyFrames > 0) {
         p_stats->swFramesDroppedReady.fetch_add(droppedReadyFrames, std::memory_order_relaxed);
     }
-    p_stats->swFramesUploaded.fetch_add(1, std::memory_order_relaxed);
+    p_stats->swFramesPresented.fetch_add(1, std::memory_order_relaxed);
 #endif
 }
 

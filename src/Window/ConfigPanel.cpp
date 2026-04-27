@@ -1220,7 +1220,7 @@ void ConfigPanel::DisplayMetricsOverlay() {
             const uint64_t swJobsCompleted = p_stats_->swJobsCompleted.load(std::memory_order_relaxed);
             const uint64_t swJobsCancelled = p_stats_->swJobsCancelled.load(std::memory_order_relaxed);
             const uint64_t swJobsDroppedPending = p_stats_->swJobsDroppedPending.load(std::memory_order_relaxed);
-            const uint64_t swFramesPresented = p_stats_->swFramesUploaded.load(std::memory_order_relaxed);
+            const uint64_t swFramesPresented = p_stats_->swFramesPresented.load(std::memory_order_relaxed);
             const uint64_t swFramesDroppedReady = p_stats_->swFramesDroppedReady.load(std::memory_order_relaxed);
             ImGui::SeparatorText("SW Async");
             ImGui::Text("Jobs: submitted=%" PRIu64 " completed=%" PRIu64, swJobsSubmitted, swJobsCompleted);
