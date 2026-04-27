@@ -45,6 +45,8 @@ class GLESRenderer : public IRenderer {
     void CreateFallbackTexture();
     GLuint CreateCubemap(const std::string& path);
     GLuint CreateSkyboxVAO();
+    void DestroyFramebufferResources();
+    void DestroyRendererResources();
 
   private:
     Camera* p_Camera = nullptr;
@@ -56,6 +58,7 @@ class GLESRenderer : public IRenderer {
     GLuint m_FallbackTexture = 0;
     GLuint m_SkyboxTexture = 0;
     GLuint m_SkyboxVAO = 0;
+    GLuint m_SkyboxVBO = 0;
     ShaderProgram m_SkyboxProgram;
     GLMeshResourceCache m_MeshResources;
     GLTextureResourceCache m_TextureResources;

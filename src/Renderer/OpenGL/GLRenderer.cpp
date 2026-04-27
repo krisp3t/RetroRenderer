@@ -100,6 +100,7 @@ bool GLRenderer::Init(GLuint fbTex, int w, int h) {
  * @return
  */
 bool GLRenderer::CreateFramebuffer(GLuint fbTex, int w, int h) {
+    DestroyFramebufferResources();
     p_FrameBufferTexture = fbTex;
     glGenFramebuffers(1, &m_FrameBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
@@ -111,24 +112,63 @@ bool GLRenderer::CreateFramebuffer(GLuint fbTex, int w, int h) {
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         LOGE("Framebuffer is not complete!");
+        DestroyFramebufferResources();
         return false;
     }
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     return true;
 }
 
 void GLRenderer::Resize(GLuint newFbTex, int w, int h) {
-    p_FrameBufferTexture = newFbTex;
     glViewport(0, 0, w, h);
-    CreateFramebuffer(p_FrameBufferTexture, w, h);
+    if (!CreateFramebuffer(newFbTex, w, h)) {
+        LOGE("Failed to resize GL framebuffer to %d x %d", w, h);
+    }
 }
 
 void GLRenderer::Destroy() {
-    // glDeleteFramebuffers(1, &m_FrameBuffer);
-    // glDeleteTextures(1, &m_RenderTexture);
-    // glDeleteRenderbuffers(1, &m_DepthBuffer);
     m_MeshResources.Clear();
     m_TextureResources.Clear();
+    DestroyFramebufferResources();
+    DestroyRendererResources();
+}
+
+void GLRenderer::DestroyFramebufferResources() {
+    if (m_FrameBuffer != 0) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDeleteFramebuffers(1, &m_FrameBuffer);
+        m_FrameBuffer = 0;
+    }
+    if (m_DepthBuffer != 0) {
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        glDeleteRenderbuffers(1, &m_DepthBuffer);
+        m_DepthBuffer = 0;
+    }
+    p_FrameBufferTexture = 0;
+}
+
+void GLRenderer::DestroyRendererResources() {
+    if (m_FallbackTexture != 0) {
+        glDeleteTextures(1, &m_FallbackTexture);
+        m_FallbackTexture = 0;
+    }
+    if (m_SkyboxTexture != 0) {
+        glDeleteTextures(1, &m_SkyboxTexture);
+        m_SkyboxTexture = 0;
+    }
+    if (m_SkyboxVBO != 0) {
+        glDeleteBuffers(1, &m_SkyboxVBO);
+        m_SkyboxVBO = 0;
+    }
+    if (m_SkyboxVAO != 0) {
+        glDeleteVertexArrays(1, &m_SkyboxVAO);
+        m_SkyboxVAO = 0;
+    }
+    if (m_SkyboxProgram.id != 0) {
+        glDeleteProgram(m_SkyboxProgram.id);
+        m_SkyboxProgram = {};
+    }
     if (m_GridVBO != 0) {
         glDeleteBuffers(1, &m_GridVBO);
         m_GridVBO = 0;
@@ -429,6 +469,11 @@ GLuint GLRenderer::CreateShaderProgram() {
 }
 
 void GLRenderer::CreateFallbackTexture() {
+    if (m_FallbackTexture != 0) {
+        glDeleteTextures(1, &m_FallbackTexture);
+        m_FallbackTexture = 0;
+    }
+
     unsigned char whitePixel[4] = {255, 255, 255, 255};
 
     glGenTextures(1, &m_FallbackTexture);
@@ -437,6 +482,7 @@ void GLRenderer::CreateFallbackTexture() {
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 /**
@@ -509,6 +555,10 @@ GLuint GLRenderer::CreateCubemap(const std::string& path) {
 }
 
 void GLRenderer::DrawSkybox() {
+    if (p_Camera == nullptr || m_FrameBuffer == 0 || m_SkyboxProgram.id == 0 || m_SkyboxVAO == 0 || m_SkyboxTexture == 0) {
+        return;
+    }
+
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
     glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_FALSE);
@@ -537,6 +587,15 @@ void GLRenderer::DrawSkybox() {
 }
 
 GLuint GLRenderer::CreateSkyboxVAO() {
+    if (m_SkyboxVBO != 0) {
+        glDeleteBuffers(1, &m_SkyboxVBO);
+        m_SkyboxVBO = 0;
+    }
+    if (m_SkyboxVAO != 0) {
+        glDeleteVertexArrays(1, &m_SkyboxVAO);
+        m_SkyboxVAO = 0;
+    }
+
     static const float kSkyboxVerts[] = {-1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
                                          1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
 
@@ -558,6 +617,7 @@ GLuint GLRenderer::CreateSkyboxVAO() {
     GLuint vbo = 0;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
+    m_SkyboxVBO = vbo;
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(kSkyboxVerts), kSkyboxVerts, GL_STATIC_DRAW);

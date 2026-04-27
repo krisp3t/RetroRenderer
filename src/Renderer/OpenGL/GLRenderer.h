@@ -48,6 +48,8 @@ class GLRenderer : public IRenderer {
     void CreateFallbackTexture();
     GLuint CreateCubemap(const std::string& path);
     GLuint CreateSkyboxVAO();
+    void DestroyFramebufferResources();
+    void DestroyRendererResources();
 
   private:
     Camera* p_Camera = nullptr;
@@ -59,6 +61,7 @@ class GLRenderer : public IRenderer {
     GLuint m_FallbackTexture = 0;
     GLuint m_SkyboxTexture = 0;
     GLuint m_SkyboxVAO = 0;
+    GLuint m_SkyboxVBO = 0;
     ShaderProgram m_SkyboxProgram;
     GLuint m_GridProgram = 0;
     GLuint m_GridVAO = 0;
