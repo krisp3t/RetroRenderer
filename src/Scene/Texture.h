@@ -1,9 +1,9 @@
 #pragma once
 #include "../Base/Color.h"
-#include "../include/kris_glheaders.h"
 #include <SDL_image.h>
 #include <array>
 #include <glm/vec2.hpp>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -13,22 +13,18 @@ class Texture {
     static constexpr size_t kAutoPaletteSize = 16;
 
     Texture();
-    ~Texture();
+    ~Texture() = default;
     // Disable copying
     Texture(const Texture&) = delete;
     Texture& operator=(const Texture&) = delete;
     // Enable moving
-    Texture(Texture&& other) noexcept;
-    Texture& operator=(Texture&& other) noexcept;
+    Texture(Texture&& other) noexcept = default;
+    Texture& operator=(Texture&& other) noexcept = default;
 
     bool LoadFromFile(const char* filePath);
     bool LoadFromMemory(const uint8_t* data, const size_t size);
-    void Bind(GLuint unit = 0) const;
-    GLuint GetID() const {
-        return m_TextureID;
-    }
     bool IsValid() const {
-        return m_TextureID != 0;
+        return HasCpuPixels();
     }
     bool HasCpuPixels() const {
         return !m_Pixels.empty() && m_Width > 0 && m_Height > 0;
@@ -41,6 +37,12 @@ class Texture {
     }
     int GetHeight() const {
         return m_Height;
+    }
+    uint64_t GetRevision() const {
+        return m_Revision;
+    }
+    const std::vector<Pixel>& GetPixels() const {
+        return m_Pixels;
     }
     bool HasAutoPalette() const {
         return m_HasAutoPalette;
@@ -60,20 +62,19 @@ class Texture {
   private:
     static constexpr size_t kRgb5LutSize = 32 * 32 * 32;
 
-    bool LoadTextureFromFile(const char* filePath, GLuint& outTextureID, std::vector<Pixel>& outPixels, int& outWidth, int& outHeight);
+    bool LoadTextureFromFile(const char* filePath, std::vector<Pixel>& outPixels, int& outWidth, int& outHeight);
     bool LoadTextureFromMemory(const uint8_t* data,
                                const size_t size,
-                               GLuint& outTextureID,
                                std::vector<Pixel>& outPixels,
                                int& outWidth,
                                int& outHeight);
     void ClearAutoPaletteCaches();
     void RebuildAutoPaletteCaches();
 
-    GLuint m_TextureID;
     std::string m_Path;
     int m_Width = 0;
     int m_Height = 0;
+    uint64_t m_Revision = 0;
     std::vector<Pixel> m_Pixels;
     bool m_HasAutoPalette = false;
     std::array<Pixel, kAutoPaletteSize> m_AutoPalette{};

@@ -3,6 +3,7 @@
 #include "KrisLogger/Logger.h"
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -78,7 +79,6 @@ int ComputeRampNeighborScore(const Pixel& baseColor, const Pixel& candidateColor
 }
 
 bool PopulateTextureStorage(SDL_Surface* surface,
-                            GLuint& outTextureID,
                             std::vector<Pixel>& outPixels,
                             int& outWidth,
                             int& outHeight) {
@@ -106,69 +106,20 @@ bool PopulateTextureStorage(SDL_Surface* surface,
         }
     }
 
-    glGenTextures(1, &outTextureID);
-    glBindTexture(GL_TEXTURE_2D, outTextureID);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, outWidth, outHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbaSurface->pixels);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
     SDL_FreeSurface(rgbaSurface);
     return true;
 }
+
+uint64_t NextTextureRevision() {
+    static std::atomic<uint64_t> nextRevision = 1;
+    return nextRevision.fetch_add(1, std::memory_order_relaxed);
+}
 } // namespace
 
-Texture::Texture() : m_TextureID(0) {
-}
-Texture::~Texture() {
-    if (m_TextureID) {
-        glDeleteTextures(1, &m_TextureID);
-        m_TextureID = 0;
-    }
-}
-Texture::Texture(Texture&& other) noexcept : m_TextureID(other.m_TextureID), m_Path(std::move(other.m_Path)) {
-    other.m_TextureID = 0; // Invalidate source object
-    m_Width = other.m_Width;
-    m_Height = other.m_Height;
-    m_Pixels = std::move(other.m_Pixels);
-    m_HasAutoPalette = other.m_HasAutoPalette;
-    m_AutoPalette = other.m_AutoPalette;
-    m_AutoRampPixels = other.m_AutoRampPixels;
-    m_AutoDitherPatterns = other.m_AutoDitherPatterns;
-    m_AutoPaletteNearestIndexLut = other.m_AutoPaletteNearestIndexLut;
-    other.m_Width = 0;
-    other.m_Height = 0;
-    other.m_HasAutoPalette = false;
-}
-Texture& Texture::operator=(Texture&& other) noexcept {
-    if (this != &other) {
-        if (m_TextureID) {
-            glDeleteTextures(1, &m_TextureID);
-        }
-        // Transfer ownership
-        m_TextureID = other.m_TextureID;
-        other.m_TextureID = 0;
-        m_Path = std::move(other.m_Path);
-        m_Width = other.m_Width;
-        m_Height = other.m_Height;
-        m_Pixels = std::move(other.m_Pixels);
-        m_HasAutoPalette = other.m_HasAutoPalette;
-        m_AutoPalette = other.m_AutoPalette;
-        m_AutoRampPixels = other.m_AutoRampPixels;
-        m_AutoDitherPatterns = other.m_AutoDitherPatterns;
-        m_AutoPaletteNearestIndexLut = other.m_AutoPaletteNearestIndexLut;
-        other.m_Width = 0;
-        other.m_Height = 0;
-        other.m_HasAutoPalette = false;
-    }
-    return *this;
+Texture::Texture() {
 }
 
 bool Texture::LoadTextureFromFile(const char* filePath,
-                                  GLuint& outTextureID,
                                   std::vector<Pixel>& outPixels,
                                   int& outWidth,
                                   int& outHeight) {
@@ -179,14 +130,13 @@ bool Texture::LoadTextureFromFile(const char* filePath,
         return false;
     }
 
-    const bool ok = PopulateTextureStorage(surface, outTextureID, outPixels, outWidth, outHeight);
+    const bool ok = PopulateTextureStorage(surface, outPixels, outWidth, outHeight);
     SDL_FreeSurface(surface);
     return ok;
 }
 
 bool Texture::LoadTextureFromMemory(const uint8_t* data,
                                     const size_t size,
-                                    GLuint& outTextureID,
                                     std::vector<Pixel>& outPixels,
                                     int& outWidth,
                                     int& outHeight) {
@@ -211,7 +161,7 @@ bool Texture::LoadTextureFromMemory(const uint8_t* data,
         return false;
     }
 
-    const bool ok = PopulateTextureStorage(surface, outTextureID, outPixels, outWidth, outHeight);
+    const bool ok = PopulateTextureStorage(surface, outPixels, outWidth, outHeight);
     SDL_FreeSurface(surface);
     IMG_Quit();
 
@@ -219,26 +169,23 @@ bool Texture::LoadTextureFromMemory(const uint8_t* data,
 }
 
 bool Texture::LoadFromFile(const char* filePath) {
-    if (m_TextureID) {
-        glDeleteTextures(1, &m_TextureID);
-        m_TextureID = 0;
-    }
     m_Pixels.clear();
     m_Width = 0;
     m_Height = 0;
+    m_Revision = 0;
+    ClearAutoPaletteCaches();
 
-    GLuint newTextureID = 0;
     std::vector<Pixel> newPixels;
     int newWidth = 0;
     int newHeight = 0;
-    if (!LoadTextureFromFile(filePath, newTextureID, newPixels, newWidth, newHeight) || !newTextureID) {
+    if (!LoadTextureFromFile(filePath, newPixels, newWidth, newHeight) || newPixels.empty()) {
         LOGE("Failed to load texture: %s", filePath);
         return false;
     }
-    m_TextureID = newTextureID;
     m_Pixels = std::move(newPixels);
     m_Width = newWidth;
     m_Height = newHeight;
+    m_Revision = NextTextureRevision();
     RebuildAutoPaletteCaches();
     LOGI("Loaded texture %s", filePath);
     m_Path = std::string(filePath);
@@ -246,39 +193,27 @@ bool Texture::LoadFromFile(const char* filePath) {
 }
 
 bool Texture::LoadFromMemory(const uint8_t* data, const size_t size) {
-    if (m_TextureID) {
-        glDeleteTextures(1, &m_TextureID);
-        m_TextureID = 0;
-    }
     m_Pixels.clear();
     m_Width = 0;
     m_Height = 0;
+    m_Revision = 0;
+    ClearAutoPaletteCaches();
 
-    GLuint newTextureID = 0;
     std::vector<Pixel> newPixels;
     int newWidth = 0;
     int newHeight = 0;
-    if (!LoadTextureFromMemory(data, size, newTextureID, newPixels, newWidth, newHeight) || !newTextureID) {
+    if (!LoadTextureFromMemory(data, size, newPixels, newWidth, newHeight) || newPixels.empty()) {
         LOGE("Failed to load texture from memory");
         return false;
     }
-    m_TextureID = newTextureID;
     m_Pixels = std::move(newPixels);
     m_Width = newWidth;
     m_Height = newHeight;
+    m_Revision = NextTextureRevision();
     RebuildAutoPaletteCaches();
     LOGI("Loaded texture from memory");
     m_Path = "memory";
     return true;
-}
-
-void Texture::Bind(GLuint unit) const {
-    if (!IsValid()) {
-        LOGW("Tried to bind empty texture");
-        return;
-    }
-    glActiveTexture(GL_TEXTURE0 + unit);
-    glBindTexture(GL_TEXTURE_2D, m_TextureID);
 }
 
 Texture Texture::CloneCpuOnly() const {
@@ -286,6 +221,7 @@ Texture Texture::CloneCpuOnly() const {
     clone.m_Path = m_Path;
     clone.m_Width = m_Width;
     clone.m_Height = m_Height;
+    clone.m_Revision = m_Revision;
     clone.m_Pixels = m_Pixels;
     clone.m_HasAutoPalette = m_HasAutoPalette;
     clone.m_AutoPalette = m_AutoPalette;

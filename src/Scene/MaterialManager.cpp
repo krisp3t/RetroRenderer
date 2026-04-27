@@ -2,7 +2,9 @@
 
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "../Engine.h"
+#include "../include/kris_glheaders.h"
 #include "KrisLogger/Logger.h"
+#include <cstdint>
 #include <fstream>
 #include <imgui.h>
 #include <sstream>
@@ -24,7 +26,7 @@ void MaterialManager::LoadTexture(const std::string& path) {
         return;
     }
     GetCurrentMaterial().texture = std::move(texture);
-    // TODO: resource leak
+    Engine::Get().GetRenderSystem().OnTextureMutated();
 }
 
 void MaterialManager::LoadTexture(const uint8_t* data, const size_t size) {
@@ -34,6 +36,7 @@ void MaterialManager::LoadTexture(const uint8_t* data, const size_t size) {
         return;
     }
     GetCurrentMaterial().texture = std::move(texture);
+    Engine::Get().GetRenderSystem().OnTextureMutated();
 }
 
 void MaterialManager::LoadDefaultShaders() {
@@ -126,13 +129,14 @@ void MaterialManager::RenderUI() {
         ImGui::SameLine();
         if (ImGui::Button("Unload texture")) {
             currentMat.texture = Texture();
+            Engine::Get().GetRenderSystem().OnTextureMutated();
         }
 
         // Display current texture
-        if (currentMat.texture->GetID()) {
-            ImGui::Text("Current Texture: handle %d (%s)", currentMat.texture->GetID(),
-                        currentMat.texture->GetPath().c_str());
-            ImGui::Image(ImTextureID((void*)(intptr_t)currentMat.texture->GetID()), ImVec2(128, 128));
+        const GLuint textureHandle = Engine::Get().GetRenderSystem().GetTextureHandle(*currentMat.texture);
+        if (textureHandle != 0) {
+            ImGui::Text("Current Texture: handle %d (%s)", textureHandle, currentMat.texture->GetPath().c_str());
+            ImGui::Image(ImTextureID((void*)(intptr_t)textureHandle), ImVec2(128, 128));
         } else {
             ImGui::Text("Current Texture: none");
         }

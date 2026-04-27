@@ -127,6 +127,8 @@ void GLRenderer::Destroy() {
     // glDeleteFramebuffers(1, &m_FrameBuffer);
     // glDeleteTextures(1, &m_RenderTexture);
     // glDeleteRenderbuffers(1, &m_DepthBuffer);
+    m_MeshResources.Clear();
+    m_TextureResources.Clear();
     if (m_GridVBO != 0) {
         glDeleteBuffers(1, &m_GridVBO);
         m_GridVBO = 0;
@@ -139,6 +141,19 @@ void GLRenderer::Destroy() {
         glDeleteProgram(m_GridProgram);
         m_GridProgram = 0;
     }
+}
+
+void GLRenderer::InvalidateSceneResources() {
+    m_MeshResources.Clear();
+    m_TextureResources.Clear();
+}
+
+void GLRenderer::InvalidateTextureResources() {
+    m_TextureResources.Clear();
+}
+
+GLuint GLRenderer::GetTextureHandle(const Texture& texture) {
+    return m_TextureResources.GetOrCreate(texture);
 }
 
 void GLRenderer::SetActiveCamera(const Camera& camera) {
@@ -193,16 +208,19 @@ void GLRenderer::DrawTriangularMesh(const Model* model) {
     auto& meshes = model->GetMeshes();
     for (const Mesh& mesh : meshes) {
         // TODO: replace with per-mesh texture?
-        if (!mat.texture.has_value() || mat.texture->GetID() == 0) {
+        const GLuint materialTexture = mat.texture.has_value() ? m_TextureResources.GetOrCreate(*mat.texture) : 0;
+        if (materialTexture == 0) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
         } else {
-            mat.texture->Bind();
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, materialTexture);
         }
 
         glUniform1i(texLoc, 0);
-        glBindVertexArray(mesh.VAO);
-        glDrawElements(GL_TRIANGLES, mesh.m_Indices.size(), GL_UNSIGNED_INT, nullptr);
+        const auto& gpuMesh = m_MeshResources.GetOrCreate(mesh);
+        glBindVertexArray(gpuMesh.vao);
+        glDrawElements(GL_TRIANGLES, gpuMesh.indexCount, GL_UNSIGNED_INT, nullptr);
     }
 
     glBindVertexArray(0);

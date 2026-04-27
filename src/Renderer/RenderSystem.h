@@ -45,6 +45,8 @@ class RenderSystem {
     void OnLoadScene(const SceneLoadEvent& e);
     void OnResetScene();
     void OnSceneMutated();
+    void OnTextureMutated();
+    GLuint GetTextureHandle(const Texture& texture);
 
     [[nodiscard]] GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode);
 
@@ -75,7 +77,7 @@ class RenderSystem {
     void SoftwareWorkerLoop();
     GLuint RenderSoftwareSync(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
     void ClearSoftwareWorkerFrameState();
-    void SyncSoftwareWorkerForSceneMutation();
+    void SyncSoftwareWorkerForRenderDataMutation();
 
   private:
     std::unique_ptr<Scene> p_scene_ = nullptr;

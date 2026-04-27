@@ -1,5 +1,4 @@
 #pragma once
-#include "../include/kris_glheaders.h"
 #include "Texture.h"
 #include "Vertex.h"
 #include <vector>
@@ -16,8 +15,6 @@ class Mesh {
     Mesh(Mesh&&) noexcept = default;
     Mesh& operator=(Mesh&&) noexcept = default;
 
-    void Init();
-
     // Per-vertex
     unsigned int m_numVertices = 0;
     std::vector<Vertex> m_Vertices;
@@ -28,11 +25,6 @@ class Mesh {
 
     // Per-mesh
     std::vector<Texture> m_Textures;
-
-    // TODO: get rid of OpenGL specifics!!
-    GLuint VAO = 0;
-    GLuint VBO = 0;
-    GLuint EBO = 0;
 };
 
 } // namespace RetroRenderer

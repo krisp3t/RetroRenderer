@@ -3,6 +3,9 @@
 #include "../../Scene/Camera.h"
 #include "../../Scene/MaterialManager.h"
 #include "../../Scene/Scene.h"
+#include "../../include/kris_glheaders.h"
+#include "../GLMeshResourceCache.h"
+#include "../GLTextureResourceCache.h"
 #include "../IRenderer.h"
 
 namespace RetroRenderer {
@@ -17,6 +20,9 @@ class GLESRenderer : public IRenderer {
     void Resize(GLuint newFbTex, int w, int h);
 
     void Destroy() override;
+    void InvalidateSceneResources();
+    void InvalidateTextureResources();
+    GLuint GetTextureHandle(const Texture& texture);
 
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
@@ -51,5 +57,7 @@ class GLESRenderer : public IRenderer {
     GLuint m_SkyboxTexture = 0;
     GLuint m_SkyboxVAO = 0;
     ShaderProgram m_SkyboxProgram;
+    GLMeshResourceCache m_MeshResources;
+    GLTextureResourceCache m_TextureResources;
 };
 } // namespace RetroRenderer

@@ -4,6 +4,8 @@
 #include "../../Scene/MaterialManager.h"
 #include "../../Scene/Scene.h"
 #include "../../include/kris_glheaders.h"
+#include "../GLMeshResourceCache.h"
+#include "../GLTextureResourceCache.h"
 #include "../IRenderer.h"
 
 namespace RetroRenderer {
@@ -18,6 +20,9 @@ class GLRenderer : public IRenderer {
     void Resize(GLuint newFbTex, int w, int h);
 
     void Destroy() override;
+    void InvalidateSceneResources();
+    void InvalidateTextureResources();
+    GLuint GetTextureHandle(const Texture& texture);
 
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
@@ -59,5 +64,7 @@ class GLRenderer : public IRenderer {
     GLuint m_GridVAO = 0;
     GLuint m_GridVBO = 0;
     GLsizei m_GridVertexCount = 0;
+    GLMeshResourceCache m_MeshResources;
+    GLTextureResourceCache m_TextureResources;
 };
 } // namespace RetroRenderer

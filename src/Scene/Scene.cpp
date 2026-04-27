@@ -195,7 +195,6 @@ bool Scene::ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneDat
         const ImportedMesh& mesh = sceneData.meshes[meshIndex];
         if (!mesh.vertices.empty() && !mesh.indices.empty()) {
             ProcessImportedMesh(mesh, sceneData, newModel.m_Meshes, node.name);
-            newModel.m_Meshes.back().Init();
         }
     }
     newModel.RecomputeLocalBounds();

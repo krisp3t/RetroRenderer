@@ -204,15 +204,26 @@ void RenderSystem::Destroy() {
 
 void RenderSystem::OnLoadScene(const SceneLoadEvent& e) {
     (void)e;
-    SyncSoftwareWorkerForSceneMutation();
+    p_GLRenderer_->InvalidateSceneResources();
+    SyncSoftwareWorkerForRenderDataMutation();
 }
 
 void RenderSystem::OnResetScene() {
-    SyncSoftwareWorkerForSceneMutation();
+    p_GLRenderer_->InvalidateSceneResources();
+    SyncSoftwareWorkerForRenderDataMutation();
 }
 
 void RenderSystem::OnSceneMutated() {
-    SyncSoftwareWorkerForSceneMutation();
+    SyncSoftwareWorkerForRenderDataMutation();
+}
+
+void RenderSystem::OnTextureMutated() {
+    p_GLRenderer_->InvalidateTextureResources();
+    SyncSoftwareWorkerForRenderDataMutation();
+}
+
+GLuint RenderSystem::GetTextureHandle(const Texture& texture) {
+    return p_GLRenderer_->GetTextureHandle(texture);
 }
 
 GLuint RenderSystem::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
@@ -227,7 +238,7 @@ void RenderSystem::ClearSoftwareWorkerFrameState() {
 #endif
 }
 
-void RenderSystem::SyncSoftwareWorkerForSceneMutation() {
+void RenderSystem::SyncSoftwareWorkerForRenderDataMutation() {
 #if !defined(__EMSCRIPTEN__)
     StopSoftwareWorker();
     ClearSoftwareWorkerFrameState();
