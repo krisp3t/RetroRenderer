@@ -121,9 +121,9 @@ void DisplaySystem::DrawFrame() {
     m_configPanel_->OnDraw();
 }
 
-void DisplaySystem::DrawFrame(GLuint p_framebufferTexture) {
+void DisplaySystem::DrawFrame(const RenderOutput& output) {
     ResetGlContext();
-    m_configPanel_->DisplayRenderedImage(p_framebufferTexture);
+    m_configPanel_->DisplayRenderedImage(output);
     m_configPanel_->OnDraw();
 }
 

@@ -91,8 +91,8 @@ void Engine::ProcessFrame() {
         m_DisplaySystem.BeforeFrame();
         p_RenderSystem->BeforeFrame(clearColor);
         auto& queue = p_RenderSystem->BuildRenderQueue(*scene, *camera);
-        GLuint fbTex = p_RenderSystem->Render(scene, *camera, queue);
-        m_DisplaySystem.DrawFrame(fbTex);
+        RenderOutput renderOutput = p_RenderSystem->Render(scene, *camera, queue);
+        m_DisplaySystem.DrawFrame(renderOutput);
     } else {
         p_stats_->Reset();
         m_DisplaySystem.BeforeFrame();

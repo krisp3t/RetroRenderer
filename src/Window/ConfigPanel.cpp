@@ -19,6 +19,7 @@
 #include <imgui_impl_opengl3.h>
 #include <algorithm>
 #include <cinttypes>
+#include <type_traits>
 #include <utility>
 
 #ifdef __ANDROID__
@@ -102,6 +103,15 @@ Pixel ImVec4ToOpaquePixel(const ImVec4& color) {
         static_cast<uint8_t>(std::clamp(color.z, 0.0f, 1.0f) * 255.0f),
         255,
     };
+}
+
+template <typename TextureId>
+TextureId ToTextureId(uintptr_t handle) {
+    if constexpr (std::is_pointer_v<TextureId>) {
+        return reinterpret_cast<TextureId>(handle);
+    } else {
+        return static_cast<TextureId>(handle);
+    }
 }
 
 bool ProjectWorldToOutputImage(const glm::vec3& worldPosition,
@@ -458,9 +468,6 @@ void ConfigPanel::DisplayInspectorWindow() {
     ImGui::End();
 }
 
-void ConfigPanel::OnDraw(GLuint framebufferTexture) {
-}
-
 void ConfigPanel::DisplayMaterialWindow() {
     ImGui::Begin("Material Editor");
     Engine::Get().GetMaterialManager().RenderUI();
@@ -473,7 +480,7 @@ void ConfigPanel::DisplayRenderedImage() {
     ImGui::End();
 }
 
-void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture) {
+void ConfigPanel::DisplayRenderedImage(const RenderOutput& output) {
     auto& r = p_config_->renderer;
     ImGui::Begin("Output");
     ImVec2 contentSize = ImGui::GetContentRegionAvail();
@@ -554,17 +561,15 @@ void ConfigPanel::DisplayRenderedImage(GLuint p_framebufferTexture) {
         }
     }
     const ImVec2 imageMin = ImGui::GetCursorScreenPos();
-    switch (p_config_->renderer.selectedRenderer) {
-    case Config::RendererType::SOFTWARE:
-        ImGui::Image(p_framebufferTexture, contentSize);
-        break;
-    case Config::RendererType::GL:
-        // OpenGL textures are flipped vertically
-        ImGui::Image(p_framebufferTexture, contentSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
-        break;
-    default:
-        ImGui::Text("Renderer type %d not implemented!", p_config_->renderer.selectedRenderer);
-        break;
+    if (output.kind == RenderOutputKind::TextureHandle && output.IsValid()) {
+        const ImTextureID textureId = ToTextureId<ImTextureID>(output.handle);
+        if (output.origin == RenderOutputOrigin::BottomLeft) {
+            ImGui::Image(textureId, contentSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+        } else {
+            ImGui::Image(textureId, contentSize);
+        }
+    } else {
+        ImGui::Text("Renderer output is not available");
     }
 
     if (auto camera = Engine::Get().GetCamera()) {

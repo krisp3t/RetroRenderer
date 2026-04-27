@@ -1,6 +1,7 @@
 #pragma once
 #include "../Base/Config.h"
 #include "../Base/Stats.h"
+#include "../Renderer/RenderOutput.h"
 #include "../Scene/Camera.h"
 #include "../include/kris_glheaders.h"
 #include <SDL.h>
@@ -23,9 +24,8 @@ class ConfigPanel {
     void Destroy();
     void BeforeFrame();
     void DisplayRenderedImage();
-    void DisplayRenderedImage(GLuint p_framebufferTexture);
+    void DisplayRenderedImage(const RenderOutput& output);
     void OnDraw();
-    void OnDraw(GLuint framebufferTexture);
 
   private:
     SDL_Window* p_Window_ = nullptr;

@@ -3,8 +3,8 @@
 #include "../Base/Color.h"
 #include "../Base/Stats.h"
 #include "../Renderer/Buffer.h"
+#include "../Renderer/RenderOutput.h"
 #include "../Scene/Camera.h"
-#include "../include/kris_glheaders.h"
 #include "ConfigPanel.h"
 #include <SDL.h>
 #include <memory>
@@ -40,7 +40,7 @@ class DisplaySystem {
 
     void DrawFrame();
 
-    void DrawFrame(GLuint framebufferTexture);
+    void DrawFrame(const RenderOutput& output);
 
     void ResetGlContext();
 

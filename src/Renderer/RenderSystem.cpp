@@ -106,7 +106,7 @@ std::vector<int>& RenderSystem::BuildRenderQueue(Scene& scene, const Camera& cam
     return scene.GetVisibleModels(); // TODO: split into meshes?
 }
 
-GLuint RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue) {
+RenderOutput RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue) {
     assert(scene != nullptr && "Render called with null scene");
     auto const& p_config = Engine::Get().GetConfig();
     auto const& p_stats = Engine::Get().GetStats();
@@ -119,7 +119,7 @@ GLuint RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& c
 #else
         SubmitSoftwareJob(scene, camera, renderQueue);
         UploadSoftwareFrameToTexture();
-        return m_SWFramePresenter.GetTextureHandle();
+        return RenderOutput::Texture(m_SWFramePresenter.GetTextureHandle(), RenderOutputOrigin::TopLeft);
 #endif
     }
 
@@ -146,7 +146,7 @@ GLuint RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& c
         p_activeRenderer_->DrawGridGizmo();
     }
     p_activeRenderer_->EndFrame();
-    return m_GLFramePresenter.GetTextureHandle();
+    return RenderOutput::Texture(m_GLFramePresenter.GetTextureHandle(), RenderOutputOrigin::BottomLeft);
 }
 
 void RenderSystem::Resize(const glm::ivec2& resolution) {
@@ -414,9 +414,9 @@ void RenderSystem::SoftwareWorkerLoop() {
 #endif
 }
 
-GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
-                                        const Camera& camera,
-                                        const std::vector<int>& renderQueue) {
+RenderOutput RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
+                                              const Camera& camera,
+                                              const std::vector<int>& renderQueue) {
     const Config configSnapshot = *Engine::Get().GetConfig();
     const SoftwareMaterialState materialState = CaptureSoftwareMaterialState();
     const std::optional<Texture> fallbackTexture = CaptureSoftwareFallbackTexture();
@@ -448,6 +448,6 @@ GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
     const auto& buffer = p_SWRenderer_->GetFrameBuffer();
     m_SWFramePresenter.Upload(buffer);
     p_SWRenderer_->SetFallbackTexture(nullptr);
-    return m_SWFramePresenter.GetTextureHandle();
+    return RenderOutput::Texture(m_SWFramePresenter.GetTextureHandle(), RenderOutputOrigin::TopLeft);
 }
 } // namespace RetroRenderer

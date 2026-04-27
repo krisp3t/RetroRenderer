@@ -5,6 +5,7 @@
 #include "../Scene/Scene.h"
 #include "../Window/DisplaySystem.h"
 #include "GLFramePresenter.h"
+#include "RenderOutput.h"
 #include "ShaderHandle.h"
 #include "Software/SWRenderer.h"
 #if !defined(__EMSCRIPTEN__)
@@ -36,7 +37,7 @@ class RenderSystem {
 
     [[nodiscard]] std::vector<int>& BuildRenderQueue(Scene& scene, const Camera& camera);
 
-    GLuint Render(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
+    RenderOutput Render(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
 
     void Resize(const glm::ivec2& resolution);
 
@@ -75,7 +76,7 @@ class RenderSystem {
     void SubmitSoftwareJob(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
     void UploadSoftwareFrameToTexture();
     void SoftwareWorkerLoop();
-    GLuint RenderSoftwareSync(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
+    RenderOutput RenderSoftwareSync(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
     void ClearSoftwareWorkerFrameState();
     void SyncSoftwareWorkerForRenderDataMutation();
 
