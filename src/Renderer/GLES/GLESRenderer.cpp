@@ -130,10 +130,6 @@ void GLESRenderer::InvalidateTextureResources() {
     m_TextureResources.Clear();
 }
 
-TextureHandle GLESRenderer::GetTextureHandle(const Texture& texture) {
-    return TextureHandle{static_cast<uintptr_t>(m_TextureResources.GetOrCreate(texture))};
-}
-
 void GLESRenderer::SetActiveCamera(const Camera& camera) {
     p_Camera = const_cast<Camera*>(&camera);
 }

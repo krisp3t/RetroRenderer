@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/vec3.hpp>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -56,7 +57,8 @@ class MaterialManager {
     bool Init();
     void LoadTexture(const std::string& path);
     void LoadTexture(const uint8_t* data, const size_t size);
-    void RenderUI();
+    using TexturePreviewCallback = std::function<void(const Texture&)>;
+    void RenderUI(const TexturePreviewCallback& texturePreview = {});
     void LoadDefaultShaders();
     Material& GetCurrentMaterial() {
         return m_Materials[m_CurrentMaterialIndex];

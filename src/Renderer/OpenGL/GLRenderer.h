@@ -22,7 +22,6 @@ class GLRenderer : public IHardwareRenderer {
     void Destroy() override;
     void InvalidateSceneResources() override;
     void InvalidateTextureResources() override;
-    [[nodiscard]] TextureHandle GetTextureHandle(const Texture& texture) override;
 
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;

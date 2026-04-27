@@ -206,10 +206,6 @@ void GLRenderer::InvalidateTextureResources() {
     m_TextureResources.Clear();
 }
 
-TextureHandle GLRenderer::GetTextureHandle(const Texture& texture) {
-    return TextureHandle{static_cast<uintptr_t>(m_TextureResources.GetOrCreate(texture))};
-}
-
 void GLRenderer::SetActiveCamera(const Camera& camera) {
     p_Camera = const_cast<Camera*>(&camera);
 }

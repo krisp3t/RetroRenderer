@@ -30,6 +30,7 @@
 #include "../Engine.h"
 #include "../Renderer/GLFramePresenter.h"
 #include "../Renderer/RetroPalette.h"
+#include "../Scene/Texture.h"
 #include "../include/kris_glheaders.h"
 #include "ConfigPanel.h"
 #include "ImGuiTexture.h"
@@ -304,6 +305,7 @@ bool ConfigPanel::Init(SDL_Window* window, SDL_GLContext glContext, std::shared_
     p_config_ = config;
     p_stats_ = stats;
     m_cpuOutputPresenter_ = std::make_unique<GLFramePresenter>();
+    m_materialPreviewPresenter_ = std::make_unique<GLFramePresenter>();
 
     return true;
 }
@@ -464,8 +466,40 @@ void ConfigPanel::DisplayInspectorWindow() {
 
 void ConfigPanel::DisplayMaterialWindow() {
     ImGui::Begin("Material Editor");
-    Engine::Get().GetMaterialManager().RenderUI();
+    Engine::Get().GetMaterialManager().RenderUI([this](const Texture& texture) {
+        DisplayTexturePreview(texture);
+    });
     ImGui::End();
+}
+
+void ConfigPanel::DisplayTexturePreview(const Texture& texture) {
+    if (!texture.HasCpuPixels() || texture.GetWidth() <= 0 || texture.GetHeight() <= 0) {
+        ImGui::Text("Texture preview unavailable");
+        return;
+    }
+    if (!m_materialPreviewPresenter_) {
+        ImGui::Text("Texture preview presenter unavailable");
+        return;
+    }
+
+    const auto& pixels = texture.GetPixels();
+    const size_t width = static_cast<size_t>(texture.GetWidth());
+    const size_t height = static_cast<size_t>(texture.GetHeight());
+    if (pixels.empty() ||
+        !m_materialPreviewPresenter_->Resize(texture.GetWidth(), texture.GetHeight(), p_config_->renderer.nearestNeighborPresentation) ||
+        !m_materialPreviewPresenter_->UploadPixels(pixels.data(), width, height)) {
+        ImGui::Text("Texture preview unavailable");
+        return;
+    }
+
+    constexpr float kMaxPreviewSize = 128.0f;
+    const float scale = std::min(kMaxPreviewSize / static_cast<float>(texture.GetWidth()),
+                                 kMaxPreviewSize / static_cast<float>(texture.GetHeight()));
+    const ImVec2 previewSize{
+        std::max(1.0f, static_cast<float>(texture.GetWidth()) * scale),
+        std::max(1.0f, static_cast<float>(texture.GetHeight()) * scale),
+    };
+    ImGui::Image(ToImTextureID(m_materialPreviewPresenter_->GetTextureHandle()), previewSize);
 }
 
 void ConfigPanel::DisplayRenderedImage() {
@@ -1329,6 +1363,10 @@ void ConfigPanel::Destroy() {
     if (m_cpuOutputPresenter_) {
         m_cpuOutputPresenter_->Destroy();
         m_cpuOutputPresenter_.reset();
+    }
+    if (m_materialPreviewPresenter_) {
+        m_materialPreviewPresenter_->Destroy();
+        m_materialPreviewPresenter_.reset();
     }
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();

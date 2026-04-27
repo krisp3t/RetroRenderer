@@ -209,10 +209,6 @@ void RenderSystem::OnTextureMutated() {
     SyncSoftwareWorkerForRenderDataMutation();
 }
 
-TextureHandle RenderSystem::GetTextureHandle(const Texture& texture) {
-    return p_GLRenderer_->GetTextureHandle(texture);
-}
-
 ShaderHandle RenderSystem::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
     return p_activeRenderer_->CompileShaders(vertexCode, fragmentCode);
 }

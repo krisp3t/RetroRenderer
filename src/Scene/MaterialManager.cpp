@@ -2,9 +2,7 @@
 
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "../Engine.h"
-#include "../Window/ImGuiTexture.h"
 #include "KrisLogger/Logger.h"
-#include <cinttypes>
 #include <cstdint>
 #include <fstream>
 #include <imgui.h>
@@ -96,7 +94,7 @@ std::string MaterialManager::ReadShaderFile(const std::string& path) {
     return buffer.str();
 }
 
-void MaterialManager::RenderUI() {
+void MaterialManager::RenderUI(const TexturePreviewCallback& texturePreview) {
     if (m_Materials.empty()) {
         return;
     }
@@ -130,11 +128,14 @@ void MaterialManager::RenderUI() {
             Engine::Get().GetRenderSystem().OnTextureMutated();
         }
 
-        // Display current texture
-        const auto textureHandle = Engine::Get().GetRenderSystem().GetTextureHandle(*currentMat.texture);
-        if (textureHandle.IsValid()) {
-            ImGui::Text("Current Texture: handle %" PRIuPTR " (%s)", textureHandle.value, currentMat.texture->GetPath().c_str());
-            ImGui::Image(ToImTextureID(textureHandle), ImVec2(128, 128));
+        if (currentMat.texture->HasCpuPixels()) {
+            ImGui::Text("Current Texture: %s (%d x %d)",
+                        currentMat.texture->GetPath().c_str(),
+                        currentMat.texture->GetWidth(),
+                        currentMat.texture->GetHeight());
+            if (texturePreview) {
+                texturePreview(*currentMat.texture);
+            }
         } else {
             ImGui::Text("Current Texture: none");
         }

@@ -10,6 +10,7 @@
 
 namespace RetroRenderer {
 class IFramePresenter;
+class Texture;
 
 struct VirtualStickState {
     bool active = false;
@@ -34,6 +35,7 @@ class ConfigPanel {
     std::shared_ptr<Config> p_config_ = nullptr;
     std::shared_ptr<Stats> p_stats_ = nullptr;
     std::unique_ptr<IFramePresenter> m_cpuOutputPresenter_ = nullptr;
+    std::unique_ptr<IFramePresenter> m_materialPreviewPresenter_ = nullptr;
     std::vector<uint8_t> m_fontData_ = {}; // keep font bytes alive for the lifetime of imgui
     bool m_isDragging_ = false;
     bool m_isFileDialogOpen_ = false;
@@ -50,6 +52,7 @@ class ConfigPanel {
     void DisplayMainMenu();
     void DisplaySceneGraph();
     void DisplayMaterialWindow();
+    void DisplayTexturePreview(const Texture& texture);
     void DisplayInspectorWindow();
     void DisplayPipelineWindow();
     void DisplayConfigWindow(Config& config);

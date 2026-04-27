@@ -8,7 +8,6 @@
 #include "RenderOutput.h"
 #include "ShaderHandle.h"
 #include "Software/SWRenderer.h"
-#include "TextureHandle.h"
 #if !defined(__EMSCRIPTEN__)
 #include <condition_variable>
 #include <deque>
@@ -44,7 +43,6 @@ class RenderSystem {
     void OnResetScene();
     void OnSceneMutated();
     void OnTextureMutated();
-    [[nodiscard]] TextureHandle GetTextureHandle(const Texture& texture);
 
     [[nodiscard]] ShaderHandle CompileShaders(const std::string& vertexCode, const std::string& fragmentCode);
 
