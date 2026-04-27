@@ -1,6 +1,7 @@
 #include "DisplaySystem.h"
 #include "../Engine.h"
 #include "../Renderer/Buffer.h"
+#include "../include/kris_glheaders.h"
 #include <KrisLogger/Logger.h>
 #include <imgui.h>
 

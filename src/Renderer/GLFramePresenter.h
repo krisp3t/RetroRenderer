@@ -1,28 +1,25 @@
 #pragma once
 
-#include "../Base/Color.h"
 #include "../include/kris_glheaders.h"
-#include "Buffer.h"
-#include "TextureHandle.h"
-#include <cstddef>
+#include "IFramePresenter.h"
 
 namespace RetroRenderer {
 
-class GLFramePresenter {
+class GLFramePresenter : public IFramePresenter {
   public:
     GLFramePresenter() = default;
-    ~GLFramePresenter();
+    ~GLFramePresenter() override;
     GLFramePresenter(const GLFramePresenter&) = delete;
     GLFramePresenter& operator=(const GLFramePresenter&) = delete;
 
-    bool Init(int width, int height, bool nearestNeighbor);
-    bool Resize(int width, int height, bool nearestNeighbor);
-    void Destroy();
+    bool Init(int width, int height, bool nearestNeighbor) override;
+    bool Resize(int width, int height, bool nearestNeighbor) override;
+    void Destroy() override;
 
-    bool Upload(const Buffer<Pixel>& buffer);
-    bool UploadPixels(const Pixel* pixels, size_t width, size_t height);
+    bool Upload(const Buffer<Pixel>& buffer) override;
+    bool UploadPixels(const Pixel* pixels, size_t width, size_t height) override;
 
-    [[nodiscard]] TextureHandle GetTextureHandle() const {
+    [[nodiscard]] TextureHandle GetTextureHandle() const override {
         return TextureHandle{static_cast<uintptr_t>(m_TextureId)};
     }
 

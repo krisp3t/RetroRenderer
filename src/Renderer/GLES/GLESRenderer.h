@@ -6,24 +6,23 @@
 #include "../../include/kris_glheaders.h"
 #include "../GLMeshResourceCache.h"
 #include "../GLTextureResourceCache.h"
-#include "../IRenderer.h"
-#include "../TextureHandle.h"
+#include "../IHardwareRenderer.h"
 
 namespace RetroRenderer {
-class GLESRenderer : public IRenderer {
+class GLESRenderer : public IHardwareRenderer {
   public:
     GLESRenderer() = default;
 
     ~GLESRenderer() = default;
 
-    bool Init(TextureHandle fbTex, int w, int h);
+    bool Init(TextureHandle fbTex, int w, int h) override;
 
-    void Resize(TextureHandle newFbTex, int w, int h);
+    void Resize(TextureHandle newFbTex, int w, int h) override;
 
     void Destroy() override;
-    void InvalidateSceneResources();
-    void InvalidateTextureResources();
-    [[nodiscard]] TextureHandle GetTextureHandle(const Texture& texture);
+    void InvalidateSceneResources() override;
+    void InvalidateTextureResources() override;
+    [[nodiscard]] TextureHandle GetTextureHandle(const Texture& texture) override;
 
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;

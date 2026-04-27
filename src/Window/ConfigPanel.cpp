@@ -29,6 +29,7 @@
 #include "../Base/InputActions.h"
 #include "../Engine.h"
 #include "../Renderer/RetroPalette.h"
+#include "../include/kris_glheaders.h"
 #include "ConfigPanel.h"
 #include "ImGuiTexture.h"
 

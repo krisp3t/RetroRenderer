@@ -3,8 +3,8 @@
 #include "../Base/Event.h"
 #include "../Base/Stats.h"
 #include "../Scene/Scene.h"
-#include "../Window/DisplaySystem.h"
-#include "GLFramePresenter.h"
+#include "IFramePresenter.h"
+#include "IHardwareRenderer.h"
 #include "RenderOutput.h"
 #include "ShaderHandle.h"
 #include "Software/SWRenderer.h"
@@ -16,13 +16,9 @@
 #include <optional>
 #include <thread>
 #endif
+#include <glm/vec2.hpp>
 #include <cstdint>
 #include <memory>
-#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-#include "GLES/GLESRenderer.h"
-#else
-#include "OpenGL/GLRenderer.h"
-#endif
 
 namespace RetroRenderer {
 
@@ -84,15 +80,11 @@ class RenderSystem {
   private:
     std::unique_ptr<Scene> p_scene_ = nullptr;
     std::unique_ptr<SWRenderer> p_SWRenderer_ = nullptr;
-#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-    std::unique_ptr<GLESRenderer> p_GLRenderer_ = nullptr;
-#else
-    std::unique_ptr<GLRenderer> p_GLRenderer_ = nullptr;
-#endif
+    std::unique_ptr<IHardwareRenderer> p_GLRenderer_ = nullptr;
     IRenderer* p_activeRenderer_ = nullptr;
 
-    GLFramePresenter m_SWFramePresenter;
-    GLFramePresenter m_GLFramePresenter;
+    std::unique_ptr<IFramePresenter> m_SWFramePresenter;
+    std::unique_ptr<IFramePresenter> m_GLFramePresenter;
     Color m_SoftwareClearColor = Color::DefaultBackground();
     bool m_IsDestroyed = false;
 

@@ -1,6 +1,12 @@
 #include "RenderSystem.h"
 #include "../Engine.h"
 #include "../Scene/MaterialManager.h"
+#include "GLFramePresenter.h"
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+#include "GLES/GLESRenderer.h"
+#else
+#include "OpenGL/GLRenderer.h"
+#endif
 #include <KrisLogger/Logger.h>
 #include <cassert>
 #include <cstring>
@@ -40,6 +46,8 @@ bool RenderSystem::Init() {
     m_IsDestroyed = false;
     auto const& p_config = Engine::Get().GetConfig();
     p_SWRenderer_ = std::make_unique<SWRenderer>();
+    m_SWFramePresenter = std::make_unique<GLFramePresenter>();
+    m_GLFramePresenter = std::make_unique<GLFramePresenter>();
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
     p_GLRenderer_ = std::make_unique<GLESRenderer>();
 #else
@@ -50,11 +58,11 @@ bool RenderSystem::Init() {
     auto& fbResolution = p_config->renderer.resolution;
     assert(fbResolution.x > 0 && fbResolution.y > 0 && "Tried to initialize renderers with invalid resolution");
 
-    if (!m_SWFramePresenter.Init(fbResolution.x, fbResolution.y, p_config->renderer.nearestNeighborPresentation)) {
+    if (!m_SWFramePresenter->Init(fbResolution.x, fbResolution.y, p_config->renderer.nearestNeighborPresentation)) {
         LOGE("Failed to initialize software frame presenter");
         return false;
     }
-    if (!m_GLFramePresenter.Init(fbResolution.x, fbResolution.y, p_config->renderer.nearestNeighborPresentation)) {
+    if (!m_GLFramePresenter->Init(fbResolution.x, fbResolution.y, p_config->renderer.nearestNeighborPresentation)) {
         LOGE("Failed to initialize GL frame presenter");
         return false;
     }
@@ -63,7 +71,7 @@ bool RenderSystem::Init() {
         LOGE("Failed to initialize SWRenderer");
         return false;
     }
-    if (!p_GLRenderer_->Init(m_GLFramePresenter.GetTextureHandle(), fbResolution.x, fbResolution.y)) {
+    if (!p_GLRenderer_->Init(m_GLFramePresenter->GetTextureHandle(), fbResolution.x, fbResolution.y)) {
         LOGE("Failed to initialize GLRenderer");
         return false;
     }
@@ -119,7 +127,7 @@ RenderOutput RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Cam
 #else
         SubmitSoftwareJob(scene, camera, renderQueue);
         UploadSoftwareFrameToTexture();
-        return RenderOutput::Texture(m_SWFramePresenter.GetTextureHandle(), RenderOutputOrigin::TopLeft);
+        return RenderOutput::Texture(m_SWFramePresenter->GetTextureHandle(), RenderOutputOrigin::TopLeft);
 #endif
     }
 
@@ -146,7 +154,7 @@ RenderOutput RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Cam
         p_activeRenderer_->DrawGridGizmo();
     }
     p_activeRenderer_->EndFrame();
-    return RenderOutput::Texture(m_GLFramePresenter.GetTextureHandle(), RenderOutputOrigin::BottomLeft);
+    return RenderOutput::Texture(m_GLFramePresenter->GetTextureHandle(), RenderOutputOrigin::BottomLeft);
 }
 
 void RenderSystem::Resize(const glm::ivec2& resolution) {
@@ -158,11 +166,11 @@ void RenderSystem::Resize(const glm::ivec2& resolution) {
     StopSoftwareWorker();
 #endif
 
-    m_SWFramePresenter.Resize(resolution.x, resolution.y, p_config->renderer.nearestNeighborPresentation);
-    m_GLFramePresenter.Resize(resolution.x, resolution.y, p_config->renderer.nearestNeighborPresentation);
+    m_SWFramePresenter->Resize(resolution.x, resolution.y, p_config->renderer.nearestNeighborPresentation);
+    m_GLFramePresenter->Resize(resolution.x, resolution.y, p_config->renderer.nearestNeighborPresentation);
     LOGI("Resizing output image to %d x %d", resolution.x, resolution.y);
     p_SWRenderer_->Resize(resolution.x, resolution.y);
-    p_GLRenderer_->Resize(m_GLFramePresenter.GetTextureHandle(), resolution.x, resolution.y);
+    p_GLRenderer_->Resize(m_GLFramePresenter->GetTextureHandle(), resolution.x, resolution.y);
 
 #if !defined(__EMSCRIPTEN__)
     ClearSoftwareWorkerFrameState();
@@ -183,8 +191,12 @@ void RenderSystem::Destroy() {
     if (p_SWRenderer_) {
         p_SWRenderer_->Destroy();
     }
-    m_SWFramePresenter.Destroy();
-    m_GLFramePresenter.Destroy();
+    if (m_SWFramePresenter) {
+        m_SWFramePresenter->Destroy();
+    }
+    if (m_GLFramePresenter) {
+        m_GLFramePresenter->Destroy();
+    }
 }
 
 void RenderSystem::OnLoadScene(const SceneLoadEvent& e) {
@@ -227,10 +239,10 @@ void RenderSystem::SyncSoftwareWorkerForRenderDataMutation() {
 #if !defined(__EMSCRIPTEN__)
     StopSoftwareWorker();
     ClearSoftwareWorkerFrameState();
-    if (p_SWRenderer_ && m_SWFramePresenter.GetTextureHandle().IsValid()) {
+    if (p_SWRenderer_ && m_SWFramePresenter && m_SWFramePresenter->GetTextureHandle().IsValid()) {
         p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
-        m_SWFramePresenter.Upload(buffer);
+        m_SWFramePresenter->Upload(buffer);
     }
     StartSoftwareWorker();
 #endif
@@ -326,7 +338,7 @@ void RenderSystem::UploadSoftwareFrameToTexture() {
         return;
     }
 
-    if (!m_SWFramePresenter.UploadPixels(completedFrame.pixels.data(), width, height)) {
+    if (!m_SWFramePresenter->UploadPixels(completedFrame.pixels.data(), width, height)) {
         return;
     }
 
@@ -446,8 +458,8 @@ RenderOutput RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scen
         p_SWRenderer_->DrawGridGizmo();
     }
     const auto& buffer = p_SWRenderer_->GetFrameBuffer();
-    m_SWFramePresenter.Upload(buffer);
+    m_SWFramePresenter->Upload(buffer);
     p_SWRenderer_->SetFallbackTexture(nullptr);
-    return RenderOutput::Texture(m_SWFramePresenter.GetTextureHandle(), RenderOutputOrigin::TopLeft);
+    return RenderOutput::Texture(m_SWFramePresenter->GetTextureHandle(), RenderOutputOrigin::TopLeft);
 }
 } // namespace RetroRenderer

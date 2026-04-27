@@ -1,4 +1,6 @@
 #include "GLFramePresenter.h"
+#include "../Base/Color.h"
+#include "Buffer.h"
 #include <KrisLogger/Logger.h>
 
 namespace RetroRenderer {

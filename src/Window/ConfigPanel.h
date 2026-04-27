@@ -3,8 +3,8 @@
 #include "../Base/Stats.h"
 #include "../Renderer/RenderOutput.h"
 #include "../Scene/Camera.h"
-#include "../include/kris_glheaders.h"
 #include <SDL.h>
+#include <imgui.h>
 #include <vector>
 #include <memory>
 
