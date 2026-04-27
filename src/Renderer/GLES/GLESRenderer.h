@@ -36,7 +36,7 @@ class GLESRenderer : public IRenderer {
     void EndFrame() override;
 
     GLuint CreateShaderProgram();
-    GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override;
+    ShaderHandle CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override;
 
   private:
     bool CreateFramebuffer(GLuint fbTex, int w, int h);

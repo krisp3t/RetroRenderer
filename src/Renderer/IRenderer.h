@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../include/kris_glheaders.h"
 #include "../Scene/Light.h"
+#include "ShaderHandle.h"
 #include <string>
 #include <vector>
 
@@ -36,6 +36,6 @@ class IRenderer {
     virtual void DrawGridGizmo() {
     }
 
-    [[nodiscard]] virtual GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) = 0;
+    [[nodiscard]] virtual ShaderHandle CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) = 0;
 };
 } // namespace RetroRenderer

@@ -5,6 +5,7 @@
 #include "../Scene/Scene.h"
 #include "../Window/DisplaySystem.h"
 #include "GLFramePresenter.h"
+#include "ShaderHandle.h"
 #include "Software/SWRenderer.h"
 #if !defined(__EMSCRIPTEN__)
 #include <condition_variable>
@@ -47,7 +48,7 @@ class RenderSystem {
     void OnTextureMutated();
     GLuint GetTextureHandle(const Texture& texture);
 
-    [[nodiscard]] GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode);
+    [[nodiscard]] ShaderHandle CompileShaders(const std::string& vertexCode, const std::string& fragmentCode);
 
   private:
     struct SoftwareRenderJob {

@@ -29,9 +29,10 @@ class SWRenderer : public IRenderer {
     void DrawGridGizmo() override;
     void BeforeFrame(const Color& clearColor) override;
     void EndFrame() override;
-    GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override {
-        // TODO: implement
-        return 0;
+    ShaderHandle CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override {
+        (void)vertexCode;
+        (void)fragmentCode;
+        return {};
     }
 
     [[nodiscard]] const Buffer<Pixel>& GetFrameBuffer() const;

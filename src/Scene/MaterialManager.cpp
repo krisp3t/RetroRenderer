@@ -2,7 +2,6 @@
 
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "../Engine.h"
-#include "../include/kris_glheaders.h"
 #include "KrisLogger/Logger.h"
 #include <cstdint>
 #include <fstream>
@@ -68,17 +67,17 @@ ShaderProgram MaterialManager::CreateShaderProgram(const std::string& vertexPath
     std::string vertexCode = ReadShaderFile(rootPath + vertexPath);
     std::string fragmentCode = ReadShaderFile(rootPath + fragmentPath);
     if (vertexCode.empty() || fragmentCode.empty()) {
-        return {0, "Invalid Shader", vertexPath, fragmentPath};
+        return {ShaderHandle{}, "Invalid Shader", vertexPath, fragmentPath};
     }
-    GLuint id = Engine::Get().GetRenderSystem().CompileShaders(vertexCode, fragmentCode);
-    if (id == 0) {
-        return {0, "Invalid Shader", vertexPath, fragmentPath};
+    ShaderHandle handle = Engine::Get().GetRenderSystem().CompileShaders(vertexCode, fragmentCode);
+    if (!handle.IsValid()) {
+        return {ShaderHandle{}, "Invalid Shader", vertexPath, fragmentPath};
     }
-    shaderProgram.id = id;
+    shaderProgram.handle = handle;
     shaderProgram.vertexPath = vertexPath;
     shaderProgram.fragmentPath = fragmentPath;
     shaderProgram.name = vertexPath + "+" + fragmentPath;
-    LOGI("Created shader program %s with handle %d", shaderProgram.name.c_str(), shaderProgram.id);
+    LOGI("Created shader program %s with handle %zu", shaderProgram.name.c_str(), static_cast<size_t>(shaderProgram.handle.value));
     return shaderProgram;
 }
 
@@ -93,9 +92,6 @@ std::string MaterialManager::ReadShaderFile(const std::string& path) {
     buffer << file.rdbuf();
     LOGI("Read shader file %s", path.c_str());
     return buffer.str();
-}
-
-void MaterialManager::CheckShaderErrors(GLuint shader, const std::string& type) {
 }
 
 void MaterialManager::RenderUI() {
@@ -133,7 +129,7 @@ void MaterialManager::RenderUI() {
         }
 
         // Display current texture
-        const GLuint textureHandle = Engine::Get().GetRenderSystem().GetTextureHandle(*currentMat.texture);
+        const auto textureHandle = Engine::Get().GetRenderSystem().GetTextureHandle(*currentMat.texture);
         if (textureHandle != 0) {
             ImGui::Text("Current Texture: handle %d (%s)", textureHandle, currentMat.texture->GetPath().c_str());
             ImGui::Image(ImTextureID((void*)(intptr_t)textureHandle), ImVec2(128, 128));

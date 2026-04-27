@@ -8,6 +8,12 @@
 #include <vector>
 
 namespace RetroRenderer {
+namespace {
+GLuint ToGLHandle(ShaderHandle handle) {
+    return static_cast<GLuint>(handle.value);
+}
+} // namespace
+
 /**
  * @brief Debug callback for OpenGL errors. Set breakpoint to catch errors.
  */
@@ -73,7 +79,7 @@ bool GLRenderer::Init(GLuint fbTex, int w, int h) {
         "   FragColor = vec4(vColor, 1.0);\n"
         "}\n";
     m_GridProgram = CompileShaders(kGridVertexShader, kGridFragmentShader);
-    if (m_GridProgram != 0) {
+    if (m_GridProgram.IsValid()) {
         struct GridVertexGpu {
             glm::vec3 position;
             glm::vec3 color;
@@ -165,8 +171,8 @@ void GLRenderer::DestroyRendererResources() {
         glDeleteVertexArrays(1, &m_SkyboxVAO);
         m_SkyboxVAO = 0;
     }
-    if (m_SkyboxProgram.id != 0) {
-        glDeleteProgram(m_SkyboxProgram.id);
+    if (m_SkyboxProgram.handle.IsValid()) {
+        glDeleteProgram(ToGLHandle(m_SkyboxProgram.handle));
         m_SkyboxProgram = {};
     }
     if (m_GridVBO != 0) {
@@ -177,9 +183,9 @@ void GLRenderer::DestroyRendererResources() {
         glDeleteVertexArrays(1, &m_GridVAO);
         m_GridVAO = 0;
     }
-    if (m_GridProgram != 0) {
-        glDeleteProgram(m_GridProgram);
-        m_GridProgram = 0;
+    if (m_GridProgram.IsValid()) {
+        glDeleteProgram(ToGLHandle(m_GridProgram));
+        m_GridProgram = {};
     }
 }
 
@@ -207,8 +213,12 @@ void GLRenderer::SetSceneLights(const std::vector<LightSnapshot>& lights) {
 void GLRenderer::DrawTriangularMesh(const Model* model) {
     // TODO: Cache uniforms after shader compile?
     MaterialManager::Material& mat = Engine::Get().GetMaterialManager().GetCurrentMaterial();
+    const GLuint shaderProgram = ToGLHandle(mat.shaderProgram.handle);
+    if (shaderProgram == 0) {
+        return;
+    }
     auto& config = Engine::Get().GetConfig();
-    glUseProgram(mat.shaderProgram.id);
+    glUseProgram(shaderProgram);
 
     const glm::vec3 lightPos = !m_SceneLights.empty() ? m_SceneLights.front().position : config->environment.lightPosition;
     const glm::mat4& modelMat = model->GetWorldTransform();
@@ -221,26 +231,26 @@ void GLRenderer::DrawTriangularMesh(const Model* model) {
     glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelMat)));
 
     // Upload uniforms
-    glUniformMatrix4fv(glGetUniformLocation(mat.shaderProgram.id, "u_ModelMatrix"), 1, GL_FALSE,
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "u_ModelMatrix"), 1, GL_FALSE,
                        glm::value_ptr(modelMat));
-    glUniformMatrix4fv(glGetUniformLocation(mat.shaderProgram.id, "u_MVP"), 1, GL_FALSE, glm::value_ptr(mvp));
-    glUniformMatrix3fv(glGetUniformLocation(mat.shaderProgram.id, "u_NormalMatrix"), 1, GL_FALSE,
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "u_MVP"), 1, GL_FALSE, glm::value_ptr(mvp));
+    glUniformMatrix3fv(glGetUniformLocation(shaderProgram, "u_NormalMatrix"), 1, GL_FALSE,
                        glm::value_ptr(normalMatrix));
 
-    glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightPos"), lightPos.x, lightPos.y, lightPos.z);
-    glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y,
+    glUniform3f(glGetUniformLocation(shaderProgram, "u_LightPos"), lightPos.x, lightPos.y, lightPos.z);
+    glUniform3f(glGetUniformLocation(shaderProgram, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y,
                 p_Camera->m_Position.z);
-    glUniform3f(glGetUniformLocation(mat.shaderProgram.id, "u_LightColor"), mat.lightColor.r, mat.lightColor.g,
+    glUniform3f(glGetUniformLocation(shaderProgram, "u_LightColor"), mat.lightColor.r, mat.lightColor.g,
                 mat.lightColor.b);
 
     if (mat.phongParams.has_value()) {
-        glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_Shininess"), mat.phongParams->shininess);
-        glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_AmbientStrength"), mat.phongParams->ambientStrength);
-        glUniform1f(glGetUniformLocation(mat.shaderProgram.id, "u_SpecularStrength"),
+        glUniform1f(glGetUniformLocation(shaderProgram, "u_Shininess"), mat.phongParams->shininess);
+        glUniform1f(glGetUniformLocation(shaderProgram, "u_AmbientStrength"), mat.phongParams->ambientStrength);
+        glUniform1f(glGetUniformLocation(shaderProgram, "u_SpecularStrength"),
                     mat.phongParams->specularStrength);
     }
-    GLint texLoc = glGetUniformLocation(mat.shaderProgram.id, "u_Texture");
-    GLint normalMatLoc = glGetUniformLocation(mat.shaderProgram.id, "u_NormalMatrix");
+    GLint texLoc = glGetUniformLocation(shaderProgram, "u_Texture");
+    GLint normalMatLoc = glGetUniformLocation(shaderProgram, "u_NormalMatrix");
     glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
     // Draw meshes
@@ -269,9 +279,10 @@ void GLRenderer::DrawTriangularMesh(const Model* model) {
 }
 
 void GLRenderer::DrawGridGizmo() {
-    if (p_Camera == nullptr || m_GridProgram == 0 || m_GridVAO == 0 || m_GridVBO == 0) {
+    if (p_Camera == nullptr || !m_GridProgram.IsValid() || m_GridVAO == 0 || m_GridVBO == 0) {
         return;
     }
+    const GLuint gridProgram = ToGLHandle(m_GridProgram);
 
     struct GridVertexGpu {
         glm::vec3 position;
@@ -289,9 +300,9 @@ void GLRenderer::DrawGridGizmo() {
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
-    glUseProgram(m_GridProgram);
+    glUseProgram(gridProgram);
     const glm::mat4 mvp = p_Camera->m_ProjMat * p_Camera->m_ViewMat;
-    glUniformMatrix4fv(glGetUniformLocation(m_GridProgram, "u_MVP"), 1, GL_FALSE, glm::value_ptr(mvp));
+    glUniformMatrix4fv(glGetUniformLocation(gridProgram, "u_MVP"), 1, GL_FALSE, glm::value_ptr(mvp));
     glEnable(GL_DEPTH_TEST);
     glBindVertexArray(m_GridVAO);
     glBindBuffer(GL_ARRAY_BUFFER, m_GridVBO);
@@ -384,16 +395,16 @@ GLuint GLRenderer::CompileShader(GLenum shaderType, const char* shaderSource) {
     return shader;
 }
 
-GLuint GLRenderer::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
+ShaderHandle GLRenderer::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
     GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexCode.c_str());
     if (vertexShader == 0) {
-        return 0;
+        return {};
     }
     CheckShaderErrors(vertexShader, "VERTEX");
     GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentCode.c_str());
     if (fragmentShader == 0) {
         glDeleteShader(vertexShader);
-        return 0;
+        return {};
     }
     CheckShaderErrors(fragmentShader, "FRAGMENT");
 
@@ -402,7 +413,7 @@ GLuint GLRenderer::CompileShaders(const std::string& vertexCode, const std::stri
         LOGE("Error creating shader program");
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
-        return 0;
+        return {};
     }
 
     glAttachShader(shaderProgram, vertexShader);
@@ -422,7 +433,7 @@ GLuint GLRenderer::CompileShaders(const std::string& vertexCode, const std::stri
         glDeleteProgram(shaderProgram);
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
-        return 0;
+        return {};
     }
 
     glDetachShader(shaderProgram, vertexShader);
@@ -430,7 +441,7 @@ GLuint GLRenderer::CompileShaders(const std::string& vertexCode, const std::stri
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    return shaderProgram;
+    return ShaderHandle{static_cast<uintptr_t>(shaderProgram)};
 }
 
 /**
@@ -555,21 +566,22 @@ GLuint GLRenderer::CreateCubemap(const std::string& path) {
 }
 
 void GLRenderer::DrawSkybox() {
-    if (p_Camera == nullptr || m_FrameBuffer == 0 || m_SkyboxProgram.id == 0 || m_SkyboxVAO == 0 || m_SkyboxTexture == 0) {
+    if (p_Camera == nullptr || m_FrameBuffer == 0 || !m_SkyboxProgram.handle.IsValid() || m_SkyboxVAO == 0 || m_SkyboxTexture == 0) {
         return;
     }
+    const GLuint skyboxProgram = ToGLHandle(m_SkyboxProgram.handle);
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
     glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_FALSE);
-    glUseProgram(m_SkyboxProgram.id);
+    glUseProgram(skyboxProgram);
 
     glm::mat4 view = glm::mat4(glm::mat3(p_Camera->m_ViewMat)); // remove translation
     glm::mat4 proj = p_Camera->m_ProjMat;
 
-    GLint viewLoc = glGetUniformLocation(m_SkyboxProgram.id, "u_ViewMatrix");
-    GLint projLoc = glGetUniformLocation(m_SkyboxProgram.id, "u_ProjectionMatrix");
-    glUniform1i(glGetUniformLocation(m_SkyboxProgram.id, "skybox"), 0);
+    GLint viewLoc = glGetUniformLocation(skyboxProgram, "u_ViewMatrix");
+    GLint projLoc = glGetUniformLocation(skyboxProgram, "u_ProjectionMatrix");
+    glUniform1i(glGetUniformLocation(skyboxProgram, "skybox"), 0);
 
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));

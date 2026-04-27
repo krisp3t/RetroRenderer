@@ -37,7 +37,7 @@ class GLRenderer : public IRenderer {
     void EndFrame() override;
 
     GLuint CreateShaderProgram();
-    GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override;
+    ShaderHandle CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override;
 
   private:
     static void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
@@ -63,7 +63,7 @@ class GLRenderer : public IRenderer {
     GLuint m_SkyboxVAO = 0;
     GLuint m_SkyboxVBO = 0;
     ShaderProgram m_SkyboxProgram;
-    GLuint m_GridProgram = 0;
+    ShaderHandle m_GridProgram;
     GLuint m_GridVAO = 0;
     GLuint m_GridVBO = 0;
     GLsizei m_GridVertexCount = 0;

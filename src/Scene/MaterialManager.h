@@ -4,12 +4,12 @@
 #include <string>
 #include <vector>
 
-#include "../include/kris_glheaders.h"
+#include "../Renderer/ShaderHandle.h"
 #include "Texture.h"
 
 namespace RetroRenderer {
 struct ShaderProgram {
-    GLuint id = 0;
+    ShaderHandle handle;
     std::string name;
     std::string vertexPath;
     std::string fragmentPath;
@@ -65,7 +65,6 @@ class MaterialManager {
 
   private:
     static std::string ReadShaderFile(const std::string& path);
-    static void CheckShaderErrors(GLuint shader, const std::string& type);
 
   private:
     std::vector<Material> m_Materials;
