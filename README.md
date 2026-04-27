@@ -130,8 +130,8 @@ Keep the local CMake presets and CI commands aligned when changing build options
 ## Known Limitations
 
 - Scene loading is OBJ-only in the active runtime importer path.
-- Mesh data still owns OpenGL handles directly, so scene data and backend GPU resources are not fully separated yet.
-- `Texture` currently mixes CPU pixel storage with GL texture ownership.
+- Mesh and texture scene data are CPU-side; GL/GLES mesh, texture, and frame-output resources are owned by renderer/presenter code.
+- `RenderSystem` still coordinates backend selection, software worker scheduling, and presentation, so it is not fully backend-neutral yet.
 - `Engine::Get()` is used widely across scene, renderer, material, and UI code.
 - Web and Android paths are useful but not as heavily validated as desktop.
 - There is no configured formatter; follow the existing C++ style.

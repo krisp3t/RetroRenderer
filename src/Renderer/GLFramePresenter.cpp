@@ -1,0 +1,133 @@
+#include "GLFramePresenter.h"
+#include <KrisLogger/Logger.h>
+
+namespace RetroRenderer {
+namespace {
+GLint TextureFilter(bool nearestNeighbor) {
+    return nearestNeighbor ? GL_NEAREST : GL_LINEAR;
+}
+
+GLint TextureInternalFormat() {
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+    return GL_RGBA8;
+#else
+    return GL_RGBA;
+#endif
+}
+} // namespace
+
+GLFramePresenter::~GLFramePresenter() {
+    Destroy();
+}
+
+bool GLFramePresenter::Init(int width, int height, bool nearestNeighbor) {
+    Destroy();
+    return CreateTexture(width, height, nearestNeighbor);
+}
+
+bool GLFramePresenter::Resize(int width, int height, bool nearestNeighbor) {
+    if (m_TextureId != 0 &&
+        m_Width == width &&
+        m_Height == height) {
+        ApplyFiltering(nearestNeighbor);
+        m_NearestNeighbor = nearestNeighbor;
+        return true;
+    }
+
+    Destroy();
+    return CreateTexture(width, height, nearestNeighbor);
+}
+
+void GLFramePresenter::Destroy() {
+    if (m_TextureId != 0) {
+        glDeleteTextures(1, &m_TextureId);
+        m_TextureId = 0;
+    }
+    m_Width = 0;
+    m_Height = 0;
+}
+
+bool GLFramePresenter::Upload(const Buffer<Pixel>& buffer) {
+    return UploadPixels(buffer.data, buffer.width, buffer.height);
+}
+
+bool GLFramePresenter::UploadPixels(const Pixel* pixels, size_t width, size_t height) {
+    if (m_TextureId == 0) {
+        LOGE("Cannot upload software frame: presenter texture is not initialized");
+        return false;
+    }
+    if (width == 0 || height == 0 || pixels == nullptr) {
+        return false;
+    }
+    if (static_cast<int>(width) != m_Width || static_cast<int>(height) != m_Height) {
+        LOGE("Software frame size %zu x %zu does not match presenter texture %d x %d",
+             width,
+             height,
+             m_Width,
+             m_Height);
+        return false;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, m_TextureId);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexSubImage2D(
+        GL_TEXTURE_2D,
+        0,
+        0,
+        0,
+        static_cast<GLsizei>(width),
+        static_cast<GLsizei>(height),
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        pixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return true;
+}
+
+bool GLFramePresenter::CreateTexture(int width, int height, bool nearestNeighbor) {
+    if (width <= 0 || height <= 0) {
+        LOGE("Cannot create frame presenter texture with invalid size %d x %d", width, height);
+        return false;
+    }
+
+    glGenTextures(1, &m_TextureId);
+    if (m_TextureId == 0) {
+        LOGE("Failed to create frame presenter texture");
+        return false;
+    }
+
+    m_Width = width;
+    m_Height = height;
+    m_NearestNeighbor = nearestNeighbor;
+
+    glBindTexture(GL_TEXTURE_2D, m_TextureId);
+    ApplyFiltering(nearestNeighbor);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        TextureInternalFormat(),
+        width,
+        height,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        nullptr);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return true;
+}
+
+void GLFramePresenter::ApplyFiltering(bool nearestNeighbor) {
+    if (m_TextureId == 0) {
+        return;
+    }
+
+    const GLint filter = TextureFilter(nearestNeighbor);
+    glBindTexture(GL_TEXTURE_2D, m_TextureId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+} // namespace RetroRenderer

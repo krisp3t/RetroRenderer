@@ -289,9 +289,8 @@ void GLRenderer::BeforeFrame(const Color& clearColor) {
     }
 }
 
-GLuint GLRenderer::EndFrame() {
+void GLRenderer::EndFrame() {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    return p_FrameBufferTexture;
 }
 
 void GLRenderer::CheckShaderErrors(GLuint shader, const std::string& type) {

@@ -33,13 +33,8 @@ bool GLESRenderer::Init(GLuint fbTex, int w, int h) {
  */
 bool GLESRenderer::CreateFramebuffer(GLuint fbTex, int w, int h) {
     p_FrameBufferTexture = fbTex;
-
-    // Allocate color texture storage
-    glBindTexture(GL_TEXTURE_2D, p_FrameBufferTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    (void)w;
+    (void)h;
 
     // Create framebuffer
     glGenFramebuffers(1, &m_FrameBuffer);
@@ -167,8 +162,7 @@ void GLESRenderer::BeforeFrame(const Color& clearColor) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-GLuint GLESRenderer::EndFrame() {
-    return p_FrameBufferTexture;
+void GLESRenderer::EndFrame() {
 }
 
 void GLESRenderer::CheckShaderErrors(GLuint shader, const std::string& type) {

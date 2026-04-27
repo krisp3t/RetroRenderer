@@ -50,14 +50,20 @@ bool RenderSystem::Init() {
     auto& fbResolution = p_config->renderer.resolution;
     assert(fbResolution.x > 0 && fbResolution.y > 0 && "Tried to initialize renderers with invalid resolution");
 
-    CreateFramebufferTexture(m_SWFramebufferTexture, fbResolution.x, fbResolution.y);
-    CreateFramebufferTexture(m_GLFramebufferTexture, fbResolution.x, fbResolution.y);
+    if (!m_SWFramePresenter.Init(fbResolution.x, fbResolution.y, p_config->renderer.nearestNeighborPresentation)) {
+        LOGE("Failed to initialize software frame presenter");
+        return false;
+    }
+    if (!m_GLFramePresenter.Init(fbResolution.x, fbResolution.y, p_config->renderer.nearestNeighborPresentation)) {
+        LOGE("Failed to initialize GL frame presenter");
+        return false;
+    }
 
     if (!p_SWRenderer_->Init(fbResolution.x, fbResolution.y)) {
         LOGE("Failed to initialize SWRenderer");
         return false;
     }
-    if (!p_GLRenderer_->Init(m_GLFramebufferTexture, fbResolution.x, fbResolution.y)) {
+    if (!p_GLRenderer_->Init(m_GLFramePresenter.GetTextureHandle(), fbResolution.x, fbResolution.y)) {
         LOGE("Failed to initialize GLRenderer");
         return false;
     }
@@ -67,22 +73,6 @@ bool RenderSystem::Init() {
 #endif
 
     return true;
-}
-
-void RenderSystem::CreateFramebufferTexture(GLuint& texId, int width, int height) {
-    auto const& p_config = Engine::Get().GetConfig();
-    const GLint filter = p_config->renderer.nearestNeighborPresentation ? GL_NEAREST : GL_LINEAR;
-    if (texId != 0) {
-        glDeleteTextures(1, &texId);
-        texId = 0;
-    }
-    glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D, texId);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    // TODO: make filtering configurable
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
-    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void RenderSystem::BeforeFrame(const Color& clearColor) {
@@ -129,7 +119,7 @@ GLuint RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& c
 #else
         SubmitSoftwareJob(scene, camera, renderQueue);
         UploadSoftwareFrameToTexture();
-        return m_SWFramebufferTexture;
+        return m_SWFramePresenter.GetTextureHandle();
 #endif
     }
 
@@ -155,7 +145,8 @@ GLuint RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& c
     if (p_config->environment.showGrid) {
         p_activeRenderer_->DrawGridGizmo();
     }
-    return p_activeRenderer_->EndFrame();
+    p_activeRenderer_->EndFrame();
+    return m_GLFramePresenter.GetTextureHandle();
 }
 
 void RenderSystem::Resize(const glm::ivec2& resolution) {
@@ -167,11 +158,11 @@ void RenderSystem::Resize(const glm::ivec2& resolution) {
     StopSoftwareWorker();
 #endif
 
-    CreateFramebufferTexture(m_SWFramebufferTexture, resolution.x, resolution.y);
-    CreateFramebufferTexture(m_GLFramebufferTexture, resolution.x, resolution.y);
+    m_SWFramePresenter.Resize(resolution.x, resolution.y, p_config->renderer.nearestNeighborPresentation);
+    m_GLFramePresenter.Resize(resolution.x, resolution.y, p_config->renderer.nearestNeighborPresentation);
     LOGI("Resizing output image to %d x %d", resolution.x, resolution.y);
     p_SWRenderer_->Resize(resolution.x, resolution.y);
-    p_GLRenderer_->Resize(m_GLFramebufferTexture, resolution.x, resolution.y);
+    p_GLRenderer_->Resize(m_GLFramePresenter.GetTextureHandle(), resolution.x, resolution.y);
 
 #if !defined(__EMSCRIPTEN__)
     ClearSoftwareWorkerFrameState();
@@ -186,20 +177,14 @@ void RenderSystem::Destroy() {
     m_IsDestroyed = true;
 
     StopSoftwareWorker();
-    if (m_SWFramebufferTexture != 0) {
-        glDeleteTextures(1, &m_SWFramebufferTexture);
-        m_SWFramebufferTexture = 0;
-    }
-    if (m_GLFramebufferTexture != 0) {
-        glDeleteTextures(1, &m_GLFramebufferTexture);
-        m_GLFramebufferTexture = 0;
-    }
     if (p_GLRenderer_) {
         p_GLRenderer_->Destroy();
     }
     if (p_SWRenderer_) {
         p_SWRenderer_->Destroy();
     }
+    m_SWFramePresenter.Destroy();
+    m_GLFramePresenter.Destroy();
 }
 
 void RenderSystem::OnLoadScene(const SceneLoadEvent& e) {
@@ -242,13 +227,10 @@ void RenderSystem::SyncSoftwareWorkerForRenderDataMutation() {
 #if !defined(__EMSCRIPTEN__)
     StopSoftwareWorker();
     ClearSoftwareWorkerFrameState();
-    if (p_SWRenderer_ && m_SWFramebufferTexture != 0) {
+    if (p_SWRenderer_ && m_SWFramePresenter.GetTextureHandle() != 0) {
         p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
-        glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(buffer.width), static_cast<GLsizei>(buffer.height),
-                        GL_RGBA, GL_UNSIGNED_BYTE, buffer.data);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        m_SWFramePresenter.Upload(buffer);
     }
     StartSoftwareWorker();
 #endif
@@ -344,10 +326,9 @@ void RenderSystem::UploadSoftwareFrameToTexture() {
         return;
     }
 
-    glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height), GL_RGBA,
-                    GL_UNSIGNED_BYTE, completedFrame.pixels.data());
-    glBindTexture(GL_TEXTURE_2D, 0);
+    if (!m_SWFramePresenter.UploadPixels(completedFrame.pixels.data(), width, height)) {
+        return;
+    }
 
     if (droppedReadyFrames > 0) {
         p_stats->swFramesDroppedReady.fetch_add(droppedReadyFrames, std::memory_order_relaxed);
@@ -465,11 +446,8 @@ GLuint RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
         p_SWRenderer_->DrawGridGizmo();
     }
     const auto& buffer = p_SWRenderer_->GetFrameBuffer();
-    glBindTexture(GL_TEXTURE_2D, m_SWFramebufferTexture);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(buffer.width), static_cast<GLsizei>(buffer.height),
-                    GL_RGBA, GL_UNSIGNED_BYTE, buffer.data);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    m_SWFramePresenter.Upload(buffer);
     p_SWRenderer_->SetFallbackTexture(nullptr);
-    return m_SWFramebufferTexture;
+    return m_SWFramePresenter.GetTextureHandle();
 }
 } // namespace RetroRenderer

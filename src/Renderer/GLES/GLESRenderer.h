@@ -33,7 +33,7 @@ class GLESRenderer : public IRenderer {
 
     void BeforeFrame(const Color& clearColor) override;
 
-    GLuint EndFrame() override;
+    void EndFrame() override;
 
     GLuint CreateShaderProgram();
     GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override;

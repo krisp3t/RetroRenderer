@@ -769,7 +769,7 @@ void SWRenderer::BeforeFrame(const Color& clearColor) {
     m_DeferredPs1Triangles.clear();
 }
 
-GLuint SWRenderer::EndFrame() {
+void SWRenderer::EndFrame() {
     if (!m_DeferredPs1Triangles.empty()) {
         std::stable_sort(
             m_DeferredPs1Triangles.begin(),
@@ -793,7 +793,6 @@ GLuint SWRenderer::EndFrame() {
         m_DeferredPs1Triangles.clear();
     }
     ApplyOutlinePass();
-    return 0;
 }
 
 void SWRenderer::ApplyOutlinePass() {

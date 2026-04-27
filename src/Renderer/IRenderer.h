@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../include/kris_glheaders.h"
 #include "../Scene/Light.h"
 #include <string>
 #include <vector>
@@ -23,7 +24,7 @@ class IRenderer {
 
     virtual void BeforeFrame(const Color& clearColor) = 0; // Clear screen / framebuffer texture
 
-    virtual GLuint EndFrame() = 0; // Copy to framebuffer texture
+    virtual void EndFrame() = 0;
 
     virtual void SetActiveCamera(const Camera& camera) = 0;
     virtual void SetSceneLights(const std::vector<LightSnapshot>& lights) = 0;

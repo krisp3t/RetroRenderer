@@ -4,6 +4,7 @@
 #include "../Base/Stats.h"
 #include "../Scene/Scene.h"
 #include "../Window/DisplaySystem.h"
+#include "GLFramePresenter.h"
 #include "Software/SWRenderer.h"
 #if !defined(__EMSCRIPTEN__)
 #include <condition_variable>
@@ -27,8 +28,6 @@ class RenderSystem {
     RenderSystem() = default;
 
     ~RenderSystem();
-
-    static void CreateFramebufferTexture(GLuint& texId, int width, int height);
 
     bool Init();
 
@@ -89,8 +88,8 @@ class RenderSystem {
 #endif
     IRenderer* p_activeRenderer_ = nullptr;
 
-    GLuint m_SWFramebufferTexture = 0;
-    GLuint m_GLFramebufferTexture = 0;
+    GLFramePresenter m_SWFramePresenter;
+    GLFramePresenter m_GLFramePresenter;
     Color m_SoftwareClearColor = Color::DefaultBackground();
     bool m_IsDestroyed = false;
 

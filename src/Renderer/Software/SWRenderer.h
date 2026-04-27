@@ -28,7 +28,7 @@ class SWRenderer : public IRenderer {
     void DrawSkybox() override;
     void DrawGridGizmo() override;
     void BeforeFrame(const Color& clearColor) override;
-    GLuint EndFrame() override;
+    void EndFrame() override;
     GLuint CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) override {
         // TODO: implement
         return 0;
