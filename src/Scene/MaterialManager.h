@@ -9,6 +9,9 @@
 #include "Texture.h"
 
 namespace RetroRenderer {
+class IRenderInvalidationSink;
+class IShaderCompiler;
+
 struct ShaderProgram {
     ShaderHandle handle;
     std::string name;
@@ -54,6 +57,7 @@ class MaterialManager {
 
     MaterialManager() = default;
     ~MaterialManager() = default;
+    void BindRenderServices(IShaderCompiler& shaderCompiler, IRenderInvalidationSink& renderInvalidationSink);
     bool Init();
     void LoadTexture(const std::string& path);
     void LoadTexture(const uint8_t* data, const size_t size);
@@ -63,7 +67,13 @@ class MaterialManager {
     Material& GetCurrentMaterial() {
         return m_Materials[m_CurrentMaterialIndex];
     }
-    static ShaderProgram CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath);
+    const Material& GetCurrentMaterial() const {
+        return m_Materials[m_CurrentMaterialIndex];
+    }
+    static ShaderProgram CreateShaderProgram(IShaderCompiler& shaderCompiler,
+                                             const std::string& vertexPath,
+                                             const std::string& fragmentPath);
+    ShaderProgram CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath);
 
   private:
     static std::string ReadShaderFile(const std::string& path);
@@ -76,6 +86,8 @@ class MaterialManager {
     char fragPathBuffer[256] = "";
     int newShaderType = 0; // For UI combo box
     const char* k_supportedTextures = ".png";
+    IShaderCompiler* p_ShaderCompiler_ = nullptr;
+    IRenderInvalidationSink* p_RenderInvalidationSink_ = nullptr;
 };
 
 } // namespace RetroRenderer

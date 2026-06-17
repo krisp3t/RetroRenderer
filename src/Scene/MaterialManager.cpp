@@ -1,7 +1,7 @@
 #include "MaterialManager.h"
 
 #include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
-#include "../Engine.h"
+#include "../Renderer/RenderServices.h"
 #include "KrisLogger/Logger.h"
 #include <cstdint>
 #include <fstream>
@@ -13,7 +13,17 @@
 #endif
 
 namespace RetroRenderer {
+void MaterialManager::BindRenderServices(IShaderCompiler& shaderCompiler,
+                                         IRenderInvalidationSink& renderInvalidationSink) {
+    p_ShaderCompiler_ = &shaderCompiler;
+    p_RenderInvalidationSink_ = &renderInvalidationSink;
+}
+
 bool MaterialManager::Init() {
+    if (p_ShaderCompiler_ == nullptr || p_RenderInvalidationSink_ == nullptr) {
+        LOGE("MaterialManager render services were not bound before initialization");
+        return false;
+    }
     LoadDefaultShaders();
     return true;
 }
@@ -25,7 +35,7 @@ void MaterialManager::LoadTexture(const std::string& path) {
         return;
     }
     GetCurrentMaterial().texture = std::move(texture);
-    Engine::Get().GetRenderSystem().OnTextureMutated();
+    p_RenderInvalidationSink_->OnTextureMutated();
 }
 
 void MaterialManager::LoadTexture(const uint8_t* data, const size_t size) {
@@ -35,7 +45,7 @@ void MaterialManager::LoadTexture(const uint8_t* data, const size_t size) {
         return;
     }
     GetCurrentMaterial().texture = std::move(texture);
-    Engine::Get().GetRenderSystem().OnTextureMutated();
+    p_RenderInvalidationSink_->OnTextureMutated();
 }
 
 void MaterialManager::LoadDefaultShaders() {
@@ -59,6 +69,12 @@ void MaterialManager::LoadDefaultShaders() {
 }
 
 ShaderProgram MaterialManager::CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath) {
+    return CreateShaderProgram(*p_ShaderCompiler_, vertexPath, fragmentPath);
+}
+
+ShaderProgram MaterialManager::CreateShaderProgram(IShaderCompiler& shaderCompiler,
+                                                   const std::string& vertexPath,
+                                                   const std::string& fragmentPath) {
     ShaderProgram shaderProgram;
     std::string rootPath = "assets/";
 #ifdef __ANDROID__
@@ -69,7 +85,7 @@ ShaderProgram MaterialManager::CreateShaderProgram(const std::string& vertexPath
     if (vertexCode.empty() || fragmentCode.empty()) {
         return {ShaderHandle{}, "Invalid Shader", vertexPath, fragmentPath};
     }
-    ShaderHandle handle = Engine::Get().GetRenderSystem().CompileShaders(vertexCode, fragmentCode);
+    ShaderHandle handle = shaderCompiler.CompileShaders(vertexCode, fragmentCode);
     if (!handle.IsValid()) {
         return {ShaderHandle{}, "Invalid Shader", vertexPath, fragmentPath};
     }
@@ -125,7 +141,7 @@ void MaterialManager::RenderUI(const TexturePreviewCallback& texturePreview) {
         ImGui::SameLine();
         if (ImGui::Button("Unload texture")) {
             currentMat.texture = Texture();
-            Engine::Get().GetRenderSystem().OnTextureMutated();
+            p_RenderInvalidationSink_->OnTextureMutated();
         }
 
         if (currentMat.texture->HasCpuPixels()) {

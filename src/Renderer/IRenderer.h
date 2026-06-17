@@ -2,6 +2,7 @@
 
 #include "../Scene/Light.h"
 #include "FrameSnapshot.h"
+#include "RenderServices.h"
 #include "ShaderHandle.h"
 #include <string>
 #include <vector>
@@ -13,7 +14,7 @@ class Model;
 
 struct Color;
 
-class IRenderer {
+class IRenderer : public IShaderCompiler {
   public:
     IRenderer() = default;
 
@@ -39,6 +40,7 @@ class IRenderer {
     virtual void DrawGridGizmo() {
     }
 
-    [[nodiscard]] virtual ShaderHandle CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) = 0;
+    [[nodiscard]] virtual ShaderHandle CompileShaders(const std::string& vertexCode,
+                                                      const std::string& fragmentCode) override = 0;
 };
 } // namespace RetroRenderer

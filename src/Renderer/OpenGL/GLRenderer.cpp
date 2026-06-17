@@ -79,7 +79,7 @@ bool GLRenderer::Init(TextureHandle fbTex, int w, int h) {
     GLuint cubeTex = CreateCubemap("assets/img/skybox-cubemap/Cubemap_Sky_23-512x512.png");
     if (cubeTex != 0) {
         m_SkyboxTexture = cubeTex;
-        auto skyboxShader = MaterialManager::CreateShaderProgram("shaders/skybox.vs", "shaders/skybox.fs");
+        auto skyboxShader = MaterialManager::CreateShaderProgram(*this, "shaders/skybox.vs", "shaders/skybox.fs");
         m_SkyboxProgram = skyboxShader;
         m_SkyboxVAO = CreateSkyboxVAO();
     }

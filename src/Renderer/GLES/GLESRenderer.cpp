@@ -47,7 +47,7 @@ bool GLESRenderer::Init(TextureHandle fbTex, int w, int h) {
 #endif
     if (cubeTex != 0) {
         m_SkyboxTexture = cubeTex;
-        auto skyboxShader = MaterialManager::CreateShaderProgram("shaders/skybox.vs", "shaders/skybox.fs");
+        auto skyboxShader = MaterialManager::CreateShaderProgram(*this, "shaders/skybox.vs", "shaders/skybox.fs");
         m_SkyboxProgram = skyboxShader;
         m_SkyboxVAO = CreateSkyboxVAO();
     }
