@@ -53,7 +53,7 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
   private:
     struct SoftwareRenderJob {
         FrameSnapshot frame;
-        std::optional<Texture> textureOverride;
+        std::vector<Texture> ownedOverrideTextures;
         uint64_t jobId = 0;
     };
 
@@ -63,6 +63,7 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
         size_t height = 0;
         size_t pitch = 0;
         uint64_t jobId = 0;
+        uint64_t dataRevision = 0;
     };
 
     void StartSoftwareWorker();
@@ -74,7 +75,6 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     [[nodiscard]] RenderOutput MakeSoftwareRenderOutput() const;
     void StoreSoftwareFrame(const Buffer<Pixel>& buffer);
     void ClearSoftwareWorkerFrameState();
-    void SyncSoftwareWorkerForRenderDataMutation();
 
   private:
     std::shared_ptr<Config> p_Config_;
@@ -88,6 +88,7 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     SoftwareCompletedFrame m_PresentedSoftwareFrame;
     Color m_SoftwareClearColor = Color::DefaultBackground();
     bool m_IsDestroyed = false;
+    uint64_t m_FrameDataRevision = 1;
 
 #if !defined(__EMSCRIPTEN__)
     std::thread m_SoftwareWorkerThread;

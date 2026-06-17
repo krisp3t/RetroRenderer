@@ -7,8 +7,10 @@
 #include "OpenGL/GLRenderer.h"
 #endif
 #include <KrisLogger/Logger.h>
+#include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <unordered_map>
 
 namespace RetroRenderer {
 namespace {
@@ -24,9 +26,6 @@ FrameMaterialState CaptureFrameMaterialState(const MaterialManager::Material& cu
         state.ambientStrength = currentMaterial.phongParams->ambientStrength;
         state.specularStrength = currentMaterial.phongParams->specularStrength;
         state.shininess = currentMaterial.phongParams->shininess;
-    }
-    if (currentMaterial.texture.has_value() && currentMaterial.texture->HasCpuPixels()) {
-        state.textureOverride = &*currentMaterial.texture;
     }
     return state;
 }
@@ -109,10 +108,33 @@ FrameSnapshot RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scene>& sce
     frame.scene = scene;
     frame.camera = camera;
     frame.lights = scene->BuildLightSnapshots();
+    frame.materials.clear();
+    frame.textures.clear();
     frame.items.clear();
     frame.configSnapshot = *p_Config_;
     frame.clearColor = p_Config_->renderer.clearColor;
-    frame.materialState = CaptureFrameMaterialState(currentMaterial);
+    frame.dataRevision = m_FrameDataRevision;
+
+    const FrameMaterialId sharedMaterialId = static_cast<FrameMaterialId>(frame.materials.size());
+    frame.materials.push_back(CaptureFrameMaterialState(currentMaterial));
+
+    std::unordered_map<const Texture*, FrameTextureId> textureIds;
+    const Texture* overrideTexture =
+        currentMaterial.texture.has_value() && currentMaterial.texture->HasCpuPixels() ? &*currentMaterial.texture : nullptr;
+    const auto captureTextureId = [&](const Texture* texture, FrameTextureBinding::Source source) -> FrameTextureId {
+        if (texture == nullptr) {
+            return kInvalidFrameTextureId;
+        }
+        if (const auto it = textureIds.find(texture); it != textureIds.end()) {
+            return it->second;
+        }
+
+        const FrameTextureId textureId = static_cast<FrameTextureId>(frame.textures.size());
+        frame.textures.push_back(FrameTextureBinding{source, texture});
+        textureIds.emplace(texture, textureId);
+        return textureId;
+    };
+    const FrameTextureId overrideTextureId = captureTextureId(overrideTexture, FrameTextureBinding::Source::Override);
 
     const auto& visibleModels = scene->GetVisibleModels();
     size_t renderItemCount = 0;
@@ -140,6 +162,11 @@ FrameSnapshot RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scene>& sce
             item.modelIndex = modelIx;
             item.meshIndex = static_cast<int>(meshIx);
             item.worldTransform = model.GetWorldTransform();
+            item.materialId = sharedMaterialId;
+            item.textureId =
+                overrideTextureId != kInvalidFrameTextureId
+                    ? overrideTextureId
+                    : captureTextureId(mesh.GetPrimaryTexture(), FrameTextureBinding::Source::Scene);
             frame.items.push_back(item);
         }
     }
@@ -207,21 +234,21 @@ void RenderSystem::Destroy() {
 void RenderSystem::OnLoadScene(const SceneLoadEvent& e) {
     (void)e;
     p_GLRenderer_->InvalidateSceneResources();
-    SyncSoftwareWorkerForRenderDataMutation();
+    ++m_FrameDataRevision;
 }
 
 void RenderSystem::OnResetScene() {
     p_GLRenderer_->InvalidateSceneResources();
-    SyncSoftwareWorkerForRenderDataMutation();
+    ++m_FrameDataRevision;
 }
 
 void RenderSystem::OnSceneMutated() {
-    SyncSoftwareWorkerForRenderDataMutation();
+    ++m_FrameDataRevision;
 }
 
 void RenderSystem::OnTextureMutated() {
     p_GLRenderer_->InvalidateTextureResources();
-    SyncSoftwareWorkerForRenderDataMutation();
+    ++m_FrameDataRevision;
 }
 
 ShaderHandle RenderSystem::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
@@ -235,19 +262,6 @@ void RenderSystem::ClearSoftwareWorkerFrameState() {
     m_CompletedSoftwareFrames.clear();
 #endif
     m_PresentedSoftwareFrame = {};
-}
-
-void RenderSystem::SyncSoftwareWorkerForRenderDataMutation() {
-#if !defined(__EMSCRIPTEN__)
-    StopSoftwareWorker();
-    ClearSoftwareWorkerFrameState();
-    if (p_SWRenderer_) {
-        p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
-        const auto& buffer = p_SWRenderer_->GetFrameBuffer();
-        StoreSoftwareFrame(buffer);
-    }
-    StartSoftwareWorker();
-#endif
 }
 
 void RenderSystem::StartSoftwareWorker() {
@@ -290,9 +304,19 @@ void RenderSystem::SubmitSoftwareJob(const FrameSnapshot& frame) {
 
     SoftwareRenderJob job{};
     job.frame = frame;
-    if (frame.materialState.textureOverride != nullptr) {
-        job.textureOverride = frame.materialState.textureOverride->CloneCpuOnly();
-        job.frame.materialState.textureOverride = &*job.textureOverride;
+    const size_t overrideTextureCount = std::count_if(
+        job.frame.textures.begin(),
+        job.frame.textures.end(),
+        [](const FrameTextureBinding& binding) {
+            return binding.source == FrameTextureBinding::Source::Override && binding.texture != nullptr;
+        });
+    job.ownedOverrideTextures.reserve(overrideTextureCount);
+    for (FrameTextureBinding& binding : job.frame.textures) {
+        if (binding.source != FrameTextureBinding::Source::Override || binding.texture == nullptr) {
+            continue;
+        }
+        job.ownedOverrideTextures.push_back(binding.texture->CloneCpuOnly());
+        binding.texture = &job.ownedOverrideTextures.back();
     }
 
     {
@@ -320,6 +344,11 @@ void RenderSystem::PresentCompletedSoftwareFrame() {
     size_t height = 0;
     {
         std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
+        while (!m_CompletedSoftwareFrames.empty() &&
+               m_CompletedSoftwareFrames.back().dataRevision < m_FrameDataRevision) {
+            m_CompletedSoftwareFrames.pop_back();
+            droppedReadyFrames++;
+        }
         if (m_CompletedSoftwareFrames.empty()) {
             return;
         }
@@ -369,6 +398,7 @@ void RenderSystem::SoftwareWorkerLoop() {
         finishedFrame.height = buffer.height;
         finishedFrame.pitch = buffer.pitch;
         finishedFrame.jobId = job.jobId;
+        finishedFrame.dataRevision = job.frame.dataRevision;
         finishedFrame.pixels.resize(buffer.GetCount());
         if (!finishedFrame.pixels.empty()) {
             std::memcpy(finishedFrame.pixels.data(), buffer.data, finishedFrame.pixels.size() * sizeof(Pixel));

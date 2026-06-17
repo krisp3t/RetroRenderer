@@ -164,6 +164,22 @@ SoftwareMaterialState MakeSoftwareMaterialState(const FrameMaterialState& materi
     return state;
 }
 
+const FrameMaterialState* ResolveFrameMaterial(const FrameSnapshot& frame, FrameMaterialId materialId) {
+    if (materialId == kInvalidFrameMaterialId || materialId >= frame.materials.size()) {
+        return nullptr;
+    }
+    return &frame.materials[materialId];
+}
+
+const Texture* ResolveFrameTexture(const FrameSnapshot& frame, FrameTextureId textureId) {
+    if (textureId == kInvalidFrameTextureId || textureId >= frame.textures.size()) {
+        return nullptr;
+    }
+
+    const FrameTextureBinding& binding = frame.textures[textureId];
+    return binding.IsValid() ? binding.texture : nullptr;
+}
+
 float ComputeDeferredTriangleSortKey(const std::array<RasterVertex, 3>& vertices, const glm::vec3& cameraPosition) {
     const glm::vec3 centroid = (vertices[0].worldPosition + vertices[1].worldPosition + vertices[2].worldPosition) / 3.0f;
     const glm::vec3 delta = centroid - cameraPosition;
@@ -593,8 +609,8 @@ void SWRenderer::RenderFrame(const FrameSnapshot& frame) {
     SetActiveCamera(m_FrameCameraSnapshot);
     SetSceneLights(frame.lights);
     SetFrameConfig(frame.configSnapshot);
-    SetMaterialState(MakeSoftwareMaterialState(frame.materialState));
-    SetFallbackTexture(frame.materialState.textureOverride);
+    m_FrameMaterialState = frame.materials.empty() ? SoftwareMaterialState{} : MakeSoftwareMaterialState(frame.materials.front());
+    p_FrameFallbackTexture = nullptr;
 
     BeforeFrame(frame.clearColor);
     if (frame.configSnapshot.environment.showSkybox) {
@@ -614,14 +630,22 @@ void SWRenderer::RenderFrame(const FrameSnapshot& frame) {
             continue;
         }
 
-        DrawMesh(model.GetMesh(static_cast<size_t>(item.meshIndex)), item.worldTransform);
+        const FrameMaterialState* materialState = ResolveFrameMaterial(frame, item.materialId);
+        if (materialState == nullptr) {
+            continue;
+        }
+
+        DrawMesh(
+            model.GetMesh(static_cast<size_t>(item.meshIndex)),
+            item.worldTransform,
+            MakeSoftwareMaterialState(*materialState),
+            ResolveFrameTexture(frame, item.textureId));
     }
 
     EndFrame();
     if (frame.configSnapshot.environment.showGrid) {
         DrawGridGizmo();
     }
-    SetFallbackTexture(nullptr);
 }
 
 void SWRenderer::SetActiveCamera(const Camera& camera) {
@@ -644,7 +668,10 @@ void SWRenderer::SetFallbackTexture(const Texture* texture) {
     p_FrameFallbackTexture = texture;
 }
 
-void SWRenderer::DrawMesh(const Mesh& mesh, const glm::mat4& worldTransform) {
+void SWRenderer::DrawMesh(const Mesh& mesh,
+                          const glm::mat4& worldTransform,
+                          const SoftwareMaterialState& materialState,
+                          const Texture* texture) {
     assert(p_Camera != nullptr && "No active camera set. Did you call SWRenderer::SetActiveCamera()?");
     assert(m_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
     assert(m_DepthBuffer != nullptr && "No depth buffer set. Did you call SWRenderer::Init()?");
@@ -674,10 +701,7 @@ void SWRenderer::DrawMesh(const Mesh& mesh, const glm::mat4& worldTransform) {
         worldPositions[vertexIndex] = glm::vec3(worldTransform * sourceVertex.position);
     }
 
-    const Texture* diffuseTexture = p_FrameFallbackTexture;
-    if (diffuseTexture == nullptr) {
-        diffuseTexture = mesh.GetPrimaryTexture();
-    }
+    const Texture* diffuseTexture = texture != nullptr ? texture : mesh.GetPrimaryTexture();
     if (deferPs1Triangles) {
         m_DeferredPs1Triangles.reserve(m_DeferredPs1Triangles.size() + mesh.GetFaceCount());
     }
@@ -687,6 +711,7 @@ void SWRenderer::DrawMesh(const Mesh& mesh, const glm::mat4& worldTransform) {
             DeferredTriangle deferredTriangle{};
             deferredTriangle.vertices = rasterVertices;
             deferredTriangle.texture = diffuseTexture;
+            deferredTriangle.materialState = materialState;
             deferredTriangle.sortKey = ComputeDeferredTriangleSortKey(rasterVertices, p_Camera->m_Position);
             m_DeferredPs1Triangles.push_back(deferredTriangle);
             return;
@@ -699,7 +724,7 @@ void SWRenderer::DrawMesh(const Mesh& mesh, const glm::mat4& worldTransform) {
             drawVertices,
             cfg,
             m_FrameLights,
-            m_FrameMaterialState,
+            materialState,
             p_Camera->m_Position,
             diffuseTexture);
     };
@@ -797,7 +822,7 @@ void SWRenderer::DrawMesh(const Mesh& mesh, const glm::mat4& worldTransform) {
 void SWRenderer::DrawTriangularMesh(const Model* model) {
     assert(model != nullptr && "Tried to draw null model");
     for (const Mesh& mesh : model->GetMeshes()) {
-        DrawMesh(mesh, model->GetWorldTransform());
+        DrawMesh(mesh, model->GetWorldTransform(), m_FrameMaterialState, p_FrameFallbackTexture);
     }
 }
 
@@ -826,7 +851,7 @@ void SWRenderer::EndFrame() {
                 drawVertices,
                 m_FrameConfigSnapshot,
                 m_FrameLights,
-                m_FrameMaterialState,
+                deferredTriangle.materialState,
                 p_Camera->m_Position,
                 deferredTriangle.texture);
         }

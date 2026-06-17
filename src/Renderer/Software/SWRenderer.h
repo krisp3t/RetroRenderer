@@ -39,10 +39,14 @@ class SWRenderer : public IRenderer {
     [[nodiscard]] const Buffer<Pixel>& GetFrameBuffer() const;
 
   private:
-    void DrawMesh(const Mesh& mesh, const glm::mat4& worldTransform);
+    void DrawMesh(const Mesh& mesh,
+                  const glm::mat4& worldTransform,
+                  const SoftwareMaterialState& materialState,
+                  const Texture* texture);
     struct DeferredTriangle {
         std::array<RasterVertex, 3> vertices{};
         const Texture* texture = nullptr;
+        SoftwareMaterialState materialState{};
         float sortKey = 0.0f;
     };
 
