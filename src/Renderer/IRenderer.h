@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Scene/Light.h"
+#include "FrameSnapshot.h"
 #include "ShaderHandle.h"
 #include <string>
 #include <vector>
@@ -21,6 +22,8 @@ class IRenderer {
     // virtual bool Init(int w, int h) = 0;
     virtual void Destroy() {
     }
+
+    virtual void RenderFrame(const FrameSnapshot& frame) = 0;
 
     virtual void BeforeFrame(const Color& clearColor) = 0; // Clear screen / framebuffer texture
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Base/Config.h"
 #include "Camera.h"
 #include "ImportedSceneData.h"
 #include "Light.h"
@@ -22,19 +23,22 @@ class Scene {
     bool Load(const uint8_t* data, const size_t size, bool append = false);
     bool Load(const std::string& path, bool append = false);
     void SetImporter(std::unique_ptr<ISceneImporter> importer);
-    void FrustumCull(const Camera& camera);
+    void SetDefaultLightPosition(const glm::vec3& lightPosition);
+    void FrustumCull(const Camera& camera, const Config::CullSettings& cullSettings);
     [[nodiscard]] std::vector<int>& GetVisibleModels();
     [[nodiscard]] std::vector<SceneLight>& GetLights();
     [[nodiscard]] const std::vector<SceneLight>& GetLights() const;
     [[nodiscard]] std::vector<LightSnapshot> BuildLightSnapshots() const;
     [[nodiscard]] const glm::mat4& GetModelWorldTransform(int index) const;
     void MarkDirtyModel(int index);
+    [[nodiscard]] const Model& GetModel(size_t index) const;
+    [[nodiscard]] size_t GetModelCount() const;
 
     std::vector<Model> m_Models;
     std::vector<SceneLight> m_Lights;
 
   private:
-    void InitializeDefaultLighting();
+    void InitializeDefaultLighting(const glm::vec3& lightPosition);
     bool ProcessImportedScene(const ImportedSceneData& sceneData, bool append);
     bool ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneData, int parentIndex);
     void ProcessImportedMesh(const ImportedMesh& mesh,

@@ -13,11 +13,11 @@ class Camera {
     Camera() = default;
     ~Camera() = default;
 
-    void UpdateViewMatrix();
+    void UpdateViewMatrix(const glm::ivec2& renderResolution);
 
     // Vectors
     glm::vec3 m_Position = {0.0f, 0.0f, 3.0f};
-    const glm::vec3 m_Up = {0.0f, 1.0f, 0.0f};
+    glm::vec3 m_Up = {0.0f, 1.0f, 0.0f};
     glm::vec3 m_Direction = {0.0f, 0.0f, -1.0f};
     glm::vec3 m_EulerRotation = {0.0f, -90.0f, 0.0f};
 

@@ -3,6 +3,7 @@
 #include "../Base/InputActions.h"
 #include "Camera.h"
 #include "Scene.h"
+#include <glm/vec2.hpp>
 #include <memory>
 
 namespace RetroRenderer {
@@ -15,7 +16,7 @@ class SceneManager {
     bool LoadScene(const uint8_t* data, const size_t size, bool append = false);
     bool LoadScene(const std::string& path, bool append = false);
     bool ProcessInput(InputActionMask actions, unsigned int deltaTime);
-    void Update(unsigned int deltaTime);
+    void Update(unsigned int deltaTime, const glm::ivec2& renderResolution);
     void NewFrame();
     void RenderUI();
     [[nodiscard]] std::shared_ptr<Scene> GetScene() const;

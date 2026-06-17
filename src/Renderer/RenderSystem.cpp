@@ -13,17 +13,9 @@
 
 namespace RetroRenderer {
 namespace {
-std::optional<Texture> CaptureSoftwareFallbackTexture() {
-    auto& currentMaterial = Engine::Get().GetMaterialManager().GetCurrentMaterial();
-    if (!currentMaterial.texture.has_value() || !currentMaterial.texture->HasCpuPixels()) {
-        return std::nullopt;
-    }
-    return currentMaterial.texture->CloneCpuOnly();
-}
-
-SoftwareMaterialState CaptureSoftwareMaterialState() {
-    const auto& currentMaterial = Engine::Get().GetMaterialManager().GetCurrentMaterial();
-    SoftwareMaterialState state{};
+FrameMaterialState CaptureFrameMaterialState(const MaterialManager::Material& currentMaterial) {
+    FrameMaterialState state{};
+    state.shaderHandle = currentMaterial.shaderProgram.handle;
     state.lightColor = currentMaterial.lightColor;
     state.useVertexColor = currentMaterial.name == "phong-vc" ||
                            currentMaterial.shaderProgram.vertexPath.find("phong-vc") != std::string::npos ||
@@ -33,6 +25,9 @@ SoftwareMaterialState CaptureSoftwareMaterialState() {
         state.ambientStrength = currentMaterial.phongParams->ambientStrength;
         state.specularStrength = currentMaterial.phongParams->specularStrength;
         state.shininess = currentMaterial.phongParams->shininess;
+    }
+    if (currentMaterial.texture.has_value() && currentMaterial.texture->HasCpuPixels()) {
+        state.textureOverride = &*currentMaterial.texture;
     }
     return state;
 }
@@ -91,63 +86,78 @@ void RenderSystem::BeforeFrame(const Color& clearColor) {
         LOGE("Renderer type %d not implemented!", p_config->renderer.selectedRenderer);
         return;
     }
+
     assert(p_activeRenderer_ != nullptr && "Active renderer is null");
-    if (p_activeRenderer_ == p_SWRenderer_.get()) {
-        m_SoftwareClearColor = clearColor;
-#if defined(__EMSCRIPTEN__)
-        // Emscripten path remains single-threaded.
-        p_activeRenderer_->BeforeFrame(clearColor);
-#endif
-        return;
+    m_SoftwareClearColor = clearColor;
+}
+
+FrameSnapshot RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scene>& scene, const Camera& camera) const {
+    FrameSnapshot frame{};
+    if (!scene) {
+        return frame;
     }
-    p_activeRenderer_->BeforeFrame(clearColor);
+
+    const auto& config = Engine::Get().GetConfig();
+    const auto& currentMaterial = Engine::Get().GetMaterialManager().GetCurrentMaterial();
+
+    frame.scene = scene;
+    frame.camera = camera;
+    frame.lights = scene->BuildLightSnapshots();
+    frame.items.clear();
+    frame.configSnapshot = *config;
+    frame.clearColor = config->renderer.clearColor;
+    frame.materialState = CaptureFrameMaterialState(currentMaterial);
+
+    const auto& visibleModels = scene->GetVisibleModels();
+    size_t renderItemCount = 0;
+    for (int modelIx : visibleModels) {
+        if (modelIx < 0 || static_cast<size_t>(modelIx) >= scene->GetModelCount()) {
+            continue;
+        }
+        renderItemCount += scene->GetModel(static_cast<size_t>(modelIx)).GetMeshCount();
+    }
+    frame.items.reserve(renderItemCount);
+
+    for (int modelIx : visibleModels) {
+        if (modelIx < 0 || static_cast<size_t>(modelIx) >= scene->GetModelCount()) {
+            continue;
+        }
+
+        const Model& model = scene->GetModel(static_cast<size_t>(modelIx));
+        for (size_t meshIx = 0; meshIx < model.GetMeshCount(); meshIx++) {
+            const Mesh& mesh = model.GetMesh(meshIx);
+            if (mesh.GetVertices().empty() || mesh.GetIndices().empty()) {
+                continue;
+            }
+
+            RenderItem item{};
+            item.modelIndex = modelIx;
+            item.meshIndex = static_cast<int>(meshIx);
+            item.worldTransform = model.GetWorldTransform();
+            frame.items.push_back(item);
+        }
+    }
+
+    return frame;
 }
 
-std::vector<int>& RenderSystem::BuildRenderQueue(Scene& scene, const Camera& camera) {
-    (void)camera;
-    return scene.GetVisibleModels(); // TODO: split into meshes?
-}
-
-RenderOutput RenderSystem::Render(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue) {
-    assert(scene != nullptr && "Render called with null scene");
-    auto const& p_config = Engine::Get().GetConfig();
+RenderOutput RenderSystem::Render(const FrameSnapshot& frame) {
+    assert(frame.scene != nullptr && "Render called with null scene");
     auto const& p_stats = Engine::Get().GetStats();
     assert(p_stats != nullptr && "Stats not initialized!");
     p_stats->Reset();
 
     if (p_activeRenderer_ == p_SWRenderer_.get()) {
 #if defined(__EMSCRIPTEN__)
-        return RenderSoftwareSync(scene, camera, renderQueue);
+        return RenderSoftwareSync(frame);
 #else
-        SubmitSoftwareJob(scene, camera, renderQueue);
+        SubmitSoftwareJob(frame);
         PresentCompletedSoftwareFrame();
         return MakeSoftwareRenderOutput();
 #endif
     }
 
-    const std::vector<LightSnapshot> lightSnapshots = scene->BuildLightSnapshots();
-    p_activeRenderer_->SetActiveCamera(camera);
-    p_activeRenderer_->SetSceneLights(lightSnapshots);
-
-    if (p_config->environment.showSkybox) {
-        p_activeRenderer_->DrawSkybox();
-    }
-    auto& models = scene->m_Models;
-    // LOGD("Render queue size: %d", renderQueue.size());
-    for (int modelIx : renderQueue) {
-        if (modelIx < 0 || static_cast<size_t>(modelIx) >= models.size()) {
-            continue;
-        }
-        const Model* model = &models[modelIx];
-        assert(model != nullptr && "Model is null");
-        if (!model->GetMeshes().empty()) {
-            p_activeRenderer_->DrawTriangularMesh(model);
-        }
-    }
-    if (p_config->environment.showGrid) {
-        p_activeRenderer_->DrawGridGizmo();
-    }
-    p_activeRenderer_->EndFrame();
+    p_activeRenderer_->RenderFrame(frame);
     return RenderOutput::Texture(m_GLFramePresenter->GetTextureHandle(), RenderOutputOrigin::BottomLeft);
 }
 
@@ -210,7 +220,7 @@ void RenderSystem::OnTextureMutated() {
 }
 
 ShaderHandle RenderSystem::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
-    return p_activeRenderer_->CompileShaders(vertexCode, fragmentCode);
+    return p_GLRenderer_->CompileShaders(vertexCode, fragmentCode);
 }
 
 void RenderSystem::ClearSoftwareWorkerFrameState() {
@@ -266,33 +276,30 @@ void RenderSystem::StopSoftwareWorker() {
 #endif
 }
 
-void RenderSystem::SubmitSoftwareJob(const std::shared_ptr<Scene>& scene,
-                                     const Camera& camera,
-                                     const std::vector<int>& renderQueue) {
+void RenderSystem::SubmitSoftwareJob(const FrameSnapshot& frame) {
 #if !defined(__EMSCRIPTEN__)
-    if (!scene) {
+    if (!frame.scene) {
         return;
     }
     auto const& p_stats = Engine::Get().GetStats();
     assert(p_stats != nullptr && "Stats not initialized!");
 
-    SoftwareRenderJob job;
-    job.scene = scene;
-    job.camera = std::make_shared<Camera>(camera);
-    job.lights = scene->BuildLightSnapshots();
-    job.renderQueue = renderQueue;
-    job.configSnapshot = *Engine::Get().GetConfig();
-    job.materialState = CaptureSoftwareMaterialState();
-    job.clearColor = m_SoftwareClearColor;
-    job.fallbackTexture = CaptureSoftwareFallbackTexture();
+    SoftwareRenderJob job{};
+    job.frame = frame;
+    if (frame.materialState.textureOverride != nullptr) {
+        job.textureOverride = frame.materialState.textureOverride->CloneCpuOnly();
+        job.frame.materialState.textureOverride = &*job.textureOverride;
+    }
+
     {
         std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
         job.jobId = ++m_NextSoftwareJobId;
         if (m_PendingSoftwareJob.has_value()) {
             p_stats->swJobsDroppedPending.fetch_add(1, std::memory_order_relaxed);
         }
-        m_PendingSoftwareJob = std::move(job); // Keep only the latest job.
+        m_PendingSoftwareJob = std::move(job);
     }
+
     p_stats->swJobsSubmitted.fetch_add(1, std::memory_order_relaxed);
     m_SoftwareWorkerCv.notify_one();
 #endif
@@ -313,7 +320,6 @@ void RenderSystem::PresentCompletedSoftwareFrame() {
         if (m_CompletedSoftwareFrames.empty()) {
             return;
         }
-        // Present newest finished frame and drop older stale ones.
         completedFrame = std::move(m_CompletedSoftwareFrames.back());
         droppedReadyFrames = m_CompletedSoftwareFrames.size() - 1;
         m_CompletedSoftwareFrames.clear();
@@ -343,7 +349,7 @@ void RenderSystem::SoftwareWorkerLoop() {
     assert(p_stats != nullptr && "Stats not initialized!");
 
     while (true) {
-        SoftwareRenderJob job;
+        SoftwareRenderJob job{};
         {
             std::unique_lock<std::mutex> lock(m_SoftwareWorkerMutex);
             m_SoftwareWorkerCv.wait(lock, [this]() { return m_SoftwareWorkerStopRequested || m_PendingSoftwareJob.has_value(); });
@@ -354,42 +360,7 @@ void RenderSystem::SoftwareWorkerLoop() {
             m_PendingSoftwareJob.reset();
         }
 
-        p_SWRenderer_->BeforeFrame(job.clearColor);
-        p_SWRenderer_->SetFrameConfig(job.configSnapshot);
-        p_SWRenderer_->SetMaterialState(job.materialState);
-        p_SWRenderer_->SetFallbackTexture(job.fallbackTexture ? &*job.fallbackTexture : nullptr);
-        p_SWRenderer_->SetSceneLights(job.lights);
-        if (job.camera) {
-            p_SWRenderer_->SetActiveCamera(*job.camera);
-        } else {
-            p_SWRenderer_->SetFallbackTexture(nullptr);
-            continue;
-        }
-        if (job.configSnapshot.environment.showSkybox) {
-            p_SWRenderer_->DrawSkybox();
-        }
-        if (job.scene) {
-            auto& models = job.scene->m_Models;
-            for (int modelIx : job.renderQueue) {
-                {
-                    std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
-                    if (m_SoftwareWorkerStopRequested) {
-                        return;
-                    }
-                }
-                if (modelIx < 0 || static_cast<size_t>(modelIx) >= models.size()) {
-                    continue;
-                }
-                const Model* model = &models[modelIx];
-                if (!model->GetMeshes().empty()) {
-                    p_SWRenderer_->DrawTriangularMesh(model);
-                }
-            }
-        }
-        p_SWRenderer_->EndFrame();
-        if (job.configSnapshot.environment.showGrid) {
-            p_SWRenderer_->DrawGridGizmo();
-        }
+        p_SWRenderer_->RenderFrame(job.frame);
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
         SoftwareCompletedFrame finishedFrame{};
         finishedFrame.width = buffer.width;
@@ -409,46 +380,15 @@ void RenderSystem::SoftwareWorkerLoop() {
             }
             m_CompletedSoftwareFrames.push_back(std::move(finishedFrame));
         }
-        p_SWRenderer_->SetFallbackTexture(nullptr);
         p_stats->swJobsCompleted.fetch_add(1, std::memory_order_relaxed);
     }
 #endif
 }
 
-RenderOutput RenderSystem::RenderSoftwareSync(const std::shared_ptr<Scene>& scene,
-                                              const Camera& camera,
-                                              const std::vector<int>& renderQueue) {
-    const Config configSnapshot = *Engine::Get().GetConfig();
-    const SoftwareMaterialState materialState = CaptureSoftwareMaterialState();
-    const std::optional<Texture> fallbackTexture = CaptureSoftwareFallbackTexture();
-    p_SWRenderer_->BeforeFrame(m_SoftwareClearColor);
-    p_SWRenderer_->SetFrameConfig(configSnapshot);
-    p_SWRenderer_->SetMaterialState(materialState);
-    p_SWRenderer_->SetFallbackTexture(fallbackTexture ? &*fallbackTexture : nullptr);
-    p_SWRenderer_->SetSceneLights(scene ? scene->BuildLightSnapshots() : std::vector<LightSnapshot>{});
-    p_SWRenderer_->SetActiveCamera(camera);
-    if (configSnapshot.environment.showSkybox) {
-        p_SWRenderer_->DrawSkybox();
-    }
-    if (scene) {
-        auto& models = scene->m_Models;
-        for (int modelIx : renderQueue) {
-            if (modelIx < 0 || static_cast<size_t>(modelIx) >= models.size()) {
-                continue;
-            }
-            const Model* model = &models[modelIx];
-            if (!model->GetMeshes().empty()) {
-                p_SWRenderer_->DrawTriangularMesh(model);
-            }
-        }
-    }
-    p_SWRenderer_->EndFrame();
-    if (configSnapshot.environment.showGrid) {
-        p_SWRenderer_->DrawGridGizmo();
-    }
+RenderOutput RenderSystem::RenderSoftwareSync(const FrameSnapshot& frame) {
+    p_SWRenderer_->RenderFrame(frame);
     const auto& buffer = p_SWRenderer_->GetFrameBuffer();
     StoreSoftwareFrame(buffer);
-    p_SWRenderer_->SetFallbackTexture(nullptr);
     return MakeSoftwareRenderOutput();
 }
 

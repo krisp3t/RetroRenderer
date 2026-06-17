@@ -1,11 +1,11 @@
 #include "Camera.h"
-#include "../Engine.h"
+#include <algorithm>
 
 namespace RetroRenderer {
-void Camera::UpdateViewMatrix() {
-    auto const& p_config = Engine::Get().GetConfig();
-    m_AspectRatio =
-        static_cast<float>(p_config->renderer.resolution.x) / static_cast<float>(p_config->renderer.resolution.y);
+void Camera::UpdateViewMatrix(const glm::ivec2& renderResolution) {
+    const int safeWidth = std::max(renderResolution.x, 1);
+    const int safeHeight = std::max(renderResolution.y, 1);
+    m_AspectRatio = static_cast<float>(safeWidth) / static_cast<float>(safeHeight);
 
     m_EulerRotation.x = glm::clamp(m_EulerRotation.x, -89.0f, 89.0f);
     m_EulerRotation.y = glm::mod(m_EulerRotation.y, 360.0f);

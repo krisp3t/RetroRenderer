@@ -25,6 +25,14 @@ const std::vector<Mesh>& Model::GetMeshes() const {
     return m_Meshes;
 }
 
+const Mesh& Model::GetMesh(size_t index) const {
+    return m_Meshes.at(index);
+}
+
+size_t Model::GetMeshCount() const {
+    return m_Meshes.size();
+}
+
 const std::string& Model::GetName() const {
     return m_Name;
 }
@@ -127,5 +135,13 @@ void Model::GetWorldTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, 
 
     glm::decompose(m_WorldMatrix, outScale, rotation, outTranslation, skew, perspective);
     outRotationEuler = glm::degrees(glm::eulerAngles(rotation));
+}
+
+const std::optional<int>& Model::GetParent() const {
+    return m_Parent;
+}
+
+const std::vector<int>& Model::GetChildren() const {
+    return m_Children;
 }
 } // namespace RetroRenderer

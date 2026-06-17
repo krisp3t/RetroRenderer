@@ -13,6 +13,25 @@ GLuint ToGLHandle(ShaderHandle handle) {
 GLuint ToGLHandle(TextureHandle handle) {
     return static_cast<GLuint>(handle.value);
 }
+
+FrameMaterialState CaptureMaterialState(const MaterialManager::Material& currentMaterial) {
+    FrameMaterialState state{};
+    state.shaderHandle = currentMaterial.shaderProgram.handle;
+    state.lightColor = currentMaterial.lightColor;
+    state.useVertexColor = currentMaterial.name == "phong-vc" ||
+                           currentMaterial.shaderProgram.vertexPath.find("phong-vc") != std::string::npos ||
+                           currentMaterial.shaderProgram.fragmentPath.find("phong-vc") != std::string::npos;
+    if (currentMaterial.phongParams.has_value()) {
+        state.enablePhong = true;
+        state.ambientStrength = currentMaterial.phongParams->ambientStrength;
+        state.specularStrength = currentMaterial.phongParams->specularStrength;
+        state.shininess = currentMaterial.phongParams->shininess;
+    }
+    if (currentMaterial.texture.has_value() && currentMaterial.texture->HasCpuPixels()) {
+        state.textureOverride = &*currentMaterial.texture;
+    }
+    return state;
+}
 } // namespace
 
 bool GLESRenderer::Init(TextureHandle fbTex, int w, int h) {
@@ -130,6 +149,44 @@ void GLESRenderer::InvalidateTextureResources() {
     m_TextureResources.Clear();
 }
 
+void GLESRenderer::RenderFrame(const FrameSnapshot& frame) {
+    if (!frame.scene) {
+        return;
+    }
+
+    m_FrameCameraSnapshot = frame.camera;
+    m_FrameConfigSnapshot = frame.configSnapshot;
+    SetActiveCamera(m_FrameCameraSnapshot);
+    SetSceneLights(frame.lights);
+
+    BeforeFrame(frame.clearColor);
+    if (frame.configSnapshot.environment.showSkybox) {
+        DrawSkybox();
+    }
+
+    for (const RenderItem& item : frame.items) {
+        if (item.modelIndex < 0 || item.meshIndex < 0) {
+            continue;
+        }
+        if (static_cast<size_t>(item.modelIndex) >= frame.scene->GetModelCount()) {
+            continue;
+        }
+
+        const Model& model = frame.scene->GetModel(static_cast<size_t>(item.modelIndex));
+        if (static_cast<size_t>(item.meshIndex) >= model.GetMeshCount()) {
+            continue;
+        }
+
+        const Mesh& mesh = model.GetMesh(static_cast<size_t>(item.meshIndex));
+        const Texture* texture = frame.materialState.textureOverride != nullptr
+                                     ? frame.materialState.textureOverride
+                                     : mesh.GetPrimaryTexture();
+        DrawMesh(mesh, item.worldTransform, texture, frame.materialState, frame.configSnapshot);
+    }
+
+    EndFrame();
+}
+
 void GLESRenderer::SetActiveCamera(const Camera& camera) {
     p_Camera = const_cast<Camera*>(&camera);
 }
@@ -139,67 +196,63 @@ void GLESRenderer::SetSceneLights(const std::vector<LightSnapshot>& lights) {
 }
 
 void GLESRenderer::DrawTriangularMesh(const Model* model) {
-    // TODO: Cache uniforms after shader compile?
-    MaterialManager::Material& mat = Engine::Get().GetMaterialManager().GetCurrentMaterial();
-    const GLuint shaderProgram = ToGLHandle(mat.shaderProgram.handle);
-    if (shaderProgram == 0) {
+    assert(model != nullptr && "Tried to draw null model");
+
+    const MaterialManager::Material& currentMaterial = Engine::Get().GetMaterialManager().GetCurrentMaterial();
+    const FrameMaterialState materialState = CaptureMaterialState(currentMaterial);
+    const Config& configSnapshot = *Engine::Get().GetConfig();
+    for (const Mesh& mesh : model->GetMeshes()) {
+        const Texture* texture =
+            materialState.textureOverride != nullptr ? materialState.textureOverride : mesh.GetPrimaryTexture();
+        DrawMesh(mesh, model->GetWorldTransform(), texture, materialState, configSnapshot);
+    }
+}
+
+void GLESRenderer::DrawMesh(const Mesh& mesh,
+                            const glm::mat4& worldTransform,
+                            const Texture* texture,
+                            const FrameMaterialState& materialState,
+                            const Config& configSnapshot) {
+    const GLuint shaderProgram = ToGLHandle(materialState.shaderHandle);
+    if (shaderProgram == 0 || p_Camera == nullptr) {
         return;
     }
-    auto& config = Engine::Get().GetConfig();
+
     glUseProgram(shaderProgram);
 
-    const glm::vec3 lightPos = !m_SceneLights.empty() ? m_SceneLights.front().position : config->environment.lightPosition;
-    const glm::mat4& modelMat = model->GetWorldTransform();
+    const glm::vec3 lightPos =
+        !m_SceneLights.empty() ? m_SceneLights.front().position : configSnapshot.environment.lightPosition;
     const glm::mat4& viewMat = p_Camera->m_ViewMat;
     const glm::mat4& projMat = p_Camera->m_ProjMat;
+    const glm::mat4 mv = viewMat * worldTransform;
+    const glm::mat4 mvp = projMat * mv;
+    const glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(worldTransform)));
 
-    // Combined matrices
-    glm::mat4 mv = viewMat * modelMat;
-    glm::mat4 mvp = projMat * mv;
-    glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelMat)));
-
-    // Upload uniforms
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "u_ModelMatrix"), 1, GL_FALSE,
-                       glm::value_ptr(modelMat));
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "u_ModelMatrix"), 1, GL_FALSE, glm::value_ptr(worldTransform));
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "u_MVP"), 1, GL_FALSE, glm::value_ptr(mvp));
-    glUniformMatrix3fv(glGetUniformLocation(shaderProgram, "u_NormalMatrix"), 1, GL_FALSE,
-                       glm::value_ptr(normalMatrix));
+    glUniformMatrix3fv(glGetUniformLocation(shaderProgram, "u_NormalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
     glUniform3f(glGetUniformLocation(shaderProgram, "u_LightPos"), lightPos.x, lightPos.y, lightPos.z);
-    glUniform3f(glGetUniformLocation(shaderProgram, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y,
-                p_Camera->m_Position.z);
-    glUniform3f(glGetUniformLocation(shaderProgram, "u_LightColor"), mat.lightColor.r, mat.lightColor.g,
-                mat.lightColor.b);
+    glUniform3f(
+        glGetUniformLocation(shaderProgram, "u_ViewPos"), p_Camera->m_Position.x, p_Camera->m_Position.y, p_Camera->m_Position.z);
+    glUniform3f(
+        glGetUniformLocation(shaderProgram, "u_LightColor"), materialState.lightColor.r, materialState.lightColor.g, materialState.lightColor.b);
 
-    if (mat.phongParams.has_value()) {
-        glUniform1f(glGetUniformLocation(shaderProgram, "u_Shininess"), mat.phongParams->shininess);
-        glUniform1f(glGetUniformLocation(shaderProgram, "u_AmbientStrength"), mat.phongParams->ambientStrength);
-        glUniform1f(glGetUniformLocation(shaderProgram, "u_SpecularStrength"),
-                    mat.phongParams->specularStrength);
+    if (materialState.enablePhong) {
+        glUniform1f(glGetUniformLocation(shaderProgram, "u_Shininess"), materialState.shininess);
+        glUniform1f(glGetUniformLocation(shaderProgram, "u_AmbientStrength"), materialState.ambientStrength);
+        glUniform1f(glGetUniformLocation(shaderProgram, "u_SpecularStrength"), materialState.specularStrength);
     }
-    GLint texLoc = glGetUniformLocation(shaderProgram, "u_Texture");
-    GLint normalMatLoc = glGetUniformLocation(shaderProgram, "u_NormalMatrix");
-    glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+
+    const GLuint gpuTexture = texture != nullptr ? m_TextureResources.GetOrCreate(*texture) : 0;
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, gpuTexture != 0 ? gpuTexture : m_FallbackTexture);
+    glUniform1i(glGetUniformLocation(shaderProgram, "u_Texture"), 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
-    auto& meshes = model->GetMeshes();
-    for (const Mesh& mesh : meshes) {
-        // TODO: replace with per-mesh texture?
-        const GLuint materialTexture = mat.texture.has_value() ? m_TextureResources.GetOrCreate(*mat.texture) : 0;
-        if (materialTexture == 0) {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, m_FallbackTexture);
-        } else {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, materialTexture);
-        }
-
-        glUniform1i(texLoc, 0);
-        const auto& gpuMesh = m_MeshResources.GetOrCreate(mesh);
-        glBindVertexArray(gpuMesh.vao);
-        glDrawElements(GL_TRIANGLES, gpuMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-    }
-
+    const auto& gpuMesh = m_MeshResources.GetOrCreate(mesh);
+    glBindVertexArray(gpuMesh.vao);
+    glDrawElements(GL_TRIANGLES, gpuMesh.indexCount, GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glUseProgram(0);

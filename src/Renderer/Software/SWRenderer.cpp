@@ -153,6 +153,17 @@ bool ShouldDeferPs1Triangles(const Config& cfg) {
            cfg.retro.enablePs1SemiTransparency;
 }
 
+SoftwareMaterialState MakeSoftwareMaterialState(const FrameMaterialState& materialState) {
+    SoftwareMaterialState state{};
+    state.lightColor = materialState.lightColor;
+    state.useVertexColor = materialState.useVertexColor;
+    state.enablePhong = materialState.enablePhong;
+    state.ambientStrength = materialState.ambientStrength;
+    state.specularStrength = materialState.specularStrength;
+    state.shininess = materialState.shininess;
+    return state;
+}
+
 float ComputeDeferredTriangleSortKey(const std::array<RasterVertex, 3>& vertices, const glm::vec3& cameraPosition) {
     const glm::vec3 centroid = (vertices[0].worldPosition + vertices[1].worldPosition + vertices[2].worldPosition) / 3.0f;
     const glm::vec3 delta = centroid - cameraPosition;
@@ -573,6 +584,46 @@ bool SWRenderer::Resize(int w, int h) {
     return true;
 }
 
+void SWRenderer::RenderFrame(const FrameSnapshot& frame) {
+    if (!frame.scene) {
+        return;
+    }
+
+    m_FrameCameraSnapshot = frame.camera;
+    SetActiveCamera(m_FrameCameraSnapshot);
+    SetSceneLights(frame.lights);
+    SetFrameConfig(frame.configSnapshot);
+    SetMaterialState(MakeSoftwareMaterialState(frame.materialState));
+    SetFallbackTexture(frame.materialState.textureOverride);
+
+    BeforeFrame(frame.clearColor);
+    if (frame.configSnapshot.environment.showSkybox) {
+        DrawSkybox();
+    }
+
+    for (const RenderItem& item : frame.items) {
+        if (item.modelIndex < 0 || item.meshIndex < 0) {
+            continue;
+        }
+        if (static_cast<size_t>(item.modelIndex) >= frame.scene->GetModelCount()) {
+            continue;
+        }
+
+        const Model& model = frame.scene->GetModel(static_cast<size_t>(item.modelIndex));
+        if (static_cast<size_t>(item.meshIndex) >= model.GetMeshCount()) {
+            continue;
+        }
+
+        DrawMesh(model.GetMesh(static_cast<size_t>(item.meshIndex)), item.worldTransform);
+    }
+
+    EndFrame();
+    if (frame.configSnapshot.environment.showGrid) {
+        DrawGridGizmo();
+    }
+    SetFallbackTexture(nullptr);
+}
+
 void SWRenderer::SetActiveCamera(const Camera& camera) {
     p_Camera = const_cast<Camera*>(&camera);
 }
@@ -593,156 +644,106 @@ void SWRenderer::SetFallbackTexture(const Texture* texture) {
     p_FrameFallbackTexture = texture;
 }
 
-/**
- * @brief Draw a model on the framebuffer. Must have triangulated meshes!
- * @param mesh
- */
-void SWRenderer::DrawTriangularMesh(const Model* model) {
+void SWRenderer::DrawMesh(const Mesh& mesh, const glm::mat4& worldTransform) {
     assert(p_Camera != nullptr && "No active camera set. Did you call SWRenderer::SetActiveCamera()?");
     assert(m_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
     assert(m_DepthBuffer != nullptr && "No depth buffer set. Did you call SWRenderer::Init()?");
-    assert(model != nullptr && "Tried to draw null model");
 
-    const glm::mat4& modelMat = model->GetWorldTransform();
     const glm::mat4& viewMat = p_Camera->m_ViewMat;
     const glm::mat4& projMat = p_Camera->m_ProjMat;
-    const glm::mat4 mv = viewMat * modelMat;
+    const glm::mat4 mv = viewMat * worldTransform;
     const glm::mat4 mvp = projMat * mv;
-    const glm::mat4 n = glm::transpose(glm::inverse(modelMat));
+    const glm::mat4 n = glm::transpose(glm::inverse(worldTransform));
 
-    /*
-    LOGD("Drawing model: %s", model.GetName().c_str());
-    LOGD("Model matrix: %s", glm::to_string(modelMat).c_str());
-    LOGD("View matrix: %s", glm::to_string(viewMat).c_str());
-    LOGD("Projection matrix: %s", glm::to_string(projMat).c_str());
-    LOGD("Model-View matrix: %s", glm::to_string(mv).c_str());
-    LOGD("Model-View-Projection matrix: %s", glm::to_string(mvp).c_str());
-    LOGD("Normal matrix: %s", glm::to_string(n).c_str());
-    */
+    const auto& cfg = m_FrameConfigSnapshot;
+    const auto& vertices = mesh.GetVertices();
+    const auto& indices = mesh.GetIndices();
+    assert(indices.size() % 3 == 0 && indices.size() == mesh.GetFaceCount() * 3 && "Mesh is not triangulated");
 
-    for (const Mesh& mesh : model->m_Meshes) {
-        assert(mesh.m_Indices.size() % 3 == 0 && mesh.m_Indices.size() == mesh.m_numFaces * 3 &&
-            "Mesh is not triangulated");
+    const bool deferPs1Triangles = ShouldDeferPs1Triangles(cfg);
+    m_ClipPositionScratch.resize(vertices.size());
+    m_NormalScratch.resize(vertices.size());
+    m_WorldPositionScratch.resize(vertices.size());
+    auto& clipPositions = m_ClipPositionScratch;
+    auto& transformedNormals = m_NormalScratch;
+    auto& worldPositions = m_WorldPositionScratch;
+    for (size_t vertexIndex = 0; vertexIndex < vertices.size(); vertexIndex++) {
+        const Vertex& sourceVertex = vertices[vertexIndex];
+        clipPositions[vertexIndex] = mvp * sourceVertex.position;
+        transformedNormals[vertexIndex] = glm::normalize(glm::vec3(n * glm::vec4(sourceVertex.normal, 0.0f)));
+        worldPositions[vertexIndex] = glm::vec3(worldTransform * sourceVertex.position);
+    }
 
-        const auto& cfg = m_FrameConfigSnapshot;
-        const bool deferPs1Triangles = ShouldDeferPs1Triangles(cfg);
-        m_ClipPositionScratch.resize(mesh.m_Vertices.size());
-        m_NormalScratch.resize(mesh.m_Vertices.size());
-        m_WorldPositionScratch.resize(mesh.m_Vertices.size());
-        auto& clipPositions = m_ClipPositionScratch;
-        auto& transformedNormals = m_NormalScratch;
-        auto& worldPositions = m_WorldPositionScratch;
-        for (size_t vertexIndex = 0; vertexIndex < mesh.m_Vertices.size(); vertexIndex++) {
-            const Vertex& sourceVertex = mesh.m_Vertices[vertexIndex];
-            clipPositions[vertexIndex] = mvp * sourceVertex.position;
-            transformedNormals[vertexIndex] = glm::normalize(glm::vec3(n * glm::vec4(sourceVertex.normal, 0.0f)));
-            worldPositions[vertexIndex] = glm::vec3(modelMat * sourceVertex.position);
-        }
+    const Texture* diffuseTexture = p_FrameFallbackTexture;
+    if (diffuseTexture == nullptr) {
+        diffuseTexture = mesh.GetPrimaryTexture();
+    }
+    if (deferPs1Triangles) {
+        m_DeferredPs1Triangles.reserve(m_DeferredPs1Triangles.size() + mesh.GetFaceCount());
+    }
 
-        const Texture* diffuseTexture = p_FrameFallbackTexture;
-        if (diffuseTexture == nullptr && !mesh.m_Textures.empty()) {
-            diffuseTexture = &mesh.m_Textures[0];
-        }
+    const auto submitTriangle = [&](const std::array<RasterVertex, 3>& rasterVertices) {
         if (deferPs1Triangles) {
-            m_DeferredPs1Triangles.reserve(m_DeferredPs1Triangles.size() + mesh.m_numFaces);
+            DeferredTriangle deferredTriangle{};
+            deferredTriangle.vertices = rasterVertices;
+            deferredTriangle.texture = diffuseTexture;
+            deferredTriangle.sortKey = ComputeDeferredTriangleSortKey(rasterVertices, p_Camera->m_Position);
+            m_DeferredPs1Triangles.push_back(deferredTriangle);
+            return;
         }
 
-        const auto submitTriangle = [&](const std::array<RasterVertex, 3>& rasterVertices) {
-            if (deferPs1Triangles) {
-                DeferredTriangle deferredTriangle{};
-                deferredTriangle.vertices = rasterVertices;
-                deferredTriangle.texture = diffuseTexture;
-                deferredTriangle.sortKey = ComputeDeferredTriangleSortKey(rasterVertices, p_Camera->m_Position);
-                m_DeferredPs1Triangles.push_back(deferredTriangle);
-                return;
-            }
+        std::array<RasterVertex, 3> drawVertices = rasterVertices;
+        Rasterizer::DrawTriangle(
+            *m_FrameBuffer,
+            *m_DepthBuffer,
+            drawVertices,
+            cfg,
+            m_FrameLights,
+            m_FrameMaterialState,
+            p_Camera->m_Position,
+            diffuseTexture);
+    };
 
-            std::array<RasterVertex, 3> drawVertices = rasterVertices;
-            Rasterizer::DrawTriangle(
-                *m_FrameBuffer,
-                *m_DepthBuffer,
-                drawVertices,
-                cfg,
-                m_FrameLights,
-                m_FrameMaterialState,
-                p_Camera->m_Position,
-                diffuseTexture);
-        };
+    for (unsigned int i = 0; i < mesh.GetFaceCount(); i++) {
+        const unsigned int baseIndex = i * 3;
+        const unsigned int i0 = indices[baseIndex];
+        const unsigned int i1 = indices[baseIndex + 1];
+        const unsigned int i2 = indices[baseIndex + 2];
+        const glm::vec4& clipPos0 = clipPositions[i0];
+        const glm::vec4& clipPos1 = clipPositions[i1];
+        const glm::vec4& clipPos2 = clipPositions[i2];
+        const unsigned int triangleIndices[3] = {i0, i1, i2};
 
-        for (unsigned int i = 0; i < mesh.m_numFaces; i++) {
-            // Input Assembler
-            unsigned int baseIndex = i * 3;
-            const unsigned int i0 = mesh.m_Indices[baseIndex];
-            const unsigned int i1 = mesh.m_Indices[baseIndex + 1];
-            const unsigned int i2 = mesh.m_Indices[baseIndex + 2];
-            const glm::vec4& clipPos0 = clipPositions[i0];
-            const glm::vec4& clipPos1 = clipPositions[i1];
-            const glm::vec4& clipPos2 = clipPositions[i2];
-            const unsigned int indices[3] = {i0, i1, i2};
+        const glm::vec3& worldPos0 = worldPositions[i0];
+        const glm::vec3& worldPos1 = worldPositions[i1];
+        const glm::vec3& worldPos2 = worldPositions[i2];
+        const glm::vec3 triangleNormal = ComputeTriangleLightingNormal(
+            worldPos0,
+            worldPos1,
+            worldPos2,
+            transformedNormals[i0],
+            transformedNormals[i1],
+            transformedNormals[i2],
+            cfg);
 
-            const glm::vec3& worldPos0 = worldPositions[i0];
-            const glm::vec3& worldPos1 = worldPositions[i1];
-            const glm::vec3& worldPos2 = worldPositions[i2];
-            const glm::vec3 triangleNormal = ComputeTriangleLightingNormal(
-                worldPos0,
-                worldPos1,
-                worldPos2,
-                transformedNormals[i0],
-                transformedNormals[i1],
-                transformedNormals[i2],
-                cfg);
+        std::array<ClipVertex, 3> clipVertices{};
+        const glm::vec4 clipPositionsForTri[3] = {clipPos0, clipPos1, clipPos2};
+        for (int v = 0; v < 3; v++) {
+            const unsigned int vertexIndex = triangleIndices[v];
+            const Vertex& sourceVertex = vertices[vertexIndex];
+            clipVertices[v].clipPosition = clipPositionsForTri[v];
+            clipVertices[v].worldPosition = worldPositions[vertexIndex];
+            clipVertices[v].normal = cfg.retro.flatFaceLighting ? triangleNormal : transformedNormals[vertexIndex];
+            clipVertices[v].texCoords = sourceVertex.texCoords;
+            clipVertices[v].color = sourceVertex.color;
+        }
 
-            std::array<ClipVertex, 3> clipVertices{};
-            const glm::vec4 clipPositionsForTri[3] = {clipPos0, clipPos1, clipPos2};
-            for (int v = 0; v < 3; v++) {
-                const unsigned int vertexIndex = indices[v];
-                const Vertex& sourceVertex = mesh.m_Vertices[vertexIndex];
-                clipVertices[v].clipPosition = clipPositionsForTri[v];
-                clipVertices[v].worldPosition = worldPositions[vertexIndex];
-                clipVertices[v].normal = cfg.retro.flatFaceLighting ? triangleNormal : transformedNormals[vertexIndex];
-                clipVertices[v].texCoords = sourceVertex.texCoords;
-                clipVertices[v].color = sourceVertex.color;
-            }
-
-            if (cfg.cull.rasterClip && IsTriangleTriviallyRejectedByDepth(clipVertices)) {
-                continue;
-            }
-            if (cfg.cull.geometricClip) {
-                std::array<RasterVertex, 3> rasterVertices{};
-                if (IsTriangleFullyInsideDepthClipSpace(clipVertices)) {
-                    if (!TryMakeRasterTriangle(clipVertices, rasterVertices)) {
-                        continue;
-                    }
-                    if (cfg.retro.snapVertices) {
-                        for (auto& vertex : rasterVertices) {
-                            SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height, cfg.retro.vertexSnapStep);
-                        }
-                    }
-                    submitTriangle(rasterVertices);
-                    continue;
-                }
-
-                const ClippedPolygon clipped = ClipPolygonDepthClipSpace(clipVertices);
-                if (clipped.count < 3) {
-                    continue;
-                }
-                for (size_t t = 1; t + 1 < clipped.count; t++) {
-                    const std::array<ClipVertex, 3> clippedTriangle = {
-                        clipped.vertices[0],
-                        clipped.vertices[t],
-                        clipped.vertices[t + 1]};
-                    if (!TryMakeRasterTriangle(clippedTriangle, rasterVertices)) {
-                        continue;
-                    }
-                    if (cfg.retro.snapVertices) {
-                        for (auto& vertex : rasterVertices) {
-                            SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height, cfg.retro.vertexSnapStep);
-                        }
-                    }
-                    submitTriangle(rasterVertices);
-                }
-            } else {
-                std::array<RasterVertex, 3> rasterVertices{};
+        if (cfg.cull.rasterClip && IsTriangleTriviallyRejectedByDepth(clipVertices)) {
+            continue;
+        }
+        if (cfg.cull.geometricClip) {
+            std::array<RasterVertex, 3> rasterVertices{};
+            if (IsTriangleFullyInsideDepthClipSpace(clipVertices)) {
                 if (!TryMakeRasterTriangle(clipVertices, rasterVertices)) {
                     continue;
                 }
@@ -752,12 +753,51 @@ void SWRenderer::DrawTriangularMesh(const Model* model) {
                     }
                 }
                 submitTriangle(rasterVertices);
+                continue;
             }
 
-            // Stats
-            // p_stats_->renderedVerts += mesh->m_numVertices;
-            // p_stats_->renderedTris += mesh->m_numFaces;
+            const ClippedPolygon clipped = ClipPolygonDepthClipSpace(clipVertices);
+            if (clipped.count < 3) {
+                continue;
+            }
+            for (size_t t = 1; t + 1 < clipped.count; t++) {
+                const std::array<ClipVertex, 3> clippedTriangle = {
+                    clipped.vertices[0],
+                    clipped.vertices[t],
+                    clipped.vertices[t + 1]};
+                if (!TryMakeRasterTriangle(clippedTriangle, rasterVertices)) {
+                    continue;
+                }
+                if (cfg.retro.snapVertices) {
+                    for (auto& vertex : rasterVertices) {
+                        SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height, cfg.retro.vertexSnapStep);
+                    }
+                }
+                submitTriangle(rasterVertices);
+            }
+        } else {
+            std::array<RasterVertex, 3> rasterVertices{};
+            if (!TryMakeRasterTriangle(clipVertices, rasterVertices)) {
+                continue;
+            }
+            if (cfg.retro.snapVertices) {
+                for (auto& vertex : rasterVertices) {
+                    SnapProjectedVertex(vertex, m_FrameBuffer->width, m_FrameBuffer->height, cfg.retro.vertexSnapStep);
+                }
+            }
+            submitTriangle(rasterVertices);
         }
+    }
+}
+
+/**
+ * @brief Draw a model on the framebuffer. Must have triangulated meshes!
+ * @param mesh
+ */
+void SWRenderer::DrawTriangularMesh(const Model* model) {
+    assert(model != nullptr && "Tried to draw null model");
+    for (const Mesh& mesh : model->GetMeshes()) {
+        DrawMesh(mesh, model->GetWorldTransform());
     }
 }
 

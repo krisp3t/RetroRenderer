@@ -22,6 +22,7 @@ class GLESRenderer : public IHardwareRenderer {
     void Destroy() override;
     void InvalidateSceneResources() override;
     void InvalidateTextureResources() override;
+    void RenderFrame(const FrameSnapshot& frame) override;
 
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
@@ -46,8 +47,11 @@ class GLESRenderer : public IHardwareRenderer {
     GLuint CreateSkyboxVAO();
     void DestroyFramebufferResources();
     void DestroyRendererResources();
+    void DrawMesh(const Mesh& mesh, const glm::mat4& worldTransform, const Texture* texture, const FrameMaterialState& materialState,
+                  const Config& configSnapshot);
 
   private:
+    Camera m_FrameCameraSnapshot{};
     Camera* p_Camera = nullptr;
     std::vector<LightSnapshot> m_SceneLights;
 
@@ -58,6 +62,7 @@ class GLESRenderer : public IHardwareRenderer {
     GLuint m_SkyboxTexture = 0;
     GLuint m_SkyboxVAO = 0;
     GLuint m_SkyboxVBO = 0;
+    Config m_FrameConfigSnapshot{};
     int m_FrameWidth = 0;
     int m_FrameHeight = 0;
     ShaderProgram m_SkyboxProgram;

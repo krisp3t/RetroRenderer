@@ -20,6 +20,7 @@ bool SceneManager::LoadScene(const uint8_t* data, const size_t size, bool append
     if (createNewScene) {
         ResetScene();
         p_Scene = std::make_shared<Scene>();
+        p_Scene->SetDefaultLightPosition(Engine::Get().GetConfig()->environment.lightPosition);
         p_Camera = std::make_unique<Camera>();
     }
     if (!p_Scene->Load(data, size, append && !createNewScene)) {
@@ -37,6 +38,7 @@ bool SceneManager::LoadScene(const std::string& path, bool append) {
     if (createNewScene) {
         ResetScene();
         p_Scene = std::make_shared<Scene>();
+        p_Scene->SetDefaultLightPosition(Engine::Get().GetConfig()->environment.lightPosition);
         p_Camera = std::make_unique<Camera>();
     }
     if (!p_Scene->Load(path, append && !createNewScene)) {
@@ -92,19 +94,20 @@ bool SceneManager::ProcessInput(InputActionMask actions, unsigned int deltaTime)
     return true;
 }
 
-void SceneManager::Update(unsigned int deltaTime) {
+void SceneManager::Update(unsigned int deltaTime, const glm::ivec2& renderResolution) {
     if (!p_Scene || !p_Camera) {
         return;
     }
     // TODO: nullable type?
-    p_Camera->UpdateViewMatrix();
+    (void)deltaTime;
+    p_Camera->UpdateViewMatrix(renderResolution);
 }
 
 void SceneManager::NewFrame() {
     if (!p_Scene || !p_Camera) {
         return;
     }
-    p_Scene->FrustumCull(*p_Camera);
+    p_Scene->FrustumCull(*p_Camera, Engine::Get().GetConfig()->cull);
 }
 
 Camera* SceneManager::GetCamera() const {

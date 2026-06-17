@@ -5,6 +5,7 @@
 #include "../Scene/Scene.h"
 #include "IFramePresenter.h"
 #include "IHardwareRenderer.h"
+#include "IRenderer.h"
 #include "RenderOutput.h"
 #include "ShaderHandle.h"
 #include "Software/SWRenderer.h"
@@ -31,9 +32,9 @@ class RenderSystem {
 
     void BeforeFrame(const Color& clearColor);
 
-    [[nodiscard]] std::vector<int>& BuildRenderQueue(Scene& scene, const Camera& camera);
+    [[nodiscard]] FrameSnapshot BuildFrameSnapshot(const std::shared_ptr<Scene>& scene, const Camera& camera) const;
 
-    RenderOutput Render(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
+    RenderOutput Render(const FrameSnapshot& frame);
 
     void Resize(const glm::ivec2& resolution);
 
@@ -48,14 +49,8 @@ class RenderSystem {
 
   private:
     struct SoftwareRenderJob {
-        std::shared_ptr<Scene> scene = nullptr;
-        std::shared_ptr<Camera> camera = nullptr;
-        std::vector<LightSnapshot> lights;
-        std::vector<int> renderQueue;
-        Config configSnapshot{};
-        Color clearColor{};
-        SoftwareMaterialState materialState{};
-        std::optional<Texture> fallbackTexture;
+        FrameSnapshot frame;
+        std::optional<Texture> textureOverride;
         uint64_t jobId = 0;
     };
 
@@ -69,17 +64,16 @@ class RenderSystem {
 
     void StartSoftwareWorker();
     void StopSoftwareWorker();
-    void SubmitSoftwareJob(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
+    void SubmitSoftwareJob(const FrameSnapshot& frame);
     void PresentCompletedSoftwareFrame();
     void SoftwareWorkerLoop();
-    RenderOutput RenderSoftwareSync(const std::shared_ptr<Scene>& scene, const Camera& camera, const std::vector<int>& renderQueue);
+    RenderOutput RenderSoftwareSync(const FrameSnapshot& frame);
     [[nodiscard]] RenderOutput MakeSoftwareRenderOutput() const;
     void StoreSoftwareFrame(const Buffer<Pixel>& buffer);
     void ClearSoftwareWorkerFrameState();
     void SyncSoftwareWorkerForRenderDataMutation();
 
   private:
-    std::unique_ptr<Scene> p_scene_ = nullptr;
     std::unique_ptr<SWRenderer> p_SWRenderer_ = nullptr;
     std::unique_ptr<IHardwareRenderer> p_GLRenderer_ = nullptr;
     IRenderer* p_activeRenderer_ = nullptr;

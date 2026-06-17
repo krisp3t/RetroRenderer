@@ -76,7 +76,7 @@ void Engine::ProcessFrame() {
     // TODO: handle camera switching
 
     p_SceneManager->ProcessInput(inputActions, delta);
-    p_SceneManager->Update(delta);
+    p_SceneManager->Update(delta, p_config_->renderer.resolution);
     p_SceneManager->NewFrame();
 
     const ProcessMemorySnapshot memorySnapshot = MemoryProfiler::SampleProcessMemory();
@@ -84,14 +84,14 @@ void Engine::ProcessFrame() {
         p_stats_->UpdateProcessMemory(memorySnapshot.residentBytes, memorySnapshot.peakResidentBytes);
     }
 
-    Color clearColor = Color{p_config_->renderer.clearColor};
+    const Color clearColor = p_config_->renderer.clearColor;
     auto scene = p_SceneManager->GetScene();
     auto camera = p_SceneManager->GetCamera();
     if (scene && camera) {
         m_DisplaySystem.BeforeFrame();
         p_RenderSystem->BeforeFrame(clearColor);
-        auto& queue = p_RenderSystem->BuildRenderQueue(*scene, *camera);
-        RenderOutput renderOutput = p_RenderSystem->Render(scene, *camera, queue);
+        const FrameSnapshot frame = p_RenderSystem->BuildFrameSnapshot(scene, *camera);
+        RenderOutput renderOutput = p_RenderSystem->Render(frame);
         m_DisplaySystem.DrawFrame(renderOutput);
     } else {
         p_stats_->Reset();

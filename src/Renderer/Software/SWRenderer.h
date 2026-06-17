@@ -19,6 +19,7 @@ class SWRenderer : public IRenderer {
     ~SWRenderer() = default;
     bool Init(int w, int h);
     bool Resize(int w, int h);
+    void RenderFrame(const FrameSnapshot& frame) override;
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
     void SetFrameConfig(const Config& config);
@@ -38,6 +39,7 @@ class SWRenderer : public IRenderer {
     [[nodiscard]] const Buffer<Pixel>& GetFrameBuffer() const;
 
   private:
+    void DrawMesh(const Mesh& mesh, const glm::mat4& worldTransform);
     struct DeferredTriangle {
         std::array<RasterVertex, 3> vertices{};
         const Texture* texture = nullptr;
@@ -46,6 +48,7 @@ class SWRenderer : public IRenderer {
 
     std::unique_ptr<Buffer<Pixel>> m_FrameBuffer = nullptr;
     std::unique_ptr<Buffer<float>> m_DepthBuffer = nullptr;
+    Camera m_FrameCameraSnapshot{};
     Camera* p_Camera = nullptr;
     std::vector<LightSnapshot> m_FrameLights;
     Config m_FrameConfigSnapshot{};

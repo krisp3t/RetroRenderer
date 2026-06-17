@@ -23,6 +23,8 @@ class Model {
 
     void Init(Scene* scene, const std::string& name, const glm::mat4& localMatrix);
     const std::vector<Mesh>& GetMeshes() const;
+    [[nodiscard]] const Mesh& GetMesh(size_t index) const;
+    [[nodiscard]] size_t GetMeshCount() const;
     const std::string& GetName() const;
     void SetName(const std::string& name);
     void SetLocalTransform(const glm::mat4& mat);
@@ -36,6 +38,8 @@ class Model {
     void GetLocalBounds(glm::vec3& outMin, glm::vec3& outMax) const;
     void GetLocalTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, glm::vec3& outScale) const;
     void GetWorldTRS(glm::vec3& outTranslation, glm::vec3& outRotationEuler, glm::vec3& outScale) const;
+    [[nodiscard]] const std::optional<int>& GetParent() const;
+    [[nodiscard]] const std::vector<int>& GetChildren() const;
 
     std::optional<int> m_Parent;
     std::vector<int> m_Children;

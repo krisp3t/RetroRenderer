@@ -1,6 +1,6 @@
 #include "Scene.h"
 #include "ISceneImporter.h"
-#include "../Engine.h"
+#include "../Base/Config.h"
 #include <KrisLogger/Logger.h>
 #include <array>
 #include <filesystem>
@@ -107,19 +107,25 @@ bool IsModelVisibleInFrustum(const Model& model, const std::array<FrustumPlane, 
 } // namespace
 
 Scene::Scene() : p_SceneImporter(CreateDefaultSceneImporter()) {
-    InitializeDefaultLighting();
+    InitializeDefaultLighting(glm::vec3(0.0f, 0.0f, 5.0f));
 }
 
 Scene::~Scene() = default;
 
-void Scene::InitializeDefaultLighting() {
+void Scene::InitializeDefaultLighting(const glm::vec3& lightPosition) {
     m_Lights.clear();
 
     SceneLight light{};
-    if (const auto config = Engine::Get().GetConfig()) {
-        light.position = config->environment.lightPosition;
-    }
+    light.position = lightPosition;
     m_Lights.push_back(light);
+}
+
+void Scene::SetDefaultLightPosition(const glm::vec3& lightPosition) {
+    if (m_Lights.empty()) {
+        InitializeDefaultLighting(lightPosition);
+        return;
+    }
+    m_Lights.front().position = lightPosition;
 }
 
 void Scene::SetImporter(std::unique_ptr<ISceneImporter> importer) {
@@ -267,12 +273,11 @@ std::vector<LightSnapshot> Scene::BuildLightSnapshots() const {
     return snapshots;
 }
 
-void Scene::FrustumCull(const Camera& camera) {
+void Scene::FrustumCull(const Camera& camera, const Config::CullSettings& cullSettings) {
     m_VisibleModels.clear();
     m_VisibleModels.reserve(m_Models.size());
 
-    const auto& cfg = Engine::Get().GetConfig()->cull;
-    if (!cfg.frustumCull) {
+    if (!cullSettings.frustumCull) {
         for (size_t i = 0; i < m_Models.size(); i++) {
             m_VisibleModels.push_back(i);
         }
@@ -295,5 +300,13 @@ const glm::mat4& Scene::GetModelWorldTransform(int index) const {
 
 void Scene::MarkDirtyModel(int index) {
     m_Models[index].MarkDirty();
+}
+
+const Model& Scene::GetModel(size_t index) const {
+    return m_Models.at(index);
+}
+
+size_t Scene::GetModelCount() const {
+    return m_Models.size();
 }
 } // namespace RetroRenderer
