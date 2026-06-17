@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <cmath>
 #include <glm/glm.hpp>
-#include <imgui.h>
 
 namespace RetroRenderer {
 
@@ -94,7 +93,7 @@ struct Config {
         AAType aaType = AAType::NONE;
         bool enablePerspectiveCorrect = true;
         bool nearestNeighborPresentation = false;
-        ImVec4 clearColor = Color::DefaultBackground().ToImVec4();
+        Color clearColor = Color::DefaultBackground();
     };
 
     struct SoftwareRendererSettings {
@@ -146,7 +145,7 @@ struct Config {
     struct SoftwareRasterizerSettings {
         float pointSize = 1.0f;
         float lineWidth = 1.0f;
-        ImVec4 lineColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        Color lineColor = Color::White();
         bool basicLineColors = true; // Display triangle edges as RGB colors
         RasterizationLineMode lineMode = RasterizationLineMode::BRESENHAM;
         RasterizationPolygonMode polygonMode = RasterizationPolygonMode::FILL;
@@ -340,7 +339,7 @@ struct Config {
         config.renderer.aaType = AAType::NONE;
         config.renderer.enablePerspectiveCorrect = true;
         config.renderer.nearestNeighborPresentation = false;
-        config.renderer.clearColor = Color::DefaultBackground().ToImVec4();
+        config.renderer.clearColor = Color::DefaultBackground();
 
         config.environment.showSkybox = false;
         config.environment.showGrid = true;
@@ -368,7 +367,7 @@ struct Config {
             config.renderer.resolution = MakeAspectAwareResolution(config.window.size, 128);
             config.renderer.enablePerspectiveCorrect = false;
             config.renderer.nearestNeighborPresentation = true;
-            config.renderer.clearColor = ImVec4(29.0f / 255.0f, 43.0f / 255.0f, 83.0f / 255.0f, 1.0f);
+            config.renderer.clearColor = Color(Color::Uint8Tag{}, 29, 43, 83);
             config.environment.showGrid = false;
             config.environment.showFloor = false;
             config.environment.shadowMap = false;
@@ -384,7 +383,7 @@ struct Config {
             config.renderer.resolution = MakeAspectAwareResolution(config.window.size, 180);
             config.renderer.enablePerspectiveCorrect = false;
             config.renderer.nearestNeighborPresentation = true;
-            config.renderer.clearColor = ImVec4(29.0f / 255.0f, 43.0f / 255.0f, 83.0f / 255.0f, 1.0f);
+            config.renderer.clearColor = Color(Color::Uint8Tag{}, 29, 43, 83);
             config.environment.showGrid = false;
             config.environment.showFloor = false;
             config.environment.shadowMap = false;
@@ -409,7 +408,7 @@ struct Config {
             config.renderer.resolution = MakeAspectAwareResolution(config.window.size, 240);
             config.renderer.enablePerspectiveCorrect = false;
             config.renderer.nearestNeighborPresentation = true;
-            config.renderer.clearColor = ImVec4(96.0f / 255.0f, 112.0f / 255.0f, 136.0f / 255.0f, 1.0f);
+            config.renderer.clearColor = Color(Color::Uint8Tag{}, 96, 112, 136);
             config.environment.showGrid = false;
             config.environment.showFloor = false;
             config.environment.shadowMap = false;

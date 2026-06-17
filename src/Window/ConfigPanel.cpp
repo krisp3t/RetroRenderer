@@ -889,8 +889,12 @@ void ConfigPanel::DisplayRendererSettings() {
         manualChange = true;
         Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_config_->renderer.resolution});
     }
-    if (ImGui::ColorEdit4("Clear screen color", reinterpret_cast<float*>(&r.clearColor),
-                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel)) {
+    ImVec4 clearColor = r.clearColor.ToImVec4();
+    if (ImGui::ColorEdit4(
+            "Clear screen color",
+            reinterpret_cast<float*>(&clearColor),
+            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel)) {
+        r.clearColor = Color(clearColor);
         manualChange = true;
     }
     ImGui::SameLine();
@@ -917,13 +921,25 @@ void ConfigPanel::DisplayRasterizerSettings() {
         case Config::RasterizationPolygonMode::POINT:
             ImGui::SeparatorText("Point");
             manualChange |= ImGui::SliderFloat("Point size", &r.pointSize, 1.0f, 10.0f);
-            manualChange |= ImGui::ColorEdit4("Point color", reinterpret_cast<float*>(&r.lineColor));
+            {
+                ImVec4 pointColor = r.lineColor.ToImVec4();
+                if (ImGui::ColorEdit4("Point color", reinterpret_cast<float*>(&pointColor))) {
+                    r.lineColor = Color(pointColor);
+                    manualChange = true;
+                }
+            }
             break;
         case Config::RasterizationPolygonMode::LINE:
             ImGui::SeparatorText("Wireframe");
             manualChange |= ImGui::Combo("Line mode", reinterpret_cast<int*>(&r.lineMode), lineItems, IM_ARRAYSIZE(lineItems));
             manualChange |= ImGui::SliderFloat("Line width", &r.lineWidth, 1.0f, 10.0f);
-            manualChange |= ImGui::ColorEdit4("Line color", reinterpret_cast<float*>(&r.lineColor));
+            {
+                ImVec4 lineColor = r.lineColor.ToImVec4();
+                if (ImGui::ColorEdit4("Line color", reinterpret_cast<float*>(&lineColor))) {
+                    r.lineColor = Color(lineColor);
+                    manualChange = true;
+                }
+            }
             manualChange |= ImGui::Checkbox("Display triangle edges as RGB", &r.basicLineColors);
             break;
         case Config::RasterizationPolygonMode::FILL:
