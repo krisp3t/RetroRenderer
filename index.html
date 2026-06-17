@@ -357,7 +357,7 @@
     if (!window.retroRendererLoaded) {
         Module.print("> Loading RetroRenderer...");
         const script = document.createElement('script');
-        script.src = "retrorenderer"; // wasm-generated js
+        script.src = "retrorenderer.js";
         script.onload = () => {
             window.retroRendererLoaded = true;
             Module.print("> RetroRenderer loaded.");

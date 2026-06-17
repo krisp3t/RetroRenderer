@@ -181,7 +181,7 @@
             "cacheVariables": {
                 "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{EMSCRIPTEN_ROOT}/cmake/Modules/Platform/Emscripten.cmake",
-                "CMAKE_EXECUTABLE_SUFFIX": ".html",
+                "CMAKE_EXECUTABLE_SUFFIX": ".js",
                 "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY"
             }
         }

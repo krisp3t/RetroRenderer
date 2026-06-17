@@ -42,6 +42,7 @@ if(ANDROID)
             $<$<CONFIG:Debug>:-O0>
     )
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    set(CMAKE_EXECUTABLE_SUFFIX ".js")
     set(RENDERER_BACKENDS
             src/Renderer/GLES/GLESRenderer.h
             src/Renderer/GLES/GLESRenderer.cpp
@@ -57,6 +58,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
             ${CMAKE_CURRENT_BINARY_DIR}/index.html
             COPYONLY
     )
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/.nojekyll" "")
     set(RETRO_EMSCRIPTEN_COMPILE_OPTIONS
             "-sUSE_SDL=2"
             "-sUSE_FREETYPE=1"
