@@ -57,6 +57,26 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
             ${CMAKE_CURRENT_BINARY_DIR}/index.html
             COPYONLY
     )
+    set(RETRO_EMSCRIPTEN_COMPILE_OPTIONS
+            "-sUSE_SDL=2"
+            "-sUSE_FREETYPE=1"
+            "-sUSE_SDL_TTF=2"
+            "-sUSE_SDL_IMAGE=2"
+    )
+    set(RETRO_EMSCRIPTEN_LINK_OPTIONS
+            ${RETRO_EMSCRIPTEN_COMPILE_OPTIONS}
+            "-sUSE_SDL_MIXER=2"
+            "-sNO_DISABLE_EXCEPTION_CATCHING"
+            "--use-preload-plugins"
+            "-sSDL2_IMAGE_FORMATS=[png]"
+            "--preload-file"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets@/assets"
+            "-sMIN_WEBGL_VERSION=2"
+            "-sASSERTIONS=2"
+            "-sSAFE_HEAP=1"
+            "-gsource-map"
+            "-sALLOW_MEMORY_GROWTH"
+    )
 else()
     set(RENDERER_BACKENDS
             src/Renderer/OpenGL/GLRenderer.h
@@ -332,7 +352,11 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    target_compile_options(${PROJECT_NAME} PRIVATE
+            ${RETRO_EMSCRIPTEN_COMPILE_OPTIONS}
+    )
     target_link_options(${PROJECT_NAME}  PRIVATE
+            ${RETRO_EMSCRIPTEN_LINK_OPTIONS}
             "-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']"
             "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8']"
     )

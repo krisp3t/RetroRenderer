@@ -179,15 +179,9 @@
             "name": "wasm32-emscripten",
             "inherits": "debug",
             "cacheVariables": {
-                "CMAKE_SYSTEM_NAME": "Emscripten",
-                "CMAKE_C_COMPILER": "emcc",
-                "CMAKE_CXX_COMPILER": "em++",
-                "CMAKE_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
                 "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
                 "CMAKE_EXECUTABLE_SUFFIX": ".html",
-                "CMAKE_C_FLAGS": "-s USE_SDL=2 -s USE_FREETYPE=1 -s USE_SDL_TTF=2 -s USE_SDL_IMAGE=2",
-                "CMAKE_CXX_FLAGS": "-s USE_SDL=2 -s USE_FREETYPE=1 -s USE_SDL_TTF=2 -s USE_SDL_IMAGE=2",
-                "CMAKE_EXE_LINKER_FLAGS": "-s USE_SDL=2 -s USE_FREETYPE=1 -s USE_SDL_TTF=2 -s USE_SDL_IMAGE=2 -s USE_SDL_MIXER=2 -sNO_DISABLE_EXCEPTION_CATCHING --use-preload-plugins -s SDL2_IMAGE_FORMATS=[png] --preload-file assets -s MIN_WEBGL_VERSION=2 -s ASSERTIONS=2 -s SAFE_HEAP=1 -gsource-map -s ALLOW_MEMORY_GROWTH"
+                "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY"
             }
         }
     ],
@@ -225,6 +219,10 @@
             "name": "build-debug-x64-linux-tsan-tests",
             "configurePreset": "debug-x64-linux-tsan",
             "targets": [ "retrorenderer_tests" ]
+        },
+        {
+            "name": "wasm32-emscripten",
+            "configurePreset": "wasm32-emscripten"
         }
     ],
     "testPresets": [
