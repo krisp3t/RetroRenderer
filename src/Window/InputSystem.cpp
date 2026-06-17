@@ -3,7 +3,6 @@
 #else
 #include <imgui_impl_sdl2.h>
 #endif
-#include "../Engine.h"
 #include "InputSystem.h"
 #include <KrisLogger/Logger.h>
 
@@ -19,12 +18,13 @@ bool ShouldBlockKeyboardGameInput() {
 }
 } // namespace
 
-bool InputSystem::Init() {
-    return true;
+bool InputSystem::Init(std::shared_ptr<Config> config, EventEnqueueFn enqueueEvent) {
+    p_Config_ = std::move(config);
+    m_EnqueueEvent_ = std::move(enqueueEvent);
+    return p_Config_ != nullptr && static_cast<bool>(m_EnqueueEvent_);
 }
 
 InputActionMask InputSystem::HandleInput() {
-    auto const& p_config = Engine::Get().GetConfig();
     m_inputState_ = static_cast<InputActionMask>(0);
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -42,12 +42,12 @@ InputActionMask InputSystem::HandleInput() {
             if (ShouldBlockKeyboardGameInput()) {
                 break;
             }
-            HandleKeyDown(event.key.keysym.sym, *p_config);
+            HandleKeyDown(event.key.keysym.sym, *p_Config_);
             break;
         case SDL_WINDOWEVENT:
             if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
                 auto e = std::make_unique<WindowResizeEvent>(glm::ivec2{event.window.data1, event.window.data2});
-                Engine::Get().EnqueueEvent(std::move(e));
+                m_EnqueueEvent_(std::move(e));
             }
             break;
         }

@@ -22,19 +22,21 @@ bool Engine::Init() {
 #ifndef __EMSCRIPTEN__
     LOGD("Starting RetroRenderer in directory: %s", SDL_GetBasePath());
 #endif
-    if (!m_DisplaySystem.Init()) {
+    if (!m_DisplaySystem.Init(p_config_, p_stats_)) {
         return false;
     }
-    if (!m_InputSystem.Init()) {
+    if (!m_InputSystem.Init(p_config_, [this](std::unique_ptr<Event> event) { EnqueueEvent(std::move(event)); })) {
         return false;
     }
-    p_RenderSystem = std::make_unique<RenderSystem>();
+    p_MaterialManager = std::make_unique<MaterialManager>();
+    p_RenderSystem = std::make_unique<RenderSystem>(p_config_, p_stats_, *p_MaterialManager);
     if (!p_RenderSystem->Init()) {
         return false;
     }
     p_SceneManager = std::make_unique<SceneManager>();
+    p_SceneManager->BindDependencies(p_config_, *p_RenderSystem);
     LOGD("p_Config_ ref count: %d", p_config_.use_count());
-    p_MaterialManager = std::make_unique<MaterialManager>();
+    p_MaterialManager->BindRenderServices(*p_RenderSystem, *p_RenderSystem);
     if (!p_MaterialManager->Init()) {
         return false;
     }

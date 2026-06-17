@@ -1,6 +1,10 @@
 #pragma once
+#include "../Base/Config.h"
+#include "../Base/Event.h"
 #include "../Base/InputActions.h"
-#include "../Window/DisplaySystem.h"
+#include <SDL.h>
+#include <functional>
+#include <memory>
 
 namespace RetroRenderer {
 
@@ -9,7 +13,9 @@ class InputSystem {
     InputSystem() = default;
     ~InputSystem() = default;
 
-    bool Init();
+    using EventEnqueueFn = std::function<void(std::unique_ptr<Event>)>;
+
+    bool Init(std::shared_ptr<Config> config, EventEnqueueFn enqueueEvent);
 
     [[nodiscard]] InputActionMask HandleInput();
 
@@ -20,6 +26,8 @@ class InputSystem {
     void PollContinuousInput(bool keyboardCaptured);
     void HandleMouseMotion(const SDL_MouseMotionEvent& event);
 
+    std::shared_ptr<Config> p_Config_ = nullptr;
+    EventEnqueueFn m_EnqueueEvent_;
     InputActionMask m_inputState_ = 0;
     // bool m_isDragging_ = false;
 };

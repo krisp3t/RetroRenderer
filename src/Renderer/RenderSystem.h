@@ -6,6 +6,7 @@
 #include "IFramePresenter.h"
 #include "IHardwareRenderer.h"
 #include "IRenderer.h"
+#include "RenderServices.h"
 #include "RenderOutput.h"
 #include "ShaderHandle.h"
 #include "Software/SWRenderer.h"
@@ -21,10 +22,11 @@
 #include <memory>
 
 namespace RetroRenderer {
+class MaterialManager;
 
-class RenderSystem {
+class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
   public:
-    RenderSystem() = default;
+    RenderSystem(std::shared_ptr<Config> config, std::shared_ptr<Stats> stats, const MaterialManager& materialManager);
 
     ~RenderSystem();
 
@@ -42,10 +44,11 @@ class RenderSystem {
 
     void OnLoadScene(const SceneLoadEvent& e);
     void OnResetScene();
-    void OnSceneMutated();
-    void OnTextureMutated();
+    void OnSceneMutated() override;
+    void OnTextureMutated() override;
 
-    [[nodiscard]] ShaderHandle CompileShaders(const std::string& vertexCode, const std::string& fragmentCode);
+    [[nodiscard]] ShaderHandle CompileShaders(const std::string& vertexCode,
+                                             const std::string& fragmentCode) override;
 
   private:
     struct SoftwareRenderJob {
@@ -74,6 +77,9 @@ class RenderSystem {
     void SyncSoftwareWorkerForRenderDataMutation();
 
   private:
+    std::shared_ptr<Config> p_Config_;
+    std::shared_ptr<Stats> p_Stats_;
+    const MaterialManager& m_MaterialManager;
     std::unique_ptr<SWRenderer> p_SWRenderer_ = nullptr;
     std::unique_ptr<IHardwareRenderer> p_GLRenderer_ = nullptr;
     IRenderer* p_activeRenderer_ = nullptr;

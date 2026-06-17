@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Base/InputActions.h"
+#include "../Renderer/RenderServices.h"
 #include "Camera.h"
 #include "Scene.h"
 #include <glm/vec2.hpp>
@@ -12,6 +13,7 @@ class SceneManager {
   public:
     SceneManager() = default;
     ~SceneManager();
+    void BindDependencies(std::shared_ptr<Config> config, IRenderInvalidationSink& renderInvalidationSink);
     void ResetScene();
     bool LoadScene(const uint8_t* data, const size_t size, bool append = false);
     bool LoadScene(const std::string& path, bool append = false);
@@ -26,6 +28,8 @@ class SceneManager {
     void RenderUILight(SceneLight& light, int lightIndex);
     void RenderUIModelRecursive(int modelIndex);
 
+    std::shared_ptr<Config> p_Config_ = nullptr;
+    IRenderInvalidationSink* p_RenderInvalidationSink_ = nullptr;
     std::shared_ptr<Scene> p_Scene = nullptr;
     std::unique_ptr<Camera> p_Camera = nullptr;
     float m_MoveFactor = 0.02f;

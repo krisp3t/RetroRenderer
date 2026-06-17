@@ -1,5 +1,5 @@
 #include "DisplaySystem.h"
-#include "../Engine.h"
+#include "../Renderer/IFramePresenter.h"
 #include "../Renderer/Buffer.h"
 #include "../include/kris_glheaders.h"
 #include <KrisLogger/Logger.h>
@@ -10,12 +10,9 @@ SDL_Window* DisplaySystem::GetWindow() const {
     return m_window_;
 }
 
-bool DisplaySystem::Init() {
-    auto const& p_config = Engine::Get().GetConfig();
-    auto const& p_stats = Engine::Get().GetStats();
-
-    int screenWidth = p_config->window.size.x;
-    int screenHeight = p_config->window.size.y;
+bool DisplaySystem::Init(const std::shared_ptr<Config>& config, const std::shared_ptr<Stats>& stats) {
+    int screenWidth = config->window.size.x;
+    int screenHeight = config->window.size.y;
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         LOGE("Unable to initialize SDL: %s\n", SDL_GetError());
@@ -105,10 +102,10 @@ bool DisplaySystem::Init() {
     glEnable(GL_DEPTH_TEST);
 
 #ifndef __EMSCRIPTEN__
-    SDL_GL_SetSwapInterval(p_config->window.enableVsync ? 1 : 0);
+    SDL_GL_SetSwapInterval(config->window.enableVsync ? 1 : 0);
 #endif
     m_configPanel_ = std::make_unique<ConfigPanel>();
-    m_configPanel_->Init(m_window_, m_glContext_, p_config, glslVersion, p_stats);
+    m_configPanel_->Init(m_window_, m_glContext_, config, glslVersion, stats);
     return true;
 }
 

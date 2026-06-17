@@ -30,7 +30,7 @@ class DisplaySystem {
 
     SDL_Window* GetWindow() const;
 
-    bool Init();
+    bool Init(const std::shared_ptr<Config>& config, const std::shared_ptr<Stats>& stats);
 
     void Destroy();
 

@@ -1,11 +1,15 @@
 #include "SceneManager.h"
-#include "../Engine.h"
 #include <KrisLogger/Logger.h>
 
 #include <glm/gtc/type_ptr.inl>
 #include <imgui.h>
 
 namespace RetroRenderer {
+void SceneManager::BindDependencies(std::shared_ptr<Config> config, IRenderInvalidationSink& renderInvalidationSink) {
+    p_Config_ = std::move(config);
+    p_RenderInvalidationSink_ = &renderInvalidationSink;
+}
+
 SceneManager::~SceneManager() {
 }
 
@@ -20,7 +24,7 @@ bool SceneManager::LoadScene(const uint8_t* data, const size_t size, bool append
     if (createNewScene) {
         ResetScene();
         p_Scene = std::make_shared<Scene>();
-        p_Scene->SetDefaultLightPosition(Engine::Get().GetConfig()->environment.lightPosition);
+        p_Scene->SetDefaultLightPosition(p_Config_->environment.lightPosition);
         p_Camera = std::make_unique<Camera>();
     }
     if (!p_Scene->Load(data, size, append && !createNewScene)) {
@@ -38,7 +42,7 @@ bool SceneManager::LoadScene(const std::string& path, bool append) {
     if (createNewScene) {
         ResetScene();
         p_Scene = std::make_shared<Scene>();
-        p_Scene->SetDefaultLightPosition(Engine::Get().GetConfig()->environment.lightPosition);
+        p_Scene->SetDefaultLightPosition(p_Config_->environment.lightPosition);
         p_Camera = std::make_unique<Camera>();
     }
     if (!p_Scene->Load(path, append && !createNewScene)) {
@@ -107,7 +111,7 @@ void SceneManager::NewFrame() {
     if (!p_Scene || !p_Camera) {
         return;
     }
-    p_Scene->FrustumCull(*p_Camera, Engine::Get().GetConfig()->cull);
+    p_Scene->FrustumCull(*p_Camera, p_Config_->cull);
 }
 
 Camera* SceneManager::GetCamera() const {
@@ -150,9 +154,13 @@ void SceneManager::RenderUILight(SceneLight& light, int lightIndex) {
     const std::string label = light.name + "##light_" + std::to_string(lightIndex);
     if (ImGui::TreeNode(label.c_str())) {
         ImGui::Text("Type: %s", light.type == LightType::POINT ? "Point" : "Unknown");
-        ImGui::DragFloat3("Position", glm::value_ptr(light.position), 0.1f, 0.0f, 0.0f, "%.3f");
-        ImGui::ColorEdit3("Color", glm::value_ptr(light.color));
-        ImGui::SliderFloat("Intensity", &light.intensity, 0.0f, 4.0f, "%.2f");
+        bool lightChanged = false;
+        lightChanged |= ImGui::DragFloat3("Position", glm::value_ptr(light.position), 0.1f, 0.0f, 0.0f, "%.3f");
+        lightChanged |= ImGui::ColorEdit3("Color", glm::value_ptr(light.color));
+        lightChanged |= ImGui::SliderFloat("Intensity", &light.intensity, 0.0f, 4.0f, "%.2f");
+        if (lightChanged && p_RenderInvalidationSink_ != nullptr) {
+            p_RenderInvalidationSink_->OnSceneMutated();
+        }
         ImGui::TreePop();
     }
 }
@@ -178,8 +186,8 @@ void SceneManager::RenderUIModelRecursive(int modelIndex) {
             if (transformChanged) {
                 model.SetLocalTRS(lPos, lRot, lScl);
             }
-            if (transformChanged) {
-                Engine::Get().GetRenderSystem().OnSceneMutated();
+            if (transformChanged && p_RenderInvalidationSink_ != nullptr) {
+                p_RenderInvalidationSink_->OnSceneMutated();
             }
 
             for (int childIndex : p_Scene->m_Models[modelIndex].m_Children) {
