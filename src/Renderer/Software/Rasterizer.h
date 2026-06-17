@@ -3,6 +3,7 @@
 #include "../../Base/Color.h"
 #include "../../Base/Config.h"
 #include "../../Scene/Light.h"
+#include "../../Scene/Vertex.h"
 #include "../Buffer.h"
 #include "SoftwareLighting.h"
 #include <array>
@@ -35,6 +36,11 @@ class Rasterizer {
                              const SoftwareMaterialState& materialState,
                              const glm::vec3& viewPosition,
                              const Texture* texture = nullptr);
+    static void DrawTriangle(Buffer<Pixel>& framebuffer,
+                             Buffer<float>& depthBuffer,
+                             std::array<Vertex, 3>& vertices,
+                             const Config& cfg,
+                             Pixel fillColor);
     static void DrawQuad(Buffer<Pixel>& framebuffer, std::array<RasterVertex, 3>& vertices);
     static void DrawLine(Buffer<Pixel>& framebuffer, glm::vec2 p0, glm::vec2 p1, const Config& cfg, Pixel color);
     static void DrawHLine(Buffer<Pixel>& framebuffer, int x0, int x1, int y, const Config& cfg, Pixel color);

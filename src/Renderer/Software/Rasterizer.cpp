@@ -833,6 +833,37 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
     }
 }
 
+void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
+                              Buffer<float>& depthBuffer,
+                              std::array<Vertex, 3>& vertices,
+                              const Config& cfg,
+                              Pixel fillColor) {
+    std::array<RasterVertex, 3> rasterVertices{};
+    const glm::vec3 flatColor = glm::vec3(
+        static_cast<float>(fillColor.r) / 255.0f,
+        static_cast<float>(fillColor.g) / 255.0f,
+        static_cast<float>(fillColor.b) / 255.0f);
+    for (size_t i = 0; i < rasterVertices.size(); i++) {
+        rasterVertices[i].position = glm::vec3(vertices[i].position);
+        rasterVertices[i].cullPosition = glm::vec3(vertices[i].position.x, -vertices[i].position.y, vertices[i].position.z);
+        rasterVertices[i].worldPosition = glm::vec3(vertices[i].position);
+        rasterVertices[i].normal = vertices[i].normal;
+        rasterVertices[i].texCoords = vertices[i].texCoords;
+        rasterVertices[i].color = flatColor;
+        rasterVertices[i].clipW = std::abs(vertices[i].position.w) > 1e-6f ? vertices[i].position.w : 1.0f;
+    }
+
+    Config compatibilityConfig = cfg;
+    compatibilityConfig.retro.usePs1ShadingModel = true;
+    compatibilityConfig.retro.ps1MaterialMode = Config::Ps1MaterialMode::FLAT_COLOR_UNLIT;
+    compatibilityConfig.retro.untexturedBaseColor =
+        Color(Color::Uint8Tag{}, fillColor.r, fillColor.g, fillColor.b, fillColor.a);
+
+    const std::vector<LightSnapshot> noLights;
+    const SoftwareMaterialState materialState{};
+    DrawTriangle(framebuffer, depthBuffer, rasterVertices, compatibilityConfig, noLights, materialState, glm::vec3(0.0f));
+}
+
 static float EdgeFunction(const glm::vec2& a, const glm::vec2& b, const glm::vec2& p) {
     return (p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x);
 }
