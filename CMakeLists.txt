@@ -77,23 +77,47 @@ find_package(glad      CONFIG REQUIRED)
 # -----------------------------------------------------------------------------
 # Source files
 # -----------------------------------------------------------------------------
-set(SOURCE_ROOT_DIRS
-        src/
-        src/Base
-        src/Renderer
-        src/Renderer/Software
-        src/Scene
-        src/Window
-        src/include
+set(RETRO_BASE_SOURCES
+        src/Base/MemoryProfiler.cpp
 )
-set(SOURCES "")
-foreach (dir ${SOURCE_ROOT_DIRS})
-    file(GLOB CURR_SOURCES CONFIGURE_DEPENDS
-            "${dir}/*.cpp"
-            "${dir}/*.h"
-    )
-    list(APPEND SOURCES ${CURR_SOURCES})
-endforeach ()
+
+set(RETRO_RENDERER_SOURCES
+        src/Renderer/GLBackendCommon.cpp
+        src/Renderer/GLBackendRendererBase.cpp
+        src/Renderer/GLFramePresenter.cpp
+        src/Renderer/GridGizmo.cpp
+        src/Renderer/RenderSystem.cpp
+        src/Renderer/RetroPalette.cpp
+        src/Renderer/Software/Rasterizer.cpp
+        src/Renderer/Software/SWRenderer.cpp
+)
+
+set(RETRO_SCENE_SOURCES
+        src/Scene/Camera.cpp
+        src/Scene/LightweightObjSceneImporter.cpp
+        src/Scene/MaterialManager.cpp
+        src/Scene/Mesh.cpp
+        src/Scene/Model.cpp
+        src/Scene/Scene.cpp
+        src/Scene/SceneImporterFactory.cpp
+        src/Scene/SceneManager.cpp
+        src/Scene/Texture.cpp
+)
+
+set(RETRO_WINDOW_SOURCES
+        src/Window/ConfigPanel.cpp
+        src/Window/DisplaySystem.cpp
+        src/Window/InputSystem.cpp
+)
+
+set(SOURCES
+        src/Engine.cpp
+        src/main.cpp
+        ${RETRO_BASE_SOURCES}
+        ${RETRO_RENDERER_SOURCES}
+        ${RETRO_SCENE_SOURCES}
+        ${RETRO_WINDOW_SOURCES}
+)
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib/KrisLogger)
 
 add_library(retro_sanitizers INTERFACE)
