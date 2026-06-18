@@ -74,6 +74,7 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     void ClearSoftwareResourceSnapshots();
     void SubmitSoftwareJob(const FrameSnapshot& frame);
     void PresentCompletedSoftwareFrame();
+    void RecordSoftwareFramePresented();
     void SoftwareWorkerLoop();
     RenderOutput RenderSoftwareSync(const FrameSnapshot& frame);
     [[nodiscard]] RenderOutput MakeSoftwareRenderOutput() const;

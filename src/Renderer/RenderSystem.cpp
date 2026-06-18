@@ -22,6 +22,11 @@ uint64_t ElapsedNanoseconds(TimingClock::time_point start) {
         std::chrono::duration_cast<std::chrono::nanoseconds>(TimingClock::now() - start).count());
 }
 
+uint64_t ClockNanoseconds() {
+    return static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(TimingClock::now().time_since_epoch()).count());
+}
+
 FrameMaterialState CaptureFrameMaterialState(const MaterialManager::Material& currentMaterial) {
     FrameMaterialState state{};
     state.shaderHandle = currentMaterial.shaderProgram.handle;
@@ -292,6 +297,10 @@ void RenderSystem::ClearSoftwareWorkerFrameState() {
     m_CompletedSoftwareFrames.clear();
 #endif
     m_PresentedSoftwareFrame = {};
+    if (p_Stats_) {
+        p_Stats_->lastSoftwareFramePresentedNs.store(0, std::memory_order_relaxed);
+        p_Stats_->lastSoftwareFramePresentIntervalNs.store(0, std::memory_order_relaxed);
+    }
 }
 
 SoftwareFrameSnapshot RenderSystem::BuildSoftwareFrameSnapshot(const FrameSnapshot& frame) {
@@ -493,8 +502,18 @@ void RenderSystem::PresentCompletedSoftwareFrame() {
     if (droppedReadyFrames > 0) {
         p_Stats_->swFramesDroppedReady.fetch_add(droppedReadyFrames, std::memory_order_relaxed);
     }
-    p_Stats_->swFramesPresented.fetch_add(1, std::memory_order_relaxed);
+    RecordSoftwareFramePresented();
 #endif
+}
+
+void RenderSystem::RecordSoftwareFramePresented() {
+    assert(p_Stats_ != nullptr && "RenderSystem requires stats");
+    const uint64_t nowNs = ClockNanoseconds();
+    const uint64_t previousNs = p_Stats_->lastSoftwareFramePresentedNs.exchange(nowNs, std::memory_order_relaxed);
+    if (previousNs != 0 && nowNs > previousNs) {
+        p_Stats_->lastSoftwareFramePresentIntervalNs.store(nowNs - previousNs, std::memory_order_relaxed);
+    }
+    p_Stats_->swFramesPresented.fetch_add(1, std::memory_order_relaxed);
 }
 
 void RenderSystem::SoftwareWorkerLoop() {
@@ -557,6 +576,7 @@ RenderOutput RenderSystem::RenderSoftwareSync(const FrameSnapshot& frame) {
     const auto& buffer = p_SWRenderer_->GetFrameBuffer();
     StoreSoftwareFrame(buffer);
     p_Stats_->lastSoftwareWorkerCopyNs.store(ElapsedNanoseconds(workerCopyStart), std::memory_order_relaxed);
+    RecordSoftwareFramePresented();
     return MakeSoftwareRenderOutput();
 }
 

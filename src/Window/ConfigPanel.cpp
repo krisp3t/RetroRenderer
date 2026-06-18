@@ -82,6 +82,11 @@ uint64_t ElapsedNanoseconds(TimingClock::time_point start) {
         std::chrono::duration_cast<std::chrono::nanoseconds>(TimingClock::now() - start).count());
 }
 
+uint64_t ClockNanoseconds() {
+    return static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(TimingClock::now().time_since_epoch()).count());
+}
+
 double ReadTimingMilliseconds(const std::atomic<uint64_t>& timing) {
     return static_cast<double>(timing.load(std::memory_order_relaxed)) / 1000000.0;
 }
@@ -1239,7 +1244,8 @@ void ConfigPanel::DisplayMetricsOverlay() {
     if (ImGui::Begin("Metrics", &p_config_->window.showFPS, windowFlags)) {
         ImGui::PushFont(smallFont);
         ImGui::SetWindowFontScale(kScale);
-        ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        const float uiFrameMs = io.Framerate > 0.0f ? 1000.0f / io.Framerate : 0.0f;
+        ImGui::Text("UI: %.3f ms/frame (%.1f FPS)", uiFrameMs, io.Framerate);
         ImGui::Text("%d x %d (%s)", p_config_->renderer.resolution.x, p_config_->renderer.resolution.y,
                     p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE ? "software" : "OpenGL");
         ImGui::Text("Preset: %s", Config::RenderPresetLabel(p_config_->retro.preset));
@@ -1279,7 +1285,29 @@ void ConfigPanel::DisplayMetricsOverlay() {
             const uint64_t swJobsDroppedPending = p_stats_->swJobsDroppedPending.load(std::memory_order_relaxed);
             const uint64_t swFramesPresented = p_stats_->swFramesPresented.load(std::memory_order_relaxed);
             const uint64_t swFramesDroppedReady = p_stats_->swFramesDroppedReady.load(std::memory_order_relaxed);
-            ImGui::SeparatorText("SW Async");
+            static double swOutputFps = 0.0;
+            static double swOutputSampleTime = 0.0;
+            static uint64_t swOutputSamplePresentedFrames = 0;
+            const double nowSeconds = ImGui::GetTime();
+            if (swOutputSampleTime <= 0.0) {
+                swOutputSampleTime = nowSeconds;
+                swOutputSamplePresentedFrames = swFramesPresented;
+            }
+            const double sampleDeltaSeconds = nowSeconds - swOutputSampleTime;
+            if (sampleDeltaSeconds >= 0.5) {
+                swOutputFps =
+                    static_cast<double>(swFramesPresented - swOutputSamplePresentedFrames) / sampleDeltaSeconds;
+                swOutputSampleTime = nowSeconds;
+                swOutputSamplePresentedFrames = swFramesPresented;
+            }
+
+            const uint64_t lastPresentedNs = p_stats_->lastSoftwareFramePresentedNs.load(std::memory_order_relaxed);
+            const double outputAgeMs =
+                lastPresentedNs != 0 ? static_cast<double>(ClockNanoseconds() - lastPresentedNs) / 1000000.0 : 0.0;
+            ImGui::SeparatorText("SW Output");
+            ImGui::Text("Output: %.1f FPS, age %.3f ms", swOutputFps, outputAgeMs);
+            ImGui::Text("Last present interval: %.3f ms",
+                        ReadTimingMilliseconds(p_stats_->lastSoftwareFramePresentIntervalNs));
             ImGui::Text("Snapshot build: %.3f ms", ReadTimingMilliseconds(p_stats_->lastSoftwareFrameSnapshotBuildNs));
             ImGui::Text("Worker render/copy: %.3f / %.3f ms",
                         ReadTimingMilliseconds(p_stats_->lastSoftwareWorkerRenderNs),

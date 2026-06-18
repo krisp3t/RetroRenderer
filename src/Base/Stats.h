@@ -16,6 +16,8 @@ struct Stats {
     std::atomic<uint64_t> swJobsDroppedPending = 0;
     std::atomic<uint64_t> swFramesPresented = 0;
     std::atomic<uint64_t> swFramesDroppedReady = 0;
+    std::atomic<uint64_t> lastSoftwareFramePresentedNs = 0;
+    std::atomic<uint64_t> lastSoftwareFramePresentIntervalNs = 0;
     std::atomic<uint64_t> lastFrameTotalNs = 0;
     std::atomic<uint64_t> lastMainUpdateNs = 0;
     std::atomic<uint64_t> lastDisplayBeforeFrameNs = 0;
