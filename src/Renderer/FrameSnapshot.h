@@ -6,6 +6,7 @@
 #include "../Scene/Light.h"
 #include "../Scene/Scene.h"
 #include "../Scene/Texture.h"
+#include "../Scene/Vertex.h"
 #include "ShaderHandle.h"
 #include <glm/mat4x4.hpp>
 #include <limits>
@@ -62,6 +63,38 @@ struct FrameSnapshot {
     Config configSnapshot{};
     Color clearColor{};
     uint64_t dataRevision = 0;
+};
+
+// Software jobs may outlive the scene frame that submitted them. Keep worker
+// input limited to immutable CPU resource snapshots and copied per-frame state.
+struct SoftwareMeshSnapshot {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+};
+
+struct SoftwareRenderItem {
+    std::shared_ptr<const SoftwareMeshSnapshot> mesh;
+    glm::mat4 worldTransform = glm::mat4(1.0f);
+    FrameMaterialId materialId = kInvalidFrameMaterialId;
+    FrameTextureId textureId = kInvalidFrameTextureId;
+};
+
+struct SoftwareFrameSnapshot {
+    bool hasScene = false;
+    Camera camera;
+    std::vector<LightSnapshot> lights;
+    std::vector<FrameMaterialState> materials;
+    std::vector<std::shared_ptr<const Texture>> textures;
+    std::vector<SoftwareRenderItem> items;
+    Config configSnapshot{};
+    Color clearColor{};
+    uint64_t dataRevision = 0;
+
+    SoftwareFrameSnapshot() = default;
+    SoftwareFrameSnapshot(const SoftwareFrameSnapshot&) = delete;
+    SoftwareFrameSnapshot& operator=(const SoftwareFrameSnapshot&) = delete;
+    SoftwareFrameSnapshot(SoftwareFrameSnapshot&&) noexcept = default;
+    SoftwareFrameSnapshot& operator=(SoftwareFrameSnapshot&&) noexcept = default;
 };
 
 } // namespace RetroRenderer
