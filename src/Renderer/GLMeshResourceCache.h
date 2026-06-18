@@ -2,7 +2,7 @@
 
 #include "../Scene/Mesh.h"
 #include "../Scene/Vertex.h"
-#include "FrameSnapshot.h"
+#include "RenderPacket.h"
 #include "../include/kris_glheaders.h"
 #include <KrisLogger/Logger.h>
 #include <cstddef>

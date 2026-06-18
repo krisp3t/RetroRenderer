@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Scene/Light.h"
-#include "FrameSnapshot.h"
+#include "RenderPacket.h"
 #include "RenderServices.h"
 #include "ShaderHandle.h"
 #include <string>
@@ -24,7 +24,7 @@ class IRenderer : public IShaderCompiler {
     virtual void Destroy() {
     }
 
-    virtual void RenderFrame(const FrameSnapshot& frame) = 0;
+    virtual void RenderFrame(const RenderPacket& packet) = 0;
 
     virtual void BeforeFrame(const Color& clearColor) = 0; // Clear screen / framebuffer texture
 

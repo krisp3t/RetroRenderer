@@ -19,7 +19,7 @@ class SWRenderer : public IRenderer {
     ~SWRenderer() = default;
     bool Init(int w, int h);
     bool Resize(int w, int h);
-    void RenderFrame(const FrameSnapshot& frame) override;
+    void RenderFrame(const RenderPacket& packet) override;
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
     void SetFrameConfig(const Config& config);

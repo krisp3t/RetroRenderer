@@ -195,33 +195,33 @@ void GLBackendRendererBase::InvalidateTextureResources() {
     m_TextureResources.Clear();
 }
 
-void GLBackendRendererBase::RenderFrame(const FrameSnapshot& frame) {
-    if (!frame.hasScene) {
+void GLBackendRendererBase::RenderFrame(const RenderPacket& packet) {
+    if (!packet.hasScene) {
         return;
     }
 
-    m_FrameCameraSnapshot = frame.camera;
-    m_FrameConfigSnapshot = frame.configSnapshot;
-    m_FrameMaterialState = frame.materials.empty() ? FrameMaterialState{} : frame.materials.front();
+    m_FrameCameraSnapshot = packet.camera;
+    m_FrameConfigSnapshot = packet.configSnapshot;
+    m_FrameMaterialState = packet.materials.empty() ? FrameMaterialState{} : packet.materials.front();
     SetActiveCamera(m_FrameCameraSnapshot);
-    SetSceneLights(frame.lights);
+    SetSceneLights(packet.lights);
 
-    BeforeFrame(frame.clearColor);
-    if (frame.configSnapshot.environment.showSkybox) {
+    BeforeFrame(packet.clearColor);
+    if (packet.configSnapshot.environment.showSkybox) {
         DrawSkybox();
     }
 
-    for (const RenderItem& item : frame.items) {
+    for (const RenderItem& item : packet.items) {
         if (!item.mesh) {
             continue;
         }
 
-        const FrameMaterialState* materialState = ResolveFrameMaterial(frame, item.materialId);
+        const FrameMaterialState* materialState = ResolveFrameMaterial(packet, item.materialId);
         if (materialState == nullptr) {
             continue;
         }
 
-        DrawMesh(*item.mesh, item.worldTransform, ResolveFrameTexture(frame, item.textureId), *materialState, frame.configSnapshot);
+        DrawMesh(*item.mesh, item.worldTransform, ResolveFrameTexture(packet, item.textureId), *materialState, packet.configSnapshot);
     }
 
     RenderBackendOverlays();

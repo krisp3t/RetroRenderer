@@ -110,18 +110,18 @@ void Engine::ProcessFrame() {
 
         p_RenderSystem->BeforeFrame(clearColor);
 
-        const auto snapshotStart = TimingClock::now();
-        const FrameSnapshot& frame = p_RenderSystem->BuildFrameSnapshot(scene, *camera);
-        p_stats_->lastFrameSnapshotBuildNs.store(ElapsedNanoseconds(snapshotStart), std::memory_order_relaxed);
+        const auto packetStart = TimingClock::now();
+        const RenderPacket& packet = p_RenderSystem->BuildRenderPacket(scene, *camera);
+        p_stats_->lastRenderPacketBuildNs.store(ElapsedNanoseconds(packetStart), std::memory_order_relaxed);
 
-        RenderOutput renderOutput = p_RenderSystem->Render(frame);
+        RenderOutput renderOutput = p_RenderSystem->Render(packet);
 
         const auto drawStart = TimingClock::now();
         m_DisplaySystem.DrawFrame(renderOutput);
         p_stats_->lastDisplayDrawNs.store(ElapsedNanoseconds(drawStart), std::memory_order_relaxed);
     } else {
         p_stats_->Reset();
-        p_stats_->lastFrameSnapshotBuildNs.store(0, std::memory_order_relaxed);
+        p_stats_->lastRenderPacketBuildNs.store(0, std::memory_order_relaxed);
         p_stats_->lastRenderSystemNs.store(0, std::memory_order_relaxed);
         p_stats_->lastGlRenderNs.store(0, std::memory_order_relaxed);
         p_stats_->lastSoftwarePacketCopyNs.store(0, std::memory_order_relaxed);

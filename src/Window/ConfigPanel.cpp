@@ -1255,7 +1255,7 @@ void ConfigPanel::DisplayMetricsOverlay() {
         ImGui::Text("Total: %.3f ms", ReadTimingMilliseconds(p_stats_->lastFrameTotalNs));
         ImGui::Text("Main update: %.3f ms", ReadTimingMilliseconds(p_stats_->lastMainUpdateNs));
         ImGui::Text("Display before frame: %.3f ms", ReadTimingMilliseconds(p_stats_->lastDisplayBeforeFrameNs));
-        ImGui::Text("Build frame snapshot: %.3f ms", ReadTimingMilliseconds(p_stats_->lastFrameSnapshotBuildNs));
+        ImGui::Text("Build render packet: %.3f ms", ReadTimingMilliseconds(p_stats_->lastRenderPacketBuildNs));
         ImGui::Text("RenderSystem::Render: %.3f ms", ReadTimingMilliseconds(p_stats_->lastRenderSystemNs));
         ImGui::Text("ImGui build/render: %.3f / %.3f ms",
                     ReadTimingMilliseconds(p_stats_->lastImGuiBuildNs),

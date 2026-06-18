@@ -55,6 +55,4 @@ struct RenderPacket {
     uint64_t dataRevision = 0;
 };
 
-using FrameSnapshot = RenderPacket;
-
 } // namespace RetroRenderer

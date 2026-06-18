@@ -35,9 +35,9 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
 
     void BeforeFrame(const Color& clearColor);
 
-    [[nodiscard]] const FrameSnapshot& BuildFrameSnapshot(const std::shared_ptr<Scene>& scene, const Camera& camera);
+    [[nodiscard]] const RenderPacket& BuildRenderPacket(const std::shared_ptr<Scene>& scene, const Camera& camera);
 
-    RenderOutput Render(const FrameSnapshot& frame);
+    RenderOutput Render(const RenderPacket& packet);
 
     void Resize(const glm::ivec2& resolution);
 
@@ -53,7 +53,7 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
 
   private:
     struct SoftwareRenderJob {
-        FrameSnapshot frame;
+        RenderPacket packet;
         uint64_t jobId = 0;
     };
 
@@ -71,11 +71,11 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     [[nodiscard]] std::shared_ptr<const RenderMeshSnapshot> GetOrCreateRenderMeshSnapshot(const Mesh& mesh);
     [[nodiscard]] std::shared_ptr<const Texture> GetOrCreateRenderTextureSnapshot(const Texture& texture);
     void ClearRenderResourceSnapshots();
-    void SubmitSoftwareJob(const FrameSnapshot& frame);
+    void SubmitSoftwareJob(const RenderPacket& packet);
     void PresentCompletedSoftwareFrame();
     void RecordSoftwareFramePresented();
     void SoftwareWorkerLoop();
-    RenderOutput RenderSoftwareSync(const FrameSnapshot& frame);
+    RenderOutput RenderSoftwareSync(const RenderPacket& packet);
     [[nodiscard]] RenderOutput MakeSoftwareRenderOutput() const;
     void StoreSoftwareFrame(const Buffer<Pixel>& buffer);
     void ClearSoftwareWorkerFrameState();
@@ -89,7 +89,7 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     IRenderer* p_activeRenderer_ = nullptr;
 
     std::unique_ptr<IFramePresenter> m_GLFramePresenter;
-    FrameSnapshot m_FrameSnapshotScratch;
+    RenderPacket m_RenderPacketScratch;
     std::unordered_map<const Mesh*, std::shared_ptr<const RenderMeshSnapshot>> m_RenderMeshSnapshots;
     struct RenderTextureSnapshotCacheEntry {
         uint64_t revision = 0;

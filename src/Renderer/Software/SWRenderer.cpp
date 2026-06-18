@@ -164,19 +164,19 @@ SoftwareMaterialState MakeSoftwareMaterialState(const FrameMaterialState& materi
     return state;
 }
 
-const FrameMaterialState* ResolveFrameMaterial(const FrameSnapshot& frame, FrameMaterialId materialId) {
-    if (materialId == kInvalidFrameMaterialId || materialId >= frame.materials.size()) {
+const FrameMaterialState* ResolveFrameMaterial(const RenderPacket& packet, FrameMaterialId materialId) {
+    if (materialId == kInvalidFrameMaterialId || materialId >= packet.materials.size()) {
         return nullptr;
     }
-    return &frame.materials[materialId];
+    return &packet.materials[materialId];
 }
 
-const Texture* ResolveFrameTexture(const FrameSnapshot& frame, FrameTextureId textureId) {
-    if (textureId == kInvalidFrameTextureId || textureId >= frame.textures.size()) {
+const Texture* ResolveFrameTexture(const RenderPacket& packet, FrameTextureId textureId) {
+    if (textureId == kInvalidFrameTextureId || textureId >= packet.textures.size()) {
         return nullptr;
     }
 
-    return frame.textures[textureId].get();
+    return packet.textures[textureId].get();
 }
 
 float ComputeDeferredTriangleSortKey(const std::array<RasterVertex, 3>& vertices, const glm::vec3& cameraPosition) {
@@ -599,28 +599,28 @@ bool SWRenderer::Resize(int w, int h) {
     return true;
 }
 
-void SWRenderer::RenderFrame(const FrameSnapshot& frame) {
-    if (!frame.hasScene) {
+void SWRenderer::RenderFrame(const RenderPacket& packet) {
+    if (!packet.hasScene) {
         return;
     }
 
-    m_FrameCameraSnapshot = frame.camera;
+    m_FrameCameraSnapshot = packet.camera;
     SetActiveCamera(m_FrameCameraSnapshot);
-    SetSceneLights(frame.lights);
-    SetFrameConfig(frame.configSnapshot);
-    m_FrameMaterialState = frame.materials.empty() ? SoftwareMaterialState{} : MakeSoftwareMaterialState(frame.materials.front());
+    SetSceneLights(packet.lights);
+    SetFrameConfig(packet.configSnapshot);
+    m_FrameMaterialState = packet.materials.empty() ? SoftwareMaterialState{} : MakeSoftwareMaterialState(packet.materials.front());
     p_FrameFallbackTexture = nullptr;
 
-    BeforeFrame(frame.clearColor);
-    if (frame.configSnapshot.environment.showSkybox) {
+    BeforeFrame(packet.clearColor);
+    if (packet.configSnapshot.environment.showSkybox) {
         DrawSkybox();
     }
 
-    for (const RenderItem& item : frame.items) {
+    for (const RenderItem& item : packet.items) {
         if (!item.mesh) {
             continue;
         }
-        const FrameMaterialState* materialState = ResolveFrameMaterial(frame, item.materialId);
+        const FrameMaterialState* materialState = ResolveFrameMaterial(packet, item.materialId);
         if (materialState == nullptr) {
             continue;
         }
@@ -630,11 +630,11 @@ void SWRenderer::RenderFrame(const FrameSnapshot& frame) {
             item.mesh->indices,
             item.worldTransform,
             MakeSoftwareMaterialState(*materialState),
-            ResolveFrameTexture(frame, item.textureId));
+            ResolveFrameTexture(packet, item.textureId));
     }
 
     EndFrame();
-    if (frame.configSnapshot.environment.showGrid) {
+    if (packet.configSnapshot.environment.showGrid) {
         DrawGridGizmo();
     }
 }

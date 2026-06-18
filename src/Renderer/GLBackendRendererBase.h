@@ -20,7 +20,7 @@ class GLBackendRendererBase : public IHardwareRenderer {
     void Destroy() override;
     void InvalidateSceneResources() override;
     void InvalidateTextureResources() override;
-    void RenderFrame(const FrameSnapshot& frame) override;
+    void RenderFrame(const RenderPacket& packet) override;
 
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;

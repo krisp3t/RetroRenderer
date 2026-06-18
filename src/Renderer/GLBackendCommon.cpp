@@ -10,19 +10,19 @@ GLuint ToGLHandle(TextureHandle handle) {
     return static_cast<GLuint>(handle.value);
 }
 
-const FrameMaterialState* ResolveFrameMaterial(const FrameSnapshot& frame, FrameMaterialId materialId) {
-    if (materialId == kInvalidFrameMaterialId || materialId >= frame.materials.size()) {
+const FrameMaterialState* ResolveFrameMaterial(const RenderPacket& packet, FrameMaterialId materialId) {
+    if (materialId == kInvalidFrameMaterialId || materialId >= packet.materials.size()) {
         return nullptr;
     }
-    return &frame.materials[materialId];
+    return &packet.materials[materialId];
 }
 
-const Texture* ResolveFrameTexture(const FrameSnapshot& frame, FrameTextureId textureId) {
-    if (textureId == kInvalidFrameTextureId || textureId >= frame.textures.size()) {
+const Texture* ResolveFrameTexture(const RenderPacket& packet, FrameTextureId textureId) {
+    if (textureId == kInvalidFrameTextureId || textureId >= packet.textures.size()) {
         return nullptr;
     }
 
-    return frame.textures[textureId].get();
+    return packet.textures[textureId].get();
 }
 
 const GLMeshUniformLocations& GLProgramUniformCache::GetMeshProgram(GLuint program) {

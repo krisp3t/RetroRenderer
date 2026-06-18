@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FrameSnapshot.h"
+#include "RenderPacket.h"
 #include "TextureHandle.h"
 #include "../include/kris_glheaders.h"
 #include <unordered_map>
@@ -10,8 +10,8 @@ namespace RetroRenderer {
 GLuint ToGLHandle(ShaderHandle handle);
 GLuint ToGLHandle(TextureHandle handle);
 
-const FrameMaterialState* ResolveFrameMaterial(const FrameSnapshot& frame, FrameMaterialId materialId);
-const Texture* ResolveFrameTexture(const FrameSnapshot& frame, FrameTextureId textureId);
+const FrameMaterialState* ResolveFrameMaterial(const RenderPacket& packet, FrameMaterialId materialId);
+const Texture* ResolveFrameTexture(const RenderPacket& packet, FrameTextureId textureId);
 
 struct GLMeshUniformLocations {
     GLint modelMatrix = -1;

@@ -22,7 +22,7 @@ struct Stats {
     std::atomic<uint64_t> lastFrameTotalNs = 0;
     std::atomic<uint64_t> lastMainUpdateNs = 0;
     std::atomic<uint64_t> lastDisplayBeforeFrameNs = 0;
-    std::atomic<uint64_t> lastFrameSnapshotBuildNs = 0;
+    std::atomic<uint64_t> lastRenderPacketBuildNs = 0;
     std::atomic<uint64_t> lastRenderSystemNs = 0;
     std::atomic<uint64_t> lastGlRenderNs = 0;
     std::atomic<uint64_t> lastSoftwarePacketCopyNs = 0;
