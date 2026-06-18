@@ -20,6 +20,7 @@ class SWRenderer : public IRenderer {
     bool Init(int w, int h);
     bool Resize(int w, int h);
     void RenderFrame(const FrameSnapshot& frame) override;
+    void RenderFrame(const SoftwareFrameSnapshot& frame);
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
     void SetFrameConfig(const Config& config);
@@ -43,6 +44,11 @@ class SWRenderer : public IRenderer {
                   const glm::mat4& worldTransform,
                   const SoftwareMaterialState& materialState,
                   const Texture* texture);
+    void DrawMeshData(const std::vector<Vertex>& vertices,
+                      const std::vector<unsigned int>& indices,
+                      const glm::mat4& worldTransform,
+                      const SoftwareMaterialState& materialState,
+                      const Texture* texture);
     struct DeferredTriangle {
         std::array<RasterVertex, 3> vertices{};
         const Texture* texture = nullptr;

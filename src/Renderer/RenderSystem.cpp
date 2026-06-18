@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <utility>
 
 namespace RetroRenderer {
 namespace {
@@ -226,6 +227,7 @@ void RenderSystem::Destroy() {
     m_IsDestroyed = true;
 
     StopSoftwareWorker();
+    ClearSoftwareResourceSnapshots();
     if (p_GLRenderer_) {
         p_GLRenderer_->Destroy();
     }
@@ -240,11 +242,13 @@ void RenderSystem::Destroy() {
 void RenderSystem::OnLoadScene(const SceneLoadEvent& e) {
     (void)e;
     p_GLRenderer_->InvalidateSceneResources();
+    ClearSoftwareResourceSnapshots();
     ++m_FrameDataRevision;
 }
 
 void RenderSystem::OnResetScene() {
     p_GLRenderer_->InvalidateSceneResources();
+    ClearSoftwareResourceSnapshots();
     ++m_FrameDataRevision;
 }
 
@@ -254,6 +258,7 @@ void RenderSystem::OnSceneMutated() {
 
 void RenderSystem::OnTextureMutated() {
     p_GLRenderer_->InvalidateTextureResources();
+    m_SoftwareTextureSnapshots.clear();
     ++m_FrameDataRevision;
 }
 
@@ -268,6 +273,107 @@ void RenderSystem::ClearSoftwareWorkerFrameState() {
     m_CompletedSoftwareFrames.clear();
 #endif
     m_PresentedSoftwareFrame = {};
+}
+
+SoftwareFrameSnapshot RenderSystem::BuildSoftwareFrameSnapshot(const FrameSnapshot& frame) {
+    SoftwareFrameSnapshot softwareFrame;
+    if (!frame.scene) {
+        return softwareFrame;
+    }
+
+    softwareFrame.hasScene = true;
+    softwareFrame.camera = frame.camera;
+    softwareFrame.lights = frame.lights;
+    softwareFrame.materials = frame.materials;
+    softwareFrame.configSnapshot = frame.configSnapshot;
+    softwareFrame.clearColor = frame.clearColor;
+    softwareFrame.dataRevision = frame.dataRevision;
+
+    std::vector<FrameTextureId> textureRemap(frame.textures.size(), kInvalidFrameTextureId);
+    softwareFrame.textures.reserve(frame.textures.size());
+    for (FrameTextureId textureId = 0; textureId < frame.textures.size(); textureId++) {
+        const FrameTextureBinding& binding = frame.textures[textureId];
+        if (!binding.IsValid() || !binding.texture->HasCpuPixels()) {
+            continue;
+        }
+
+        std::shared_ptr<const Texture> textureSnapshot = GetOrCreateSoftwareTextureSnapshot(*binding.texture);
+        if (!textureSnapshot) {
+            continue;
+        }
+        textureRemap[textureId] = static_cast<FrameTextureId>(softwareFrame.textures.size());
+        softwareFrame.textures.push_back(std::move(textureSnapshot));
+    }
+
+    softwareFrame.items.reserve(frame.items.size());
+    for (const RenderItem& item : frame.items) {
+        if (item.modelIndex < 0 || item.meshIndex < 0) {
+            continue;
+        }
+        if (static_cast<size_t>(item.modelIndex) >= frame.scene->GetModelCount()) {
+            continue;
+        }
+
+        const Model& model = frame.scene->GetModel(static_cast<size_t>(item.modelIndex));
+        if (static_cast<size_t>(item.meshIndex) >= model.GetMeshCount()) {
+            continue;
+        }
+
+        const Mesh& mesh = model.GetMesh(static_cast<size_t>(item.meshIndex));
+        if (mesh.GetVertices().empty() || mesh.GetIndices().empty()) {
+            continue;
+        }
+
+        std::shared_ptr<const SoftwareMeshSnapshot> meshSnapshot = GetOrCreateSoftwareMeshSnapshot(mesh);
+        if (!meshSnapshot) {
+            continue;
+        }
+        SoftwareRenderItem softwareItem{};
+        softwareItem.mesh = std::move(meshSnapshot);
+        softwareItem.worldTransform = item.worldTransform;
+        softwareItem.materialId = item.materialId;
+        if (item.textureId != kInvalidFrameTextureId && item.textureId < textureRemap.size()) {
+            softwareItem.textureId = textureRemap[item.textureId];
+        }
+        softwareFrame.items.push_back(std::move(softwareItem));
+    }
+
+    return softwareFrame;
+}
+
+std::shared_ptr<const SoftwareMeshSnapshot> RenderSystem::GetOrCreateSoftwareMeshSnapshot(const Mesh& mesh) {
+    auto it = m_SoftwareMeshSnapshots.find(&mesh);
+    if (it != m_SoftwareMeshSnapshots.end()) {
+        return it->second;
+    }
+
+    auto snapshot = std::make_shared<SoftwareMeshSnapshot>();
+    snapshot->vertices = mesh.GetVertices();
+    snapshot->indices = mesh.GetIndices();
+    std::shared_ptr<const SoftwareMeshSnapshot> immutableSnapshot = std::move(snapshot);
+    m_SoftwareMeshSnapshots.emplace(&mesh, immutableSnapshot);
+    return immutableSnapshot;
+}
+
+std::shared_ptr<const Texture> RenderSystem::GetOrCreateSoftwareTextureSnapshot(const Texture& texture) {
+    if (!texture.HasCpuPixels()) {
+        return nullptr;
+    }
+
+    auto it = m_SoftwareTextureSnapshots.find(&texture);
+    if (it != m_SoftwareTextureSnapshots.end() && it->second.revision == texture.GetRevision()) {
+        return it->second.texture;
+    }
+
+    auto snapshot = std::make_shared<Texture>(texture.CloneCpuOnly());
+    std::shared_ptr<const Texture> immutableSnapshot = std::move(snapshot);
+    m_SoftwareTextureSnapshots[&texture] = SoftwareTextureSnapshotCacheEntry{texture.GetRevision(), immutableSnapshot};
+    return immutableSnapshot;
+}
+
+void RenderSystem::ClearSoftwareResourceSnapshots() {
+    m_SoftwareMeshSnapshots.clear();
+    m_SoftwareTextureSnapshots.clear();
 }
 
 void RenderSystem::StartSoftwareWorker() {
@@ -309,20 +415,9 @@ void RenderSystem::SubmitSoftwareJob(const FrameSnapshot& frame) {
     assert(p_Stats_ != nullptr && "RenderSystem requires stats");
 
     SoftwareRenderJob job{};
-    job.frame = frame;
-    const size_t overrideTextureCount = std::count_if(
-        job.frame.textures.begin(),
-        job.frame.textures.end(),
-        [](const FrameTextureBinding& binding) {
-            return binding.source == FrameTextureBinding::Source::Override && binding.texture != nullptr;
-        });
-    job.ownedOverrideTextures.reserve(overrideTextureCount);
-    for (FrameTextureBinding& binding : job.frame.textures) {
-        if (binding.source != FrameTextureBinding::Source::Override || binding.texture == nullptr) {
-            continue;
-        }
-        job.ownedOverrideTextures.push_back(binding.texture->CloneCpuOnly());
-        binding.texture = &job.ownedOverrideTextures.back();
+    job.frame = BuildSoftwareFrameSnapshot(frame);
+    if (!job.frame.hasScene) {
+        return;
     }
 
     {
@@ -424,7 +519,8 @@ void RenderSystem::SoftwareWorkerLoop() {
 }
 
 RenderOutput RenderSystem::RenderSoftwareSync(const FrameSnapshot& frame) {
-    p_SWRenderer_->RenderFrame(frame);
+    SoftwareFrameSnapshot softwareFrame = BuildSoftwareFrameSnapshot(frame);
+    p_SWRenderer_->RenderFrame(softwareFrame);
     const auto& buffer = p_SWRenderer_->GetFrameBuffer();
     StoreSoftwareFrame(buffer);
     return MakeSoftwareRenderOutput();

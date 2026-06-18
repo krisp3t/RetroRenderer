@@ -164,20 +164,19 @@ SoftwareMaterialState MakeSoftwareMaterialState(const FrameMaterialState& materi
     return state;
 }
 
-const FrameMaterialState* ResolveFrameMaterial(const FrameSnapshot& frame, FrameMaterialId materialId) {
+const FrameMaterialState* ResolveFrameMaterial(const SoftwareFrameSnapshot& frame, FrameMaterialId materialId) {
     if (materialId == kInvalidFrameMaterialId || materialId >= frame.materials.size()) {
         return nullptr;
     }
     return &frame.materials[materialId];
 }
 
-const Texture* ResolveFrameTexture(const FrameSnapshot& frame, FrameTextureId textureId) {
+const Texture* ResolveFrameTexture(const SoftwareFrameSnapshot& frame, FrameTextureId textureId) {
     if (textureId == kInvalidFrameTextureId || textureId >= frame.textures.size()) {
         return nullptr;
     }
 
-    const FrameTextureBinding& binding = frame.textures[textureId];
-    return binding.IsValid() ? binding.texture : nullptr;
+    return frame.textures[textureId].get();
 }
 
 float ComputeDeferredTriangleSortKey(const std::array<RasterVertex, 3>& vertices, const glm::vec3& cameraPosition) {
@@ -601,7 +600,12 @@ bool SWRenderer::Resize(int w, int h) {
 }
 
 void SWRenderer::RenderFrame(const FrameSnapshot& frame) {
-    if (!frame.scene) {
+    (void)frame;
+    LOGE("SWRenderer::RenderFrame(FrameSnapshot) is not supported. Use SoftwareFrameSnapshot for software rendering.");
+}
+
+void SWRenderer::RenderFrame(const SoftwareFrameSnapshot& frame) {
+    if (!frame.hasScene) {
         return;
     }
 
@@ -617,26 +621,18 @@ void SWRenderer::RenderFrame(const FrameSnapshot& frame) {
         DrawSkybox();
     }
 
-    for (const RenderItem& item : frame.items) {
-        if (item.modelIndex < 0 || item.meshIndex < 0) {
+    for (const SoftwareRenderItem& item : frame.items) {
+        if (!item.mesh) {
             continue;
         }
-        if (static_cast<size_t>(item.modelIndex) >= frame.scene->GetModelCount()) {
-            continue;
-        }
-
-        const Model& model = frame.scene->GetModel(static_cast<size_t>(item.modelIndex));
-        if (static_cast<size_t>(item.meshIndex) >= model.GetMeshCount()) {
-            continue;
-        }
-
         const FrameMaterialState* materialState = ResolveFrameMaterial(frame, item.materialId);
         if (materialState == nullptr) {
             continue;
         }
 
-        DrawMesh(
-            model.GetMesh(static_cast<size_t>(item.meshIndex)),
+        DrawMeshData(
+            item.mesh->vertices,
+            item.mesh->indices,
             item.worldTransform,
             MakeSoftwareMaterialState(*materialState),
             ResolveFrameTexture(frame, item.textureId));
@@ -672,6 +668,15 @@ void SWRenderer::DrawMesh(const Mesh& mesh,
                           const glm::mat4& worldTransform,
                           const SoftwareMaterialState& materialState,
                           const Texture* texture) {
+    const Texture* diffuseTexture = texture != nullptr ? texture : mesh.GetPrimaryTexture();
+    DrawMeshData(mesh.GetVertices(), mesh.GetIndices(), worldTransform, materialState, diffuseTexture);
+}
+
+void SWRenderer::DrawMeshData(const std::vector<Vertex>& vertices,
+                              const std::vector<unsigned int>& indices,
+                              const glm::mat4& worldTransform,
+                              const SoftwareMaterialState& materialState,
+                              const Texture* texture) {
     assert(p_Camera != nullptr && "No active camera set. Did you call SWRenderer::SetActiveCamera()?");
     assert(m_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
     assert(m_DepthBuffer != nullptr && "No depth buffer set. Did you call SWRenderer::Init()?");
@@ -683,9 +688,10 @@ void SWRenderer::DrawMesh(const Mesh& mesh,
     const glm::mat4 n = glm::transpose(glm::inverse(worldTransform));
 
     const auto& cfg = m_FrameConfigSnapshot;
-    const auto& vertices = mesh.GetVertices();
-    const auto& indices = mesh.GetIndices();
-    assert(indices.size() % 3 == 0 && indices.size() == mesh.GetFaceCount() * 3 && "Mesh is not triangulated");
+    if (vertices.empty() || indices.empty() || indices.size() % 3 != 0) {
+        return;
+    }
+    const unsigned int faceCount = static_cast<unsigned int>(indices.size() / 3);
 
     const bool deferPs1Triangles = ShouldDeferPs1Triangles(cfg);
     m_ClipPositionScratch.resize(vertices.size());
@@ -701,9 +707,9 @@ void SWRenderer::DrawMesh(const Mesh& mesh,
         worldPositions[vertexIndex] = glm::vec3(worldTransform * sourceVertex.position);
     }
 
-    const Texture* diffuseTexture = texture != nullptr ? texture : mesh.GetPrimaryTexture();
+    const Texture* diffuseTexture = texture;
     if (deferPs1Triangles) {
-        m_DeferredPs1Triangles.reserve(m_DeferredPs1Triangles.size() + mesh.GetFaceCount());
+        m_DeferredPs1Triangles.reserve(m_DeferredPs1Triangles.size() + faceCount);
     }
 
     const auto submitTriangle = [&](const std::array<RasterVertex, 3>& rasterVertices) {
@@ -729,11 +735,14 @@ void SWRenderer::DrawMesh(const Mesh& mesh,
             diffuseTexture);
     };
 
-    for (unsigned int i = 0; i < mesh.GetFaceCount(); i++) {
+    for (unsigned int i = 0; i < faceCount; i++) {
         const unsigned int baseIndex = i * 3;
         const unsigned int i0 = indices[baseIndex];
         const unsigned int i1 = indices[baseIndex + 1];
         const unsigned int i2 = indices[baseIndex + 2];
+        if (i0 >= vertices.size() || i1 >= vertices.size() || i2 >= vertices.size()) {
+            continue;
+        }
         const glm::vec4& clipPos0 = clipPositions[i0];
         const glm::vec4& clipPos1 = clipPositions[i1];
         const glm::vec4& clipPos2 = clipPositions[i2];
