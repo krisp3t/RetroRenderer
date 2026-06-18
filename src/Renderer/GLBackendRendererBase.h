@@ -47,6 +47,16 @@ class GLBackendRendererBase : public IHardwareRenderer {
                   const Texture* texture,
                   const FrameMaterialState& materialState,
                   const Config& configSnapshot);
+    void DrawMesh(const RenderMeshSnapshot& mesh,
+                  const glm::mat4& worldTransform,
+                  const Texture* texture,
+                  const FrameMaterialState& materialState,
+                  const Config& configSnapshot);
+    void DrawMeshGpuResources(const GLMeshResourceCache::MeshGpuResources& gpuMesh,
+                              const glm::mat4& worldTransform,
+                              const Texture* texture,
+                              const FrameMaterialState& materialState,
+                              const Config& configSnapshot);
 
     virtual std::string_view GetShaderPrefix() const = 0;
     virtual const char* GetRendererLogLabel() const = 0;

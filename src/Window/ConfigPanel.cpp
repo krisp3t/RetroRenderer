@@ -1309,7 +1309,7 @@ void ConfigPanel::DisplayMetricsOverlay() {
             ImGui::Text("Output: %.1f FPS, age %.3f ms", swOutputFps, outputAgeMs);
             ImGui::Text("Last present interval: %.3f ms",
                         ReadTimingMilliseconds(p_stats_->lastSoftwareFramePresentIntervalNs));
-            ImGui::Text("Snapshot build: %.3f ms", ReadTimingMilliseconds(p_stats_->lastSoftwareFrameSnapshotBuildNs));
+            ImGui::Text("Packet copy: %.3f ms", ReadTimingMilliseconds(p_stats_->lastSoftwarePacketCopyNs));
             ImGui::Text("Worker render/copy: %.3f / %.3f ms",
                         ReadTimingMilliseconds(p_stats_->lastSoftwareWorkerRenderNs),
                         ReadTimingMilliseconds(p_stats_->lastSoftwareWorkerCopyNs));

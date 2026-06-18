@@ -124,7 +124,7 @@ void Engine::ProcessFrame() {
         p_stats_->lastFrameSnapshotBuildNs.store(0, std::memory_order_relaxed);
         p_stats_->lastRenderSystemNs.store(0, std::memory_order_relaxed);
         p_stats_->lastGlRenderNs.store(0, std::memory_order_relaxed);
-        p_stats_->lastSoftwareFrameSnapshotBuildNs.store(0, std::memory_order_relaxed);
+        p_stats_->lastSoftwarePacketCopyNs.store(0, std::memory_order_relaxed);
 
         const auto beforeFrameStart = TimingClock::now();
         m_DisplaySystem.BeforeFrame();

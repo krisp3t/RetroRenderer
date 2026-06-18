@@ -53,7 +53,7 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
 
   private:
     struct SoftwareRenderJob {
-        SoftwareFrameSnapshot frame;
+        FrameSnapshot frame;
         uint64_t jobId = 0;
     };
 
@@ -68,10 +68,9 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
 
     void StartSoftwareWorker();
     void StopSoftwareWorker();
-    [[nodiscard]] SoftwareFrameSnapshot BuildSoftwareFrameSnapshot(const FrameSnapshot& frame);
-    [[nodiscard]] std::shared_ptr<const SoftwareMeshSnapshot> GetOrCreateSoftwareMeshSnapshot(const Mesh& mesh);
-    [[nodiscard]] std::shared_ptr<const Texture> GetOrCreateSoftwareTextureSnapshot(const Texture& texture);
-    void ClearSoftwareResourceSnapshots();
+    [[nodiscard]] std::shared_ptr<const RenderMeshSnapshot> GetOrCreateRenderMeshSnapshot(const Mesh& mesh);
+    [[nodiscard]] std::shared_ptr<const Texture> GetOrCreateRenderTextureSnapshot(const Texture& texture);
+    void ClearRenderResourceSnapshots();
     void SubmitSoftwareJob(const FrameSnapshot& frame);
     void PresentCompletedSoftwareFrame();
     void RecordSoftwareFramePresented();
@@ -91,12 +90,12 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
 
     std::unique_ptr<IFramePresenter> m_GLFramePresenter;
     FrameSnapshot m_FrameSnapshotScratch;
-    std::unordered_map<const Mesh*, std::shared_ptr<const SoftwareMeshSnapshot>> m_SoftwareMeshSnapshots;
-    struct SoftwareTextureSnapshotCacheEntry {
+    std::unordered_map<const Mesh*, std::shared_ptr<const RenderMeshSnapshot>> m_RenderMeshSnapshots;
+    struct RenderTextureSnapshotCacheEntry {
         uint64_t revision = 0;
         std::shared_ptr<const Texture> texture;
     };
-    std::unordered_map<const Texture*, SoftwareTextureSnapshotCacheEntry> m_SoftwareTextureSnapshots;
+    std::unordered_map<const Texture*, RenderTextureSnapshotCacheEntry> m_RenderTextureSnapshots;
     SoftwareCompletedFrame m_PresentedSoftwareFrame;
     Color m_SoftwareClearColor = Color::DefaultBackground();
     bool m_IsDestroyed = false;

@@ -22,8 +22,7 @@ const Texture* ResolveFrameTexture(const FrameSnapshot& frame, FrameTextureId te
         return nullptr;
     }
 
-    const FrameTextureBinding& binding = frame.textures[textureId];
-    return binding.IsValid() ? binding.texture : nullptr;
+    return frame.textures[textureId].get();
 }
 
 const GLMeshUniformLocations& GLProgramUniformCache::GetMeshProgram(GLuint program) {

@@ -164,14 +164,14 @@ SoftwareMaterialState MakeSoftwareMaterialState(const FrameMaterialState& materi
     return state;
 }
 
-const FrameMaterialState* ResolveFrameMaterial(const SoftwareFrameSnapshot& frame, FrameMaterialId materialId) {
+const FrameMaterialState* ResolveFrameMaterial(const FrameSnapshot& frame, FrameMaterialId materialId) {
     if (materialId == kInvalidFrameMaterialId || materialId >= frame.materials.size()) {
         return nullptr;
     }
     return &frame.materials[materialId];
 }
 
-const Texture* ResolveFrameTexture(const SoftwareFrameSnapshot& frame, FrameTextureId textureId) {
+const Texture* ResolveFrameTexture(const FrameSnapshot& frame, FrameTextureId textureId) {
     if (textureId == kInvalidFrameTextureId || textureId >= frame.textures.size()) {
         return nullptr;
     }
@@ -600,11 +600,6 @@ bool SWRenderer::Resize(int w, int h) {
 }
 
 void SWRenderer::RenderFrame(const FrameSnapshot& frame) {
-    (void)frame;
-    LOGE("SWRenderer::RenderFrame(FrameSnapshot) is not supported. Use SoftwareFrameSnapshot for software rendering.");
-}
-
-void SWRenderer::RenderFrame(const SoftwareFrameSnapshot& frame) {
     if (!frame.hasScene) {
         return;
     }
@@ -621,7 +616,7 @@ void SWRenderer::RenderFrame(const SoftwareFrameSnapshot& frame) {
         DrawSkybox();
     }
 
-    for (const SoftwareRenderItem& item : frame.items) {
+    for (const RenderItem& item : frame.items) {
         if (!item.mesh) {
             continue;
         }

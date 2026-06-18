@@ -11,6 +11,7 @@
 #include <cassert>
 #include <chrono>
 #include <cstring>
+#include <unordered_map>
 #include <utility>
 
 namespace RetroRenderer {
@@ -111,24 +112,21 @@ void RenderSystem::BeforeFrame(const Color& clearColor) {
 
 const FrameSnapshot& RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scene>& scene, const Camera& camera) {
     FrameSnapshot& frame = m_FrameSnapshotScratch;
+    frame.hasScene = false;
+    frame.lights.clear();
+    frame.materials.clear();
+    frame.textures.clear();
+    frame.items.clear();
     if (!scene) {
-        frame.scene.reset();
-        frame.lights.clear();
-        frame.materials.clear();
-        frame.textures.clear();
-        frame.items.clear();
         return frame;
     }
 
     assert(p_Config_ != nullptr && "RenderSystem requires a config instance");
     const auto& currentMaterial = m_MaterialManager.GetCurrentMaterial();
 
-    frame.scene = scene;
+    frame.hasScene = true;
     frame.camera = camera;
     scene->BuildLightSnapshots(frame.lights);
-    frame.materials.clear();
-    frame.textures.clear();
-    frame.items.clear();
     frame.configSnapshot = *p_Config_;
     frame.clearColor = p_Config_->renderer.clearColor;
     frame.dataRevision = m_FrameDataRevision;
@@ -139,21 +137,21 @@ const FrameSnapshot& RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scen
 
     const Texture* overrideTexture =
         currentMaterial.texture.has_value() && currentMaterial.texture->HasCpuPixels() ? &*currentMaterial.texture : nullptr;
-    const auto captureTextureId = [&](const Texture* texture, FrameTextureBinding::Source source) -> FrameTextureId {
-        if (texture == nullptr) {
+    const auto captureTextureId = [&](const Texture* texture) -> FrameTextureId {
+        if (texture == nullptr || !texture->HasCpuPixels()) {
             return kInvalidFrameTextureId;
         }
-        for (FrameTextureId textureId = 0; textureId < frame.textures.size(); textureId++) {
-            if (frame.textures[textureId].texture == texture) {
-                return textureId;
-            }
+
+        std::shared_ptr<const Texture> textureSnapshot = GetOrCreateRenderTextureSnapshot(*texture);
+        if (!textureSnapshot) {
+            return kInvalidFrameTextureId;
         }
 
         const FrameTextureId textureId = static_cast<FrameTextureId>(frame.textures.size());
-        frame.textures.push_back(FrameTextureBinding{source, texture});
+        frame.textures.push_back(std::move(textureSnapshot));
         return textureId;
     };
-    const FrameTextureId overrideTextureId = captureTextureId(overrideTexture, FrameTextureBinding::Source::Override);
+    const FrameTextureId overrideTextureId = captureTextureId(overrideTexture);
 
     const auto& visibleModels = scene->GetVisibleModels();
     size_t renderItemCount = 0;
@@ -165,6 +163,24 @@ const FrameSnapshot& RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scen
     }
     frame.textures.reserve(std::max<size_t>(frame.textures.capacity(), std::min(renderItemCount, size_t{8})));
     frame.items.reserve(renderItemCount);
+    std::unordered_map<const Texture*, FrameTextureId> textureIds;
+    if (overrideTexture != nullptr && overrideTextureId != kInvalidFrameTextureId) {
+        textureIds.emplace(overrideTexture, overrideTextureId);
+    }
+    const auto getTextureId = [&](const Texture* texture) -> FrameTextureId {
+        if (texture == nullptr || !texture->HasCpuPixels()) {
+            return kInvalidFrameTextureId;
+        }
+        auto it = textureIds.find(texture);
+        if (it != textureIds.end()) {
+            return it->second;
+        }
+        const FrameTextureId textureId = captureTextureId(texture);
+        if (textureId != kInvalidFrameTextureId) {
+            textureIds.emplace(texture, textureId);
+        }
+        return textureId;
+    };
 
     for (int modelIx : visibleModels) {
         if (modelIx < 0 || static_cast<size_t>(modelIx) >= scene->GetModelCount()) {
@@ -178,15 +194,19 @@ const FrameSnapshot& RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scen
                 continue;
             }
 
+            std::shared_ptr<const RenderMeshSnapshot> meshSnapshot = GetOrCreateRenderMeshSnapshot(mesh);
+            if (!meshSnapshot) {
+                continue;
+            }
+
             RenderItem item{};
-            item.modelIndex = modelIx;
-            item.meshIndex = static_cast<int>(meshIx);
+            item.mesh = std::move(meshSnapshot);
             item.worldTransform = model.GetWorldTransform();
             item.materialId = sharedMaterialId;
             item.textureId =
                 overrideTextureId != kInvalidFrameTextureId
                     ? overrideTextureId
-                    : captureTextureId(mesh.GetPrimaryTexture(), FrameTextureBinding::Source::Scene);
+                    : getTextureId(mesh.GetPrimaryTexture());
             frame.items.push_back(item);
         }
     }
@@ -195,7 +215,7 @@ const FrameSnapshot& RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scen
 }
 
 RenderOutput RenderSystem::Render(const FrameSnapshot& frame) {
-    assert(frame.scene != nullptr && "Render called with null scene");
+    assert(frame.hasScene && "Render called with empty frame packet");
     assert(p_Stats_ != nullptr && "RenderSystem requires stats");
     const auto renderSystemStart = TimingClock::now();
     p_Stats_->Reset();
@@ -215,7 +235,7 @@ RenderOutput RenderSystem::Render(const FrameSnapshot& frame) {
 #endif
     }
 
-    p_Stats_->lastSoftwareFrameSnapshotBuildNs.store(0, std::memory_order_relaxed);
+    p_Stats_->lastSoftwarePacketCopyNs.store(0, std::memory_order_relaxed);
     const auto glRenderStart = TimingClock::now();
     p_activeRenderer_->RenderFrame(frame);
     p_Stats_->lastGlRenderNs.store(ElapsedNanoseconds(glRenderStart), std::memory_order_relaxed);
@@ -251,7 +271,7 @@ void RenderSystem::Destroy() {
     m_IsDestroyed = true;
 
     StopSoftwareWorker();
-    ClearSoftwareResourceSnapshots();
+    ClearRenderResourceSnapshots();
     if (p_GLRenderer_) {
         p_GLRenderer_->Destroy();
     }
@@ -266,13 +286,13 @@ void RenderSystem::Destroy() {
 void RenderSystem::OnLoadScene(const SceneLoadEvent& e) {
     (void)e;
     p_GLRenderer_->InvalidateSceneResources();
-    ClearSoftwareResourceSnapshots();
+    ClearRenderResourceSnapshots();
     ++m_FrameDataRevision;
 }
 
 void RenderSystem::OnResetScene() {
     p_GLRenderer_->InvalidateSceneResources();
-    ClearSoftwareResourceSnapshots();
+    ClearRenderResourceSnapshots();
     ++m_FrameDataRevision;
 }
 
@@ -282,7 +302,7 @@ void RenderSystem::OnSceneMutated() {
 
 void RenderSystem::OnTextureMutated() {
     p_GLRenderer_->InvalidateTextureResources();
-    m_SoftwareTextureSnapshots.clear();
+    m_RenderTextureSnapshots.clear();
     ++m_FrameDataRevision;
 }
 
@@ -304,105 +324,39 @@ void RenderSystem::ClearSoftwareWorkerFrameState() {
     }
 }
 
-SoftwareFrameSnapshot RenderSystem::BuildSoftwareFrameSnapshot(const FrameSnapshot& frame) {
-    SoftwareFrameSnapshot softwareFrame;
-    if (!frame.scene) {
-        return softwareFrame;
-    }
-
-    softwareFrame.hasScene = true;
-    softwareFrame.camera = frame.camera;
-    softwareFrame.lights = frame.lights;
-    softwareFrame.materials = frame.materials;
-    softwareFrame.configSnapshot = frame.configSnapshot;
-    softwareFrame.clearColor = frame.clearColor;
-    softwareFrame.dataRevision = frame.dataRevision;
-
-    std::vector<FrameTextureId> textureRemap(frame.textures.size(), kInvalidFrameTextureId);
-    softwareFrame.textures.reserve(frame.textures.size());
-    for (FrameTextureId textureId = 0; textureId < frame.textures.size(); textureId++) {
-        const FrameTextureBinding& binding = frame.textures[textureId];
-        if (!binding.IsValid() || !binding.texture->HasCpuPixels()) {
-            continue;
-        }
-
-        std::shared_ptr<const Texture> textureSnapshot = GetOrCreateSoftwareTextureSnapshot(*binding.texture);
-        if (!textureSnapshot) {
-            continue;
-        }
-        textureRemap[textureId] = static_cast<FrameTextureId>(softwareFrame.textures.size());
-        softwareFrame.textures.push_back(std::move(textureSnapshot));
-    }
-
-    softwareFrame.items.reserve(frame.items.size());
-    for (const RenderItem& item : frame.items) {
-        if (item.modelIndex < 0 || item.meshIndex < 0) {
-            continue;
-        }
-        if (static_cast<size_t>(item.modelIndex) >= frame.scene->GetModelCount()) {
-            continue;
-        }
-
-        const Model& model = frame.scene->GetModel(static_cast<size_t>(item.modelIndex));
-        if (static_cast<size_t>(item.meshIndex) >= model.GetMeshCount()) {
-            continue;
-        }
-
-        const Mesh& mesh = model.GetMesh(static_cast<size_t>(item.meshIndex));
-        if (mesh.GetVertices().empty() || mesh.GetIndices().empty()) {
-            continue;
-        }
-
-        std::shared_ptr<const SoftwareMeshSnapshot> meshSnapshot = GetOrCreateSoftwareMeshSnapshot(mesh);
-        if (!meshSnapshot) {
-            continue;
-        }
-        SoftwareRenderItem softwareItem{};
-        softwareItem.mesh = std::move(meshSnapshot);
-        softwareItem.worldTransform = item.worldTransform;
-        softwareItem.materialId = item.materialId;
-        if (item.textureId != kInvalidFrameTextureId && item.textureId < textureRemap.size()) {
-            softwareItem.textureId = textureRemap[item.textureId];
-        }
-        softwareFrame.items.push_back(std::move(softwareItem));
-    }
-
-    return softwareFrame;
-}
-
-std::shared_ptr<const SoftwareMeshSnapshot> RenderSystem::GetOrCreateSoftwareMeshSnapshot(const Mesh& mesh) {
-    auto it = m_SoftwareMeshSnapshots.find(&mesh);
-    if (it != m_SoftwareMeshSnapshots.end()) {
+std::shared_ptr<const RenderMeshSnapshot> RenderSystem::GetOrCreateRenderMeshSnapshot(const Mesh& mesh) {
+    auto it = m_RenderMeshSnapshots.find(&mesh);
+    if (it != m_RenderMeshSnapshots.end()) {
         return it->second;
     }
 
-    auto snapshot = std::make_shared<SoftwareMeshSnapshot>();
+    auto snapshot = std::make_shared<RenderMeshSnapshot>();
     snapshot->vertices = mesh.GetVertices();
     snapshot->indices = mesh.GetIndices();
-    std::shared_ptr<const SoftwareMeshSnapshot> immutableSnapshot = std::move(snapshot);
-    m_SoftwareMeshSnapshots.emplace(&mesh, immutableSnapshot);
+    std::shared_ptr<const RenderMeshSnapshot> immutableSnapshot = std::move(snapshot);
+    m_RenderMeshSnapshots.emplace(&mesh, immutableSnapshot);
     return immutableSnapshot;
 }
 
-std::shared_ptr<const Texture> RenderSystem::GetOrCreateSoftwareTextureSnapshot(const Texture& texture) {
+std::shared_ptr<const Texture> RenderSystem::GetOrCreateRenderTextureSnapshot(const Texture& texture) {
     if (!texture.HasCpuPixels()) {
         return nullptr;
     }
 
-    auto it = m_SoftwareTextureSnapshots.find(&texture);
-    if (it != m_SoftwareTextureSnapshots.end() && it->second.revision == texture.GetRevision()) {
+    auto it = m_RenderTextureSnapshots.find(&texture);
+    if (it != m_RenderTextureSnapshots.end() && it->second.revision == texture.GetRevision()) {
         return it->second.texture;
     }
 
     auto snapshot = std::make_shared<Texture>(texture.CloneCpuOnly());
     std::shared_ptr<const Texture> immutableSnapshot = std::move(snapshot);
-    m_SoftwareTextureSnapshots[&texture] = SoftwareTextureSnapshotCacheEntry{texture.GetRevision(), immutableSnapshot};
+    m_RenderTextureSnapshots[&texture] = RenderTextureSnapshotCacheEntry{texture.GetRevision(), immutableSnapshot};
     return immutableSnapshot;
 }
 
-void RenderSystem::ClearSoftwareResourceSnapshots() {
-    m_SoftwareMeshSnapshots.clear();
-    m_SoftwareTextureSnapshots.clear();
+void RenderSystem::ClearRenderResourceSnapshots() {
+    m_RenderMeshSnapshots.clear();
+    m_RenderTextureSnapshots.clear();
 }
 
 void RenderSystem::StartSoftwareWorker() {
@@ -439,7 +393,7 @@ void RenderSystem::StopSoftwareWorker() {
 
 void RenderSystem::SubmitSoftwareJob(const FrameSnapshot& frame) {
 #if !defined(__EMSCRIPTEN__)
-    if (!frame.scene) {
+    if (!frame.hasScene) {
         return;
     }
     assert(p_Stats_ != nullptr && "RenderSystem requires stats");
@@ -453,9 +407,9 @@ void RenderSystem::SubmitSoftwareJob(const FrameSnapshot& frame) {
     }
 
     SoftwareRenderJob job{};
-    const auto softwareSnapshotStart = TimingClock::now();
-    job.frame = BuildSoftwareFrameSnapshot(frame);
-    p_Stats_->lastSoftwareFrameSnapshotBuildNs.store(ElapsedNanoseconds(softwareSnapshotStart), std::memory_order_relaxed);
+    const auto softwarePacketCopyStart = TimingClock::now();
+    job.frame = frame;
+    p_Stats_->lastSoftwarePacketCopyNs.store(ElapsedNanoseconds(softwarePacketCopyStart), std::memory_order_relaxed);
     if (!job.frame.hasScene) {
         return;
     }
@@ -576,12 +530,10 @@ void RenderSystem::SoftwareWorkerLoop() {
 }
 
 RenderOutput RenderSystem::RenderSoftwareSync(const FrameSnapshot& frame) {
-    const auto softwareSnapshotStart = TimingClock::now();
-    SoftwareFrameSnapshot softwareFrame = BuildSoftwareFrameSnapshot(frame);
-    p_Stats_->lastSoftwareFrameSnapshotBuildNs.store(ElapsedNanoseconds(softwareSnapshotStart), std::memory_order_relaxed);
+    p_Stats_->lastSoftwarePacketCopyNs.store(0, std::memory_order_relaxed);
 
     const auto workerRenderStart = TimingClock::now();
-    p_SWRenderer_->RenderFrame(softwareFrame);
+    p_SWRenderer_->RenderFrame(frame);
     p_Stats_->lastSoftwareWorkerRenderNs.store(ElapsedNanoseconds(workerRenderStart), std::memory_order_relaxed);
 
     const auto workerCopyStart = TimingClock::now();

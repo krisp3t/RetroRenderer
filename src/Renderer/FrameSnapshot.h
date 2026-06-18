@@ -4,7 +4,6 @@
 #include "../Base/Config.h"
 #include "../Scene/Camera.h"
 #include "../Scene/Light.h"
-#include "../Scene/Scene.h"
 #include "../Scene/Texture.h"
 #include "../Scene/Vertex.h"
 #include "ShaderHandle.h"
@@ -30,71 +29,32 @@ struct FrameMaterialState {
     float shininess = 32.0f;
 };
 
-struct FrameTextureBinding {
-    enum class Source : uint8_t {
-        None,
-        Scene,
-        Override,
-    };
-
-    Source source = Source::None;
-    const Texture* texture = nullptr;
-
-    [[nodiscard]] bool IsValid() const {
-        return texture != nullptr;
-    }
+struct RenderMeshSnapshot {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
 };
 
 struct RenderItem {
-    int modelIndex = -1;
-    int meshIndex = -1;
+    std::shared_ptr<const RenderMeshSnapshot> mesh;
     glm::mat4 worldTransform = glm::mat4(1.0f);
     FrameMaterialId materialId = kInvalidFrameMaterialId;
     FrameTextureId textureId = kInvalidFrameTextureId;
 };
 
-struct FrameSnapshot {
-    std::shared_ptr<const Scene> scene;
+// Renderer input packet. It is intentionally detached from live Scene state so
+// renderer work can safely run later or on another thread.
+struct RenderPacket {
+    bool hasScene = false;
     Camera camera;
     std::vector<LightSnapshot> lights;
     std::vector<FrameMaterialState> materials;
-    std::vector<FrameTextureBinding> textures;
+    std::vector<std::shared_ptr<const Texture>> textures;
     std::vector<RenderItem> items;
     Config configSnapshot{};
     Color clearColor{};
     uint64_t dataRevision = 0;
 };
 
-// Software jobs may outlive the scene frame that submitted them. Keep worker
-// input limited to immutable CPU resource snapshots and copied per-frame state.
-struct SoftwareMeshSnapshot {
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
-};
-
-struct SoftwareRenderItem {
-    std::shared_ptr<const SoftwareMeshSnapshot> mesh;
-    glm::mat4 worldTransform = glm::mat4(1.0f);
-    FrameMaterialId materialId = kInvalidFrameMaterialId;
-    FrameTextureId textureId = kInvalidFrameTextureId;
-};
-
-struct SoftwareFrameSnapshot {
-    bool hasScene = false;
-    Camera camera;
-    std::vector<LightSnapshot> lights;
-    std::vector<FrameMaterialState> materials;
-    std::vector<std::shared_ptr<const Texture>> textures;
-    std::vector<SoftwareRenderItem> items;
-    Config configSnapshot{};
-    Color clearColor{};
-    uint64_t dataRevision = 0;
-
-    SoftwareFrameSnapshot() = default;
-    SoftwareFrameSnapshot(const SoftwareFrameSnapshot&) = delete;
-    SoftwareFrameSnapshot& operator=(const SoftwareFrameSnapshot&) = delete;
-    SoftwareFrameSnapshot(SoftwareFrameSnapshot&&) noexcept = default;
-    SoftwareFrameSnapshot& operator=(SoftwareFrameSnapshot&&) noexcept = default;
-};
+using FrameSnapshot = RenderPacket;
 
 } // namespace RetroRenderer

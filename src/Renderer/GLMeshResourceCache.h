@@ -2,6 +2,7 @@
 
 #include "../Scene/Mesh.h"
 #include "../Scene/Vertex.h"
+#include "FrameSnapshot.h"
 #include "../include/kris_glheaders.h"
 #include <KrisLogger/Logger.h>
 #include <cstddef>
@@ -24,48 +25,11 @@ class GLMeshResourceCache {
     GLMeshResourceCache& operator=(const GLMeshResourceCache&) = delete;
 
     const MeshGpuResources& GetOrCreate(const Mesh& mesh) {
-        auto it = m_Resources.find(&mesh);
-        if (it != m_Resources.end()) {
-            return it->second;
-        }
+        return GetOrCreate(&mesh, mesh.GetVertices(), mesh.GetIndices());
+    }
 
-        MeshGpuResources resources{};
-        resources.indexCount = static_cast<GLsizei>(mesh.m_Indices.size());
-
-        glGenVertexArrays(1, &resources.vao);
-        glGenBuffers(1, &resources.vbo);
-        glGenBuffers(1, &resources.ebo);
-
-        glBindVertexArray(resources.vao);
-
-        glBindBuffer(GL_ARRAY_BUFFER, resources.vbo);
-        glBufferData(
-            GL_ARRAY_BUFFER,
-            static_cast<GLsizeiptr>(mesh.m_Vertices.size() * sizeof(Vertex)),
-            mesh.m_Vertices.data(),
-            GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, resources.ebo);
-        glBufferData(
-            GL_ELEMENT_ARRAY_BUFFER,
-            static_cast<GLsizeiptr>(mesh.m_Indices.size() * sizeof(unsigned int)),
-            mesh.m_Indices.data(),
-            GL_STATIC_DRAW);
-
-        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, position)));
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, normal)));
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, texCoords)));
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, color)));
-        glEnableVertexAttribArray(3);
-
-        glBindVertexArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        LOGD("Created GL mesh resources: %zu verts, %zu indices", mesh.m_Vertices.size(), mesh.m_Indices.size());
-        return m_Resources.emplace(&mesh, resources).first->second;
+    const MeshGpuResources& GetOrCreate(const RenderMeshSnapshot& mesh) {
+        return GetOrCreate(&mesh, mesh.vertices, mesh.indices);
     }
 
     void Clear() {
@@ -85,7 +49,54 @@ class GLMeshResourceCache {
     }
 
   private:
-    std::unordered_map<const Mesh*, MeshGpuResources> m_Resources;
+    const MeshGpuResources& GetOrCreate(const void* key,
+                                        const std::vector<Vertex>& vertices,
+                                        const std::vector<unsigned int>& indices) {
+        auto it = m_Resources.find(key);
+        if (it != m_Resources.end()) {
+            return it->second;
+        }
+
+        MeshGpuResources resources{};
+        resources.indexCount = static_cast<GLsizei>(indices.size());
+
+        glGenVertexArrays(1, &resources.vao);
+        glGenBuffers(1, &resources.vbo);
+        glGenBuffers(1, &resources.ebo);
+
+        glBindVertexArray(resources.vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, resources.vbo);
+        glBufferData(
+            GL_ARRAY_BUFFER,
+            static_cast<GLsizeiptr>(vertices.size() * sizeof(Vertex)),
+            vertices.data(),
+            GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, resources.ebo);
+        glBufferData(
+            GL_ELEMENT_ARRAY_BUFFER,
+            static_cast<GLsizeiptr>(indices.size() * sizeof(unsigned int)),
+            indices.data(),
+            GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, position)));
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, normal)));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, texCoords)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, color)));
+        glEnableVertexAttribArray(3);
+
+        glBindVertexArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        LOGD("Created GL mesh resources: %zu verts, %zu indices", vertices.size(), indices.size());
+        return m_Resources.emplace(key, resources).first->second;
+    }
+
+    std::unordered_map<const void*, MeshGpuResources> m_Resources;
 };
 
 } // namespace RetroRenderer

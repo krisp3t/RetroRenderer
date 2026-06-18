@@ -1,4 +1,5 @@
 #include "GLBackendRendererBase.h"
+#include "../Scene/Model.h"
 
 #include <KrisLogger/Logger.h>
 #include <cassert>
@@ -195,7 +196,7 @@ void GLBackendRendererBase::InvalidateTextureResources() {
 }
 
 void GLBackendRendererBase::RenderFrame(const FrameSnapshot& frame) {
-    if (!frame.scene) {
+    if (!frame.hasScene) {
         return;
     }
 
@@ -211,15 +212,7 @@ void GLBackendRendererBase::RenderFrame(const FrameSnapshot& frame) {
     }
 
     for (const RenderItem& item : frame.items) {
-        if (item.modelIndex < 0 || item.meshIndex < 0) {
-            continue;
-        }
-        if (static_cast<size_t>(item.modelIndex) >= frame.scene->GetModelCount()) {
-            continue;
-        }
-
-        const Model& model = frame.scene->GetModel(static_cast<size_t>(item.modelIndex));
-        if (static_cast<size_t>(item.meshIndex) >= model.GetMeshCount()) {
+        if (!item.mesh) {
             continue;
         }
 
@@ -228,8 +221,7 @@ void GLBackendRendererBase::RenderFrame(const FrameSnapshot& frame) {
             continue;
         }
 
-        const Mesh& mesh = model.GetMesh(static_cast<size_t>(item.meshIndex));
-        DrawMesh(mesh, item.worldTransform, ResolveFrameTexture(frame, item.textureId), *materialState, frame.configSnapshot);
+        DrawMesh(*item.mesh, item.worldTransform, ResolveFrameTexture(frame, item.textureId), *materialState, frame.configSnapshot);
     }
 
     RenderBackendOverlays();
@@ -257,6 +249,22 @@ void GLBackendRendererBase::DrawMesh(const Mesh& mesh,
                                      const Texture* texture,
                                      const FrameMaterialState& materialState,
                                      const Config& configSnapshot) {
+    DrawMeshGpuResources(m_MeshResources.GetOrCreate(mesh), worldTransform, texture, materialState, configSnapshot);
+}
+
+void GLBackendRendererBase::DrawMesh(const RenderMeshSnapshot& mesh,
+                                     const glm::mat4& worldTransform,
+                                     const Texture* texture,
+                                     const FrameMaterialState& materialState,
+                                     const Config& configSnapshot) {
+    DrawMeshGpuResources(m_MeshResources.GetOrCreate(mesh), worldTransform, texture, materialState, configSnapshot);
+}
+
+void GLBackendRendererBase::DrawMeshGpuResources(const GLMeshResourceCache::MeshGpuResources& gpuMesh,
+                                                 const glm::mat4& worldTransform,
+                                                 const Texture* texture,
+                                                 const FrameMaterialState& materialState,
+                                                 const Config& configSnapshot) {
     const GLuint shaderProgram = ToGLHandle(materialState.shaderHandle);
     if (shaderProgram == 0 || m_ActiveCamera == nullptr) {
         return;
@@ -317,7 +325,6 @@ void GLBackendRendererBase::DrawMesh(const Mesh& mesh,
         glUniform1i(uniforms.texture, 0);
     }
 
-    const auto& gpuMesh = m_MeshResources.GetOrCreate(mesh);
     glBindVertexArray(gpuMesh.vao);
     glDrawElements(GL_TRIANGLES, gpuMesh.indexCount, GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);

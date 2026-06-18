@@ -20,7 +20,6 @@ class SWRenderer : public IRenderer {
     bool Init(int w, int h);
     bool Resize(int w, int h);
     void RenderFrame(const FrameSnapshot& frame) override;
-    void RenderFrame(const SoftwareFrameSnapshot& frame);
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
     void SetFrameConfig(const Config& config);
