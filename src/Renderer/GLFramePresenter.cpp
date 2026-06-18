@@ -10,11 +10,12 @@ GLint TextureFilter(bool nearestNeighbor) {
 }
 
 GLint TextureInternalFormat() {
-#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
     return GL_RGBA8;
-#else
-    return GL_RGBA;
-#endif
+}
+
+void ClearPendingGlErrors() {
+    while (glGetError() != GL_NO_ERROR) {
+    }
 }
 } // namespace
 
@@ -102,10 +103,15 @@ bool GLFramePresenter::CreateTexture(int width, int height, bool nearestNeighbor
     m_Height = height;
     m_NearestNeighbor = nearestNeighbor;
 
+    ClearPendingGlErrors();
     glBindTexture(GL_TEXTURE_2D, m_TextureId);
-    ApplyFiltering(nearestNeighbor);
+    const GLint filter = TextureFilter(nearestNeighbor);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage2D(
         GL_TEXTURE_2D,
         0,
@@ -116,6 +122,13 @@ bool GLFramePresenter::CreateTexture(int width, int height, bool nearestNeighbor
         GL_RGBA,
         GL_UNSIGNED_BYTE,
         nullptr);
+    const GLenum textureError = glGetError();
+    if (textureError != GL_NO_ERROR) {
+        LOGE("Failed to allocate frame presenter texture %d x %d (error=0x%x)", width, height, textureError);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        Destroy();
+        return false;
+    }
     glBindTexture(GL_TEXTURE_2D, 0);
     return true;
 }

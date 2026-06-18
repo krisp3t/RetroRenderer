@@ -6,6 +6,16 @@
 #include <imgui.h>
 
 namespace RetroRenderer {
+namespace {
+
+void LogOpenGlExtensions() {
+    GLint extensionCount = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount);
+    LOGI("OpenGL extension count: %d", extensionCount);
+}
+
+} // namespace
+
 SDL_Window* DisplaySystem::GetWindow() const {
     return m_window_;
 }
@@ -88,7 +98,7 @@ bool DisplaySystem::Init(const std::shared_ptr<Config>& config, const std::share
     LOGI("OpenGL Renderer:  %s", glGetString(GL_RENDERER));
     LOGI("OpenGL Version:   %s", glGetString(GL_VERSION));
     LOGI("GLSL Version:     %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
-    LOGI("OpenGL extensions:     %s", glGetString(GL_EXTENSIONS));
+    LogOpenGlExtensions();
     int contextFlags;
     glGetIntegerv(GL_CONTEXT_FLAGS, &contextFlags);
     if (contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT) {

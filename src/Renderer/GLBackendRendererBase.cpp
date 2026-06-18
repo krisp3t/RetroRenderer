@@ -20,6 +20,51 @@ const char* ShaderTypeName(GLenum shaderType) {
     }
 }
 
+const char* FramebufferStatusName(GLenum status) {
+    switch (status) {
+    case GL_FRAMEBUFFER_COMPLETE:
+        return "GL_FRAMEBUFFER_COMPLETE";
+    case GL_FRAMEBUFFER_UNDEFINED:
+        return "GL_FRAMEBUFFER_UNDEFINED";
+    case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+        return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
+    case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+        return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
+#ifndef __EMSCRIPTEN__
+    case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+        return "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
+    case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+        return "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
+#endif
+    case GL_FRAMEBUFFER_UNSUPPORTED:
+        return "GL_FRAMEBUFFER_UNSUPPORTED";
+    case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+        return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
+#if defined(GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS)
+    case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+        return "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
+#endif
+    default:
+        return "GL_FRAMEBUFFER_STATUS_UNKNOWN";
+    }
+}
+
+GLenum DepthAttachmentStorageFormat() {
+#if defined(__EMSCRIPTEN__)
+    return GL_DEPTH_COMPONENT16;
+#else
+    return GL_DEPTH24_STENCIL8;
+#endif
+}
+
+GLenum DepthAttachmentTarget() {
+#if defined(__EMSCRIPTEN__)
+    return GL_DEPTH_ATTACHMENT;
+#else
+    return GL_DEPTH_STENCIL_ATTACHMENT;
+#endif
+}
+
 } // namespace
 
 bool GLBackendRendererBase::InitializeBackend(TextureHandle fbTex, int w, int h, const std::string& cubemapPath) {
@@ -49,17 +94,29 @@ bool GLBackendRendererBase::CreateFramebuffer(TextureHandle fbTex, int w, int h)
     m_FrameWidth = w;
     m_FrameHeight = h;
 
+    if (m_FrameBufferTexture == 0 || !glIsTexture(m_FrameBufferTexture)) {
+        LOGE("%s framebuffer texture handle %u is not a valid GL texture", GetRendererLogLabel(), m_FrameBufferTexture);
+        DestroyFramebufferResources();
+        return false;
+    }
+
     glGenFramebuffers(1, &m_FrameBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_FrameBufferTexture, 0);
+    constexpr GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
+    glDrawBuffers(1, drawBuffers);
 
     glGenRenderbuffers(1, &m_DepthBuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, m_DepthBuffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_DepthBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, DepthAttachmentStorageFormat(), w, h);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, DepthAttachmentTarget(), GL_RENDERBUFFER, m_DepthBuffer);
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        LOGE("%s framebuffer is not complete", GetRendererLogLabel());
+    const GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE) {
+        LOGE("%s framebuffer is not complete (status=0x%x, %s)",
+             GetRendererLogLabel(),
+             framebufferStatus,
+             FramebufferStatusName(framebufferStatus));
         DestroyFramebufferResources();
         return false;
     }
