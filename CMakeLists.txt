@@ -68,6 +68,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     set(RETRO_EMSCRIPTEN_LINK_OPTIONS
             ${RETRO_EMSCRIPTEN_COMPILE_OPTIONS}
             "-sUSE_SDL_MIXER=2"
+            "-sEXIT_RUNTIME=1"
             "-sNO_DISABLE_EXCEPTION_CATCHING"
             "--use-preload-plugins"
             "-sSDL2_IMAGE_FORMATS=[png]"
