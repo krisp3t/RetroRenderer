@@ -29,6 +29,7 @@ class Scene {
     [[nodiscard]] std::vector<SceneLight>& GetLights();
     [[nodiscard]] const std::vector<SceneLight>& GetLights() const;
     [[nodiscard]] std::vector<LightSnapshot> BuildLightSnapshots() const;
+    void BuildLightSnapshots(std::vector<LightSnapshot>& outSnapshots) const;
     [[nodiscard]] const glm::mat4& GetModelWorldTransform(int index) const;
     void MarkDirtyModel(int index);
     [[nodiscard]] const Model& GetModel(size_t index) const;

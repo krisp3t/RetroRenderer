@@ -324,7 +324,8 @@ void Texture::RebuildAutoPaletteCaches() {
         uint32_t sumB = 0;
     };
 
-    std::array<BucketAccum, kRgb5LutSize> buckets{};
+    static thread_local std::vector<BucketAccum> buckets(kRgb5LutSize);
+    std::fill(buckets.begin(), buckets.end(), BucketAccum{});
     for (const Pixel& pixel : m_Pixels) {
         if (pixel.a == 0) {
             continue;
@@ -336,7 +337,8 @@ void Texture::RebuildAutoPaletteCaches() {
         bucket.sumB += pixel.b;
     }
 
-    std::vector<PaletteCandidate> candidates;
+    static thread_local std::vector<PaletteCandidate> candidates;
+    candidates.clear();
     candidates.reserve(kRgb5LutSize);
     for (const BucketAccum& bucket : buckets) {
         if (bucket.count == 0) {

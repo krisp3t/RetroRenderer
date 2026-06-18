@@ -75,10 +75,11 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
             "--preload-file"
             "${CMAKE_CURRENT_SOURCE_DIR}/assets@/assets"
             "-sMIN_WEBGL_VERSION=2"
-            "-sASSERTIONS=2"
-            "-sSAFE_HEAP=1"
-            "-gsource-map"
+            "-sSTACK_SIZE=262144"
             "-sALLOW_MEMORY_GROWTH"
+            "$<$<CONFIG:Debug>:-sASSERTIONS=2>"
+            "$<$<CONFIG:Debug>:-sSAFE_HEAP=1>"
+            "$<$<CONFIG:Debug>:-gsource-map>"
     )
 else()
     set(RENDERER_BACKENDS

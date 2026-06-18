@@ -184,6 +184,16 @@
                 "CMAKE_EXECUTABLE_SUFFIX": ".js",
                 "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY"
             }
+        },
+        {
+            "name": "release-wasm32-emscripten",
+            "inherits": "release",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{EMSCRIPTEN_ROOT}/cmake/Modules/Platform/Emscripten.cmake",
+                "CMAKE_EXECUTABLE_SUFFIX": ".js",
+                "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY"
+            }
         }
     ],
     "buildPresets": [
@@ -224,6 +234,10 @@
         {
             "name": "wasm32-emscripten",
             "configurePreset": "wasm32-emscripten"
+        },
+        {
+            "name": "release-wasm32-emscripten",
+            "configurePreset": "release-wasm32-emscripten"
         }
     ],
     "testPresets": [

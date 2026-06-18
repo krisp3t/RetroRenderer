@@ -34,7 +34,7 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
 
     void BeforeFrame(const Color& clearColor);
 
-    [[nodiscard]] FrameSnapshot BuildFrameSnapshot(const std::shared_ptr<Scene>& scene, const Camera& camera) const;
+    [[nodiscard]] const FrameSnapshot& BuildFrameSnapshot(const std::shared_ptr<Scene>& scene, const Camera& camera);
 
     RenderOutput Render(const FrameSnapshot& frame);
 
@@ -85,6 +85,7 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     IRenderer* p_activeRenderer_ = nullptr;
 
     std::unique_ptr<IFramePresenter> m_GLFramePresenter;
+    FrameSnapshot m_FrameSnapshotScratch;
     SoftwareCompletedFrame m_PresentedSoftwareFrame;
     Color m_SoftwareClearColor = Color::DefaultBackground();
     bool m_IsDestroyed = false;

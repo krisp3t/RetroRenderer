@@ -3,6 +3,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <memory>
 
 namespace RetroRenderer {
 namespace RetroPalette {
@@ -232,11 +233,11 @@ std::array<PaletteRamp, kPico8PaletteSize> BuildGenericRamps(const std::array<Co
     return ramps;
 }
 
-PaletteData BuildPaletteData(const std::array<Color, kPico8PaletteSize>& colors,
-                             const std::array<PaletteRamp, kPico8PaletteSize>* rampsOverride = nullptr) {
-    PaletteData data{};
-    data.colors = colors;
-    data.ramps = rampsOverride ? *rampsOverride : BuildGenericRamps(colors);
+std::unique_ptr<PaletteData> BuildPaletteData(const std::array<Color, kPico8PaletteSize>& colors,
+                                              const std::array<PaletteRamp, kPico8PaletteSize>* rampsOverride = nullptr) {
+    auto data = std::make_unique<PaletteData>();
+    data->colors = colors;
+    data->ramps = rampsOverride ? *rampsOverride : BuildGenericRamps(colors);
 
     for (size_t r = 0; r < kRgb5AxisSize; r++) {
         for (size_t g = 0; g < kRgb5AxisSize; g++) {
@@ -244,7 +245,7 @@ PaletteData BuildPaletteData(const std::array<Color, kPico8PaletteSize>& colors,
                 const uint8_t red = static_cast<uint8_t>((r << 3) | (r >> 2));
                 const uint8_t green = static_cast<uint8_t>((g << 3) | (g >> 2));
                 const uint8_t blue = static_cast<uint8_t>((b << 3) | (b >> 2));
-                data.nearestIndexLut[(r << 10) | (g << 5) | b] = FindNearestIndexSlow(colors, red, green, blue);
+                data->nearestIndexLut[(r << 10) | (g << 5) | b] = FindNearestIndexSlow(colors, red, green, blue);
             }
         }
     }
@@ -264,7 +265,7 @@ PaletteData BuildPaletteData(const std::array<Color, kPico8PaletteSize>& colors,
                     applyOffset(baseColor.g),
                     applyOffset(baseColor.b));
                 const Color& quantizedColor = colors[quantizedIndex];
-                data.ditherPatterns[paletteIndex][static_cast<size_t>((y << 2) | x)] = quantizedColor.ToPixel();
+                data->ditherPatterns[paletteIndex][static_cast<size_t>((y << 2) | x)] = quantizedColor.ToPixel();
             }
         }
     }
@@ -283,24 +284,24 @@ std::array<Color, kPico8PaletteSize> ConvertCustomPalette(const std::array<Pixel
 const PaletteData& GetBuiltInPaletteData(Config::PaletteType palette) {
     switch (NormalizeBuiltInPalette(palette)) {
     case Config::PaletteType::PICO8: {
-        static const PaletteData data = BuildPaletteData(kPico8Palette, &kPico8Ramps);
-        return data;
+        static const std::unique_ptr<PaletteData> data = BuildPaletteData(kPico8Palette, &kPico8Ramps);
+        return *data;
     }
     case Config::PaletteType::DB16: {
-        static const PaletteData data = BuildPaletteData(kDb16Palette);
-        return data;
+        static const std::unique_ptr<PaletteData> data = BuildPaletteData(kDb16Palette);
+        return *data;
     }
     case Config::PaletteType::SWEETIE16: {
-        static const PaletteData data = BuildPaletteData(kSweetie16Palette);
-        return data;
+        static const std::unique_ptr<PaletteData> data = BuildPaletteData(kSweetie16Palette);
+        return *data;
     }
     case Config::PaletteType::CUSTOM:
     case Config::PaletteType::NONE:
         break;
     }
 
-    static const PaletteData fallback = BuildPaletteData(kPico8Palette, &kPico8Ramps);
-    return fallback;
+    static const std::unique_ptr<PaletteData> fallback = BuildPaletteData(kPico8Palette, &kPico8Ramps);
+    return *fallback;
 }
 
 const PaletteData& GetPaletteData(const Config::RetroStyleSettings& retro) {
@@ -309,12 +310,12 @@ const PaletteData& GetPaletteData(const Config::RetroStyleSettings& retro) {
     }
 
     static uint64_t cachedRevision = 0;
-    static PaletteData cachedData = BuildPaletteData(ConvertCustomPalette(Config::DefaultCustomPalette()));
+    static std::unique_ptr<PaletteData> cachedData = BuildPaletteData(ConvertCustomPalette(Config::DefaultCustomPalette()));
     if (cachedRevision != retro.customPaletteRevision) {
         cachedData = BuildPaletteData(ConvertCustomPalette(retro.customPalette));
         cachedRevision = retro.customPaletteRevision;
     }
-    return cachedData;
+    return *cachedData;
 }
 
 const PaletteData& GetPaletteData(Config::PaletteType palette) {

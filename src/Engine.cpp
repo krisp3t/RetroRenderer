@@ -92,7 +92,7 @@ void Engine::ProcessFrame() {
     if (scene && camera) {
         m_DisplaySystem.BeforeFrame();
         p_RenderSystem->BeforeFrame(clearColor);
-        const FrameSnapshot frame = p_RenderSystem->BuildFrameSnapshot(scene, *camera);
+        const FrameSnapshot& frame = p_RenderSystem->BuildFrameSnapshot(scene, *camera);
         RenderOutput renderOutput = p_RenderSystem->Render(frame);
         m_DisplaySystem.DrawFrame(renderOutput);
     } else {

@@ -266,11 +266,16 @@ const std::vector<SceneLight>& Scene::GetLights() const {
 
 std::vector<LightSnapshot> Scene::BuildLightSnapshots() const {
     std::vector<LightSnapshot> snapshots;
-    snapshots.reserve(m_Lights.size());
-    for (const SceneLight& light : m_Lights) {
-        snapshots.push_back(light.ToSnapshot());
-    }
+    BuildLightSnapshots(snapshots);
     return snapshots;
+}
+
+void Scene::BuildLightSnapshots(std::vector<LightSnapshot>& outSnapshots) const {
+    outSnapshots.clear();
+    outSnapshots.reserve(m_Lights.size());
+    for (const SceneLight& light : m_Lights) {
+        outSnapshots.push_back(light.ToSnapshot());
+    }
 }
 
 void Scene::FrustumCull(const Camera& camera, const Config::CullSettings& cullSettings) {

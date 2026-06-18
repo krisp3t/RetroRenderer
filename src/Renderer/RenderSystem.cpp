@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <unordered_map>
 
 namespace RetroRenderer {
 namespace {
@@ -96,9 +95,14 @@ void RenderSystem::BeforeFrame(const Color& clearColor) {
     m_SoftwareClearColor = clearColor;
 }
 
-FrameSnapshot RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scene>& scene, const Camera& camera) const {
-    FrameSnapshot frame{};
+const FrameSnapshot& RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scene>& scene, const Camera& camera) {
+    FrameSnapshot& frame = m_FrameSnapshotScratch;
     if (!scene) {
+        frame.scene.reset();
+        frame.lights.clear();
+        frame.materials.clear();
+        frame.textures.clear();
+        frame.items.clear();
         return frame;
     }
 
@@ -107,7 +111,7 @@ FrameSnapshot RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scene>& sce
 
     frame.scene = scene;
     frame.camera = camera;
-    frame.lights = scene->BuildLightSnapshots();
+    scene->BuildLightSnapshots(frame.lights);
     frame.materials.clear();
     frame.textures.clear();
     frame.items.clear();
@@ -115,23 +119,24 @@ FrameSnapshot RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scene>& sce
     frame.clearColor = p_Config_->renderer.clearColor;
     frame.dataRevision = m_FrameDataRevision;
 
+    frame.materials.reserve(1);
     const FrameMaterialId sharedMaterialId = static_cast<FrameMaterialId>(frame.materials.size());
     frame.materials.push_back(CaptureFrameMaterialState(currentMaterial));
 
-    std::unordered_map<const Texture*, FrameTextureId> textureIds;
     const Texture* overrideTexture =
         currentMaterial.texture.has_value() && currentMaterial.texture->HasCpuPixels() ? &*currentMaterial.texture : nullptr;
     const auto captureTextureId = [&](const Texture* texture, FrameTextureBinding::Source source) -> FrameTextureId {
         if (texture == nullptr) {
             return kInvalidFrameTextureId;
         }
-        if (const auto it = textureIds.find(texture); it != textureIds.end()) {
-            return it->second;
+        for (FrameTextureId textureId = 0; textureId < frame.textures.size(); textureId++) {
+            if (frame.textures[textureId].texture == texture) {
+                return textureId;
+            }
         }
 
         const FrameTextureId textureId = static_cast<FrameTextureId>(frame.textures.size());
         frame.textures.push_back(FrameTextureBinding{source, texture});
-        textureIds.emplace(texture, textureId);
         return textureId;
     };
     const FrameTextureId overrideTextureId = captureTextureId(overrideTexture, FrameTextureBinding::Source::Override);
@@ -144,6 +149,7 @@ FrameSnapshot RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scene>& sce
         }
         renderItemCount += scene->GetModel(static_cast<size_t>(modelIx)).GetMeshCount();
     }
+    frame.textures.reserve(std::max<size_t>(frame.textures.capacity(), std::min(renderItemCount, size_t{8})));
     frame.items.reserve(renderItemCount);
 
     for (int modelIx : visibleModels) {
