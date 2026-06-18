@@ -16,6 +16,20 @@ struct Stats {
     std::atomic<uint64_t> swJobsDroppedPending = 0;
     std::atomic<uint64_t> swFramesPresented = 0;
     std::atomic<uint64_t> swFramesDroppedReady = 0;
+    std::atomic<uint64_t> lastFrameTotalNs = 0;
+    std::atomic<uint64_t> lastMainUpdateNs = 0;
+    std::atomic<uint64_t> lastDisplayBeforeFrameNs = 0;
+    std::atomic<uint64_t> lastFrameSnapshotBuildNs = 0;
+    std::atomic<uint64_t> lastRenderSystemNs = 0;
+    std::atomic<uint64_t> lastGlRenderNs = 0;
+    std::atomic<uint64_t> lastSoftwareFrameSnapshotBuildNs = 0;
+    std::atomic<uint64_t> lastSoftwareWorkerRenderNs = 0;
+    std::atomic<uint64_t> lastSoftwareWorkerCopyNs = 0;
+    std::atomic<uint64_t> lastDisplayDrawNs = 0;
+    std::atomic<uint64_t> lastCpuOutputUploadNs = 0;
+    std::atomic<uint64_t> lastImGuiBuildNs = 0;
+    std::atomic<uint64_t> lastImGuiRenderNs = 0;
+    std::atomic<uint64_t> lastSwapBuffersNs = 0;
 
     void Reset() {
         renderedTris = 0;

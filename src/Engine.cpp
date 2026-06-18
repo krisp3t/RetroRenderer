@@ -2,6 +2,7 @@
 #include "Base/MemoryProfiler.h"
 #include <KrisLogger/Logger.h>
 #include <algorithm>
+#include <chrono>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -18,6 +19,15 @@ extern "C" void MainLoopWrapper() {
 #endif
 
 namespace RetroRenderer {
+namespace {
+using TimingClock = std::chrono::steady_clock;
+
+uint64_t ElapsedNanoseconds(TimingClock::time_point start) {
+    return static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(TimingClock::now() - start).count());
+}
+} // namespace
+
 bool Engine::Init() {
 #ifndef __EMSCRIPTEN__
     LOGD("Starting RetroRenderer in directory: %s", SDL_GetBasePath());
@@ -63,16 +73,19 @@ void Engine::Run() {
 }
 
 void Engine::ProcessFrame() {
+    const auto frameStart = TimingClock::now();
     const Uint32 now = SDL_GetTicks();
     const Uint32 rawDelta = now - m_LastFrameTicks;
     m_LastFrameTicks = now;
     const Uint32 delta = std::min<Uint32>(rawDelta, 50);
 
+    const auto mainUpdateStart = TimingClock::now();
     ProcessEventQueue();
 
     auto inputActions = m_InputSystem.HandleInput();
     if (inputActions & static_cast<InputActionMask>(InputAction::QUIT)) {
         m_Running = false;
+        p_stats_->lastFrameTotalNs.store(ElapsedNanoseconds(frameStart), std::memory_order_relaxed);
         return;
     }
     // TODO: handle camera switching
@@ -85,23 +98,47 @@ void Engine::ProcessFrame() {
     if (memorySnapshot.supported) {
         p_stats_->UpdateProcessMemory(memorySnapshot.residentBytes, memorySnapshot.peakResidentBytes);
     }
+    p_stats_->lastMainUpdateNs.store(ElapsedNanoseconds(mainUpdateStart), std::memory_order_relaxed);
 
     const Color clearColor = p_config_->renderer.clearColor;
     auto scene = p_SceneManager->GetScene();
     auto camera = p_SceneManager->GetCamera();
     if (scene && camera) {
+        const auto beforeFrameStart = TimingClock::now();
         m_DisplaySystem.BeforeFrame();
+        p_stats_->lastDisplayBeforeFrameNs.store(ElapsedNanoseconds(beforeFrameStart), std::memory_order_relaxed);
+
         p_RenderSystem->BeforeFrame(clearColor);
+
+        const auto snapshotStart = TimingClock::now();
         const FrameSnapshot& frame = p_RenderSystem->BuildFrameSnapshot(scene, *camera);
+        p_stats_->lastFrameSnapshotBuildNs.store(ElapsedNanoseconds(snapshotStart), std::memory_order_relaxed);
+
         RenderOutput renderOutput = p_RenderSystem->Render(frame);
+
+        const auto drawStart = TimingClock::now();
         m_DisplaySystem.DrawFrame(renderOutput);
+        p_stats_->lastDisplayDrawNs.store(ElapsedNanoseconds(drawStart), std::memory_order_relaxed);
     } else {
         p_stats_->Reset();
+        p_stats_->lastFrameSnapshotBuildNs.store(0, std::memory_order_relaxed);
+        p_stats_->lastRenderSystemNs.store(0, std::memory_order_relaxed);
+        p_stats_->lastGlRenderNs.store(0, std::memory_order_relaxed);
+        p_stats_->lastSoftwareFrameSnapshotBuildNs.store(0, std::memory_order_relaxed);
+
+        const auto beforeFrameStart = TimingClock::now();
         m_DisplaySystem.BeforeFrame();
+        p_stats_->lastDisplayBeforeFrameNs.store(ElapsedNanoseconds(beforeFrameStart), std::memory_order_relaxed);
+
+        const auto drawStart = TimingClock::now();
         m_DisplaySystem.DrawFrame();
+        p_stats_->lastDisplayDrawNs.store(ElapsedNanoseconds(drawStart), std::memory_order_relaxed);
     }
 
+    const auto swapStart = TimingClock::now();
     m_DisplaySystem.SwapBuffers();
+    p_stats_->lastSwapBuffersNs.store(ElapsedNanoseconds(swapStart), std::memory_order_relaxed);
+    p_stats_->lastFrameTotalNs.store(ElapsedNanoseconds(frameStart), std::memory_order_relaxed);
 }
 
 void Engine::Destroy() {

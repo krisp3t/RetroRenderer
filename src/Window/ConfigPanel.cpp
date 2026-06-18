@@ -18,6 +18,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui_impl_opengl3.h>
 #include <algorithm>
+#include <chrono>
 #include <cinttypes>
 #include <utility>
 
@@ -74,6 +75,17 @@ EM_JS(void, OpenWebFilePicker_JS, (), {
 
 namespace RetroRenderer {
 namespace {
+using TimingClock = std::chrono::steady_clock;
+
+uint64_t ElapsedNanoseconds(TimingClock::time_point start) {
+    return static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(TimingClock::now() - start).count());
+}
+
+double ReadTimingMilliseconds(const std::atomic<uint64_t>& timing) {
+    return static_cast<double>(timing.load(std::memory_order_relaxed)) / 1000000.0;
+}
+
 const char* RenderPresetDescription(Config::RenderPreset preset) {
     switch (preset) {
     case Config::RenderPreset::CUSTOM:
@@ -503,12 +515,18 @@ void ConfigPanel::DisplayTexturePreview(const Texture& texture) {
 }
 
 void ConfigPanel::DisplayRenderedImage() {
+    if (p_stats_) {
+        p_stats_->lastCpuOutputUploadNs.store(0, std::memory_order_relaxed);
+    }
     ImGui::Begin("Output");
     ImGui::Text("Please load a scene to start rendering!");
     ImGui::End();
 }
 
 void ConfigPanel::DisplayRenderedImage(const RenderOutput& output) {
+    if (p_stats_) {
+        p_stats_->lastCpuOutputUploadNs.store(0, std::memory_order_relaxed);
+    }
     auto& r = p_config_->renderer;
     ImGui::Begin("Output");
     ImVec2 contentSize = ImGui::GetContentRegionAvail();
@@ -600,18 +618,27 @@ void ConfigPanel::DisplayRenderedImage(const RenderOutput& output) {
         const auto& pixels = output.cpuPixels;
         if (pixels.format != RenderOutputPixelFormat::Rgba8) {
             ImGui::Text("Renderer output pixel format is not supported");
-        } else if (!m_cpuOutputPresenter_ ||
-                   !m_cpuOutputPresenter_->Resize(static_cast<int>(pixels.width),
-                                                  static_cast<int>(pixels.height),
-                                                  p_config_->renderer.nearestNeighborPresentation) ||
-                   !m_cpuOutputPresenter_->UploadPixels(pixels.pixels, pixels.width, pixels.height)) {
-            ImGui::Text("Renderer CPU output is not available");
         } else {
-            const ImTextureID textureId = ToImTextureID(m_cpuOutputPresenter_->GetTextureHandle());
-            if (output.origin == RenderOutputOrigin::BottomLeft) {
-                ImGui::Image(textureId, contentSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+            const auto uploadStart = TimingClock::now();
+            const bool uploadOk =
+                m_cpuOutputPresenter_ &&
+                m_cpuOutputPresenter_->Resize(static_cast<int>(pixels.width),
+                                              static_cast<int>(pixels.height),
+                                              p_config_->renderer.nearestNeighborPresentation) &&
+                m_cpuOutputPresenter_->UploadPixels(pixels.pixels, pixels.width, pixels.height);
+            if (p_stats_) {
+                p_stats_->lastCpuOutputUploadNs.store(ElapsedNanoseconds(uploadStart), std::memory_order_relaxed);
+            }
+
+            if (!uploadOk) {
+                ImGui::Text("Renderer CPU output is not available");
             } else {
-                ImGui::Image(textureId, contentSize);
+                const ImTextureID textureId = ToImTextureID(m_cpuOutputPresenter_->GetTextureHandle());
+                if (output.origin == RenderOutputOrigin::BottomLeft) {
+                    ImGui::Image(textureId, contentSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+                } else {
+                    ImGui::Image(textureId, contentSize);
+                }
             }
         }
     } else {
@@ -1218,6 +1245,20 @@ void ConfigPanel::DisplayMetricsOverlay() {
         ImGui::Text("Preset: %s", Config::RenderPresetLabel(p_config_->retro.preset));
         ImGui::Text("%d verts, %d tris", p_stats_->renderedVerts, p_stats_->renderedTris);
         ImGui::Text("0 draw calls");
+        ImGui::SeparatorText("Frame timing");
+        ImGui::Text("Total: %.3f ms", ReadTimingMilliseconds(p_stats_->lastFrameTotalNs));
+        ImGui::Text("Main update: %.3f ms", ReadTimingMilliseconds(p_stats_->lastMainUpdateNs));
+        ImGui::Text("Display before frame: %.3f ms", ReadTimingMilliseconds(p_stats_->lastDisplayBeforeFrameNs));
+        ImGui::Text("Build frame snapshot: %.3f ms", ReadTimingMilliseconds(p_stats_->lastFrameSnapshotBuildNs));
+        ImGui::Text("RenderSystem::Render: %.3f ms", ReadTimingMilliseconds(p_stats_->lastRenderSystemNs));
+        ImGui::Text("ImGui build/render: %.3f / %.3f ms",
+                    ReadTimingMilliseconds(p_stats_->lastImGuiBuildNs),
+                    ReadTimingMilliseconds(p_stats_->lastImGuiRenderNs));
+        ImGui::Text("Display draw: %.3f ms", ReadTimingMilliseconds(p_stats_->lastDisplayDrawNs));
+        ImGui::Text("Swap buffers: %.3f ms", ReadTimingMilliseconds(p_stats_->lastSwapBuffersNs));
+        if (p_config_->renderer.selectedRenderer == Config::RendererType::GL) {
+            ImGui::Text("GL render: %.3f ms", ReadTimingMilliseconds(p_stats_->lastGlRenderNs));
+        }
         ImGui::SeparatorText("Memory");
         if (p_stats_->processMemorySupported) {
             const double currentMiB = static_cast<double>(p_stats_->processResidentBytes) / (1024.0 * 1024.0);
@@ -1239,6 +1280,11 @@ void ConfigPanel::DisplayMetricsOverlay() {
             const uint64_t swFramesPresented = p_stats_->swFramesPresented.load(std::memory_order_relaxed);
             const uint64_t swFramesDroppedReady = p_stats_->swFramesDroppedReady.load(std::memory_order_relaxed);
             ImGui::SeparatorText("SW Async");
+            ImGui::Text("Snapshot build: %.3f ms", ReadTimingMilliseconds(p_stats_->lastSoftwareFrameSnapshotBuildNs));
+            ImGui::Text("Worker render/copy: %.3f / %.3f ms",
+                        ReadTimingMilliseconds(p_stats_->lastSoftwareWorkerRenderNs),
+                        ReadTimingMilliseconds(p_stats_->lastSoftwareWorkerCopyNs));
+            ImGui::Text("CPU upload: %.3f ms", ReadTimingMilliseconds(p_stats_->lastCpuOutputUploadNs));
             ImGui::Text("Jobs: submitted=%" PRIu64 " completed=%" PRIu64, swJobsSubmitted, swJobsCompleted);
             ImGui::Text("Jobs: cancelled=%" PRIu64 " dropped(pending)=%" PRIu64, swJobsCancelled,
                         swJobsDroppedPending);
@@ -1348,6 +1394,7 @@ void ConfigPanel::DisplayJoysticks() {
 }
 
 void ConfigPanel::BeforeFrame() {
+    const auto imguiBuildStart = TimingClock::now();
     auto const& io = ImGui::GetIO();
     glViewport(0, 0, (int)io.DisplaySize.x > 0 ? (int)io.DisplaySize.x : 0,
                (int)io.DisplaySize.y > 0 ? (int)io.DisplaySize.y : 0);
@@ -1359,9 +1406,13 @@ void ConfigPanel::BeforeFrame() {
     ImGui::NewFrame();
 
     DisplayGUI();
+    if (p_stats_) {
+        p_stats_->lastImGuiBuildNs.store(ElapsedNanoseconds(imguiBuildStart), std::memory_order_relaxed);
+    }
 }
 
 void ConfigPanel::OnDraw() {
+    const auto imguiRenderStart = TimingClock::now();
     ImGui::Render();
     auto const& io = ImGui::GetIO();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -1372,6 +1423,9 @@ void ConfigPanel::OnDraw() {
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
         // SDL_GL_MakeCurrent(backupCurrentWindow, backupCurrentContext);
+    }
+    if (p_stats_) {
+        p_stats_->lastImGuiRenderNs.store(ElapsedNanoseconds(imguiRenderStart), std::memory_order_relaxed);
     }
 }
 

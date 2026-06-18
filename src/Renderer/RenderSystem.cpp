@@ -9,11 +9,19 @@
 #include <KrisLogger/Logger.h>
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstring>
 #include <utility>
 
 namespace RetroRenderer {
 namespace {
+using TimingClock = std::chrono::steady_clock;
+
+uint64_t ElapsedNanoseconds(TimingClock::time_point start) {
+    return static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(TimingClock::now() - start).count());
+}
+
 FrameMaterialState CaptureFrameMaterialState(const MaterialManager::Material& currentMaterial) {
     FrameMaterialState state{};
     state.shaderHandle = currentMaterial.shaderProgram.handle;
@@ -184,20 +192,31 @@ const FrameSnapshot& RenderSystem::BuildFrameSnapshot(const std::shared_ptr<Scen
 RenderOutput RenderSystem::Render(const FrameSnapshot& frame) {
     assert(frame.scene != nullptr && "Render called with null scene");
     assert(p_Stats_ != nullptr && "RenderSystem requires stats");
+    const auto renderSystemStart = TimingClock::now();
     p_Stats_->Reset();
 
     if (p_activeRenderer_ == p_SWRenderer_.get()) {
+        p_Stats_->lastGlRenderNs.store(0, std::memory_order_relaxed);
 #if defined(__EMSCRIPTEN__)
-        return RenderSoftwareSync(frame);
+        RenderOutput output = RenderSoftwareSync(frame);
+        p_Stats_->lastRenderSystemNs.store(ElapsedNanoseconds(renderSystemStart), std::memory_order_relaxed);
+        return output;
 #else
         SubmitSoftwareJob(frame);
         PresentCompletedSoftwareFrame();
-        return MakeSoftwareRenderOutput();
+        RenderOutput output = MakeSoftwareRenderOutput();
+        p_Stats_->lastRenderSystemNs.store(ElapsedNanoseconds(renderSystemStart), std::memory_order_relaxed);
+        return output;
 #endif
     }
 
+    p_Stats_->lastSoftwareFrameSnapshotBuildNs.store(0, std::memory_order_relaxed);
+    const auto glRenderStart = TimingClock::now();
     p_activeRenderer_->RenderFrame(frame);
-    return RenderOutput::Texture(m_GLFramePresenter->GetTextureHandle(), RenderOutputOrigin::BottomLeft);
+    p_Stats_->lastGlRenderNs.store(ElapsedNanoseconds(glRenderStart), std::memory_order_relaxed);
+    RenderOutput output = RenderOutput::Texture(m_GLFramePresenter->GetTextureHandle(), RenderOutputOrigin::BottomLeft);
+    p_Stats_->lastRenderSystemNs.store(ElapsedNanoseconds(renderSystemStart), std::memory_order_relaxed);
+    return output;
 }
 
 void RenderSystem::Resize(const glm::ivec2& resolution) {
@@ -415,7 +434,9 @@ void RenderSystem::SubmitSoftwareJob(const FrameSnapshot& frame) {
     assert(p_Stats_ != nullptr && "RenderSystem requires stats");
 
     SoftwareRenderJob job{};
+    const auto softwareSnapshotStart = TimingClock::now();
     job.frame = BuildSoftwareFrameSnapshot(frame);
+    p_Stats_->lastSoftwareFrameSnapshotBuildNs.store(ElapsedNanoseconds(softwareSnapshotStart), std::memory_order_relaxed);
     if (!job.frame.hasScene) {
         return;
     }
@@ -492,7 +513,11 @@ void RenderSystem::SoftwareWorkerLoop() {
             m_PendingSoftwareJob.reset();
         }
 
+        const auto workerRenderStart = TimingClock::now();
         p_SWRenderer_->RenderFrame(job.frame);
+        p_Stats_->lastSoftwareWorkerRenderNs.store(ElapsedNanoseconds(workerRenderStart), std::memory_order_relaxed);
+
+        const auto workerCopyStart = TimingClock::now();
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
         SoftwareCompletedFrame finishedFrame{};
         finishedFrame.width = buffer.width;
@@ -504,6 +529,7 @@ void RenderSystem::SoftwareWorkerLoop() {
         if (!finishedFrame.pixels.empty()) {
             std::memcpy(finishedFrame.pixels.data(), buffer.data, finishedFrame.pixels.size() * sizeof(Pixel));
         }
+        p_Stats_->lastSoftwareWorkerCopyNs.store(ElapsedNanoseconds(workerCopyStart), std::memory_order_relaxed);
 
         {
             std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
@@ -519,10 +545,18 @@ void RenderSystem::SoftwareWorkerLoop() {
 }
 
 RenderOutput RenderSystem::RenderSoftwareSync(const FrameSnapshot& frame) {
+    const auto softwareSnapshotStart = TimingClock::now();
     SoftwareFrameSnapshot softwareFrame = BuildSoftwareFrameSnapshot(frame);
+    p_Stats_->lastSoftwareFrameSnapshotBuildNs.store(ElapsedNanoseconds(softwareSnapshotStart), std::memory_order_relaxed);
+
+    const auto workerRenderStart = TimingClock::now();
     p_SWRenderer_->RenderFrame(softwareFrame);
+    p_Stats_->lastSoftwareWorkerRenderNs.store(ElapsedNanoseconds(workerRenderStart), std::memory_order_relaxed);
+
+    const auto workerCopyStart = TimingClock::now();
     const auto& buffer = p_SWRenderer_->GetFrameBuffer();
     StoreSoftwareFrame(buffer);
+    p_Stats_->lastSoftwareWorkerCopyNs.store(ElapsedNanoseconds(workerCopyStart), std::memory_order_relaxed);
     return MakeSoftwareRenderOutput();
 }
 
