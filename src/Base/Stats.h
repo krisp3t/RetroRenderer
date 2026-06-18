@@ -14,6 +14,7 @@ struct Stats {
     std::atomic<uint64_t> swJobsCompleted = 0;
     std::atomic<uint64_t> swJobsCancelled = 0;
     std::atomic<uint64_t> swJobsDroppedPending = 0;
+    std::atomic<uint64_t> swJobsSkippedBusy = 0;
     std::atomic<uint64_t> swFramesPresented = 0;
     std::atomic<uint64_t> swFramesDroppedReady = 0;
     std::atomic<uint64_t> lastSoftwareFramePresentedNs = 0;

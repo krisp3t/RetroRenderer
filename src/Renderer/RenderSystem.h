@@ -110,6 +110,7 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     std::deque<SoftwareCompletedFrame> m_CompletedSoftwareFrames;
     uint64_t m_NextSoftwareJobId = 0;
     bool m_SoftwareWorkerStopRequested = false;
+    bool m_SoftwareWorkerBusy = false;
     static constexpr size_t kMaxBufferedSoftwareFrames = 3;
 #endif
 };

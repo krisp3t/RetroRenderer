@@ -295,6 +295,7 @@ void RenderSystem::ClearSoftwareWorkerFrameState() {
     std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
     m_PendingSoftwareJob.reset();
     m_CompletedSoftwareFrames.clear();
+    m_SoftwareWorkerBusy = false;
 #endif
     m_PresentedSoftwareFrame = {};
     if (p_Stats_) {
@@ -431,6 +432,7 @@ void RenderSystem::StopSoftwareWorker() {
         m_SoftwareWorkerStopRequested = false;
         m_PendingSoftwareJob.reset();
         m_CompletedSoftwareFrames.clear();
+        m_SoftwareWorkerBusy = false;
     }
 #endif
 }
@@ -441,6 +443,14 @@ void RenderSystem::SubmitSoftwareJob(const FrameSnapshot& frame) {
         return;
     }
     assert(p_Stats_ != nullptr && "RenderSystem requires stats");
+
+    {
+        std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
+        if (m_PendingSoftwareJob.has_value() || m_SoftwareWorkerBusy) {
+            p_Stats_->swJobsSkippedBusy.fetch_add(1, std::memory_order_relaxed);
+            return;
+        }
+    }
 
     SoftwareRenderJob job{};
     const auto softwareSnapshotStart = TimingClock::now();
@@ -530,6 +540,7 @@ void RenderSystem::SoftwareWorkerLoop() {
             }
             job = std::move(*m_PendingSoftwareJob);
             m_PendingSoftwareJob.reset();
+            m_SoftwareWorkerBusy = true;
         }
 
         const auto workerRenderStart = TimingClock::now();
@@ -557,6 +568,7 @@ void RenderSystem::SoftwareWorkerLoop() {
                 p_Stats_->swFramesDroppedReady.fetch_add(1, std::memory_order_relaxed);
             }
             m_CompletedSoftwareFrames.push_back(std::move(finishedFrame));
+            m_SoftwareWorkerBusy = false;
         }
         p_Stats_->swJobsCompleted.fetch_add(1, std::memory_order_relaxed);
     }

@@ -1283,6 +1283,7 @@ void ConfigPanel::DisplayMetricsOverlay() {
             const uint64_t swJobsCompleted = p_stats_->swJobsCompleted.load(std::memory_order_relaxed);
             const uint64_t swJobsCancelled = p_stats_->swJobsCancelled.load(std::memory_order_relaxed);
             const uint64_t swJobsDroppedPending = p_stats_->swJobsDroppedPending.load(std::memory_order_relaxed);
+            const uint64_t swJobsSkippedBusy = p_stats_->swJobsSkippedBusy.load(std::memory_order_relaxed);
             const uint64_t swFramesPresented = p_stats_->swFramesPresented.load(std::memory_order_relaxed);
             const uint64_t swFramesDroppedReady = p_stats_->swFramesDroppedReady.load(std::memory_order_relaxed);
             static double swOutputFps = 0.0;
@@ -1314,8 +1315,9 @@ void ConfigPanel::DisplayMetricsOverlay() {
                         ReadTimingMilliseconds(p_stats_->lastSoftwareWorkerCopyNs));
             ImGui::Text("CPU upload: %.3f ms", ReadTimingMilliseconds(p_stats_->lastCpuOutputUploadNs));
             ImGui::Text("Jobs: submitted=%" PRIu64 " completed=%" PRIu64, swJobsSubmitted, swJobsCompleted);
-            ImGui::Text("Jobs: cancelled=%" PRIu64 " dropped(pending)=%" PRIu64, swJobsCancelled,
-                        swJobsDroppedPending);
+            ImGui::Text("Jobs: cancelled=%" PRIu64 " skipped(busy)=%" PRIu64, swJobsCancelled,
+                        swJobsSkippedBusy);
+            ImGui::Text("Jobs: dropped(pending)=%" PRIu64, swJobsDroppedPending);
             ImGui::Text("Frames: presented=%" PRIu64 " dropped(ready)=%" PRIu64, swFramesPresented,
                         swFramesDroppedReady);
         }
