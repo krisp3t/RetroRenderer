@@ -6,6 +6,7 @@
 #include "../Renderer/RenderOutput.h"
 #include "../Scene/Camera.h"
 #include "ConfigPanel.h"
+#include "EditorContext.h"
 #include <SDL.h>
 #include <memory>
 
@@ -35,6 +36,7 @@ class DisplaySystem {
     [[nodiscard]] std::vector<UiTextureSnapshot> TakeUiTextureSnapshots();
 
     bool Init(const std::shared_ptr<Config>& config, const std::shared_ptr<Stats>& stats);
+    void BindEditorContext(EditorContext editorContext);
 
     void Destroy();
 

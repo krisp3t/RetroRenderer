@@ -1,7 +1,5 @@
 #pragma once
 #include <glm/vec3.hpp>
-#include <filesystem>
-#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -65,9 +63,12 @@ class MaterialManager {
     bool Init();
     void LoadTexture(const std::string& path);
     void LoadTexture(const uint8_t* data, const size_t size);
-    using TexturePreviewCallback = std::function<void(const Texture&)>;
-    void RenderUI(const TexturePreviewCallback& texturePreview = {});
+    void ClearTexture();
     void LoadDefaultShaders();
+    [[nodiscard]] int GetCurrentMaterialIndex() const {
+        return m_CurrentMaterialIndex;
+    }
+    void SetCurrentMaterialIndex(int materialIndex);
     Material& GetCurrentMaterial() {
         return m_Materials[m_CurrentMaterialIndex];
     }
@@ -85,13 +86,7 @@ class MaterialManager {
   private:
     std::vector<Material> m_Materials;
     int m_CurrentMaterialIndex = 0;
-    char m_TexturePathBuffer[256] = "";
-    char vertPathBuffer[256] = "";
-    char fragPathBuffer[256] = "";
-    int newShaderType = 0; // For UI combo box
-    const char* k_supportedTextures = ".png";
     IRenderInvalidationSink* p_RenderInvalidationSink_ = nullptr;
-    std::filesystem::path m_lastTextureDirectory_;
 };
 
 } // namespace RetroRenderer

@@ -1,16 +1,10 @@
 #include "SceneManager.h"
 #include <KrisLogger/Logger.h>
 
-#include <glm/gtc/type_ptr.inl>
-#include <imgui.h>
-
 namespace RetroRenderer {
 void SceneManager::BindDependencies(std::shared_ptr<Config> config, IRenderInvalidationSink& renderInvalidationSink) {
     p_Config_ = std::move(config);
     p_RenderInvalidationSink_ = &renderInvalidationSink;
-}
-
-SceneManager::~SceneManager() {
 }
 
 void SceneManager::ResetScene() {
@@ -114,87 +108,17 @@ void SceneManager::NewFrame() {
     p_Scene->FrustumCull(*p_Camera, p_Config_->cull);
 }
 
+void SceneManager::NotifySceneMutated() {
+    if (p_RenderInvalidationSink_ != nullptr) {
+        p_RenderInvalidationSink_->OnSceneMutated();
+    }
+}
+
 Camera* SceneManager::GetCamera() const {
     return p_Camera.get();
 }
 
 std::shared_ptr<Scene> SceneManager::GetScene() const {
     return p_Scene;
-}
-
-void SceneManager::RenderUI() {
-    // Fixed nodes
-    if (ImGui::TreeNode("Main camera")) {
-        ImGui::Text("Main camera");
-        ImGui::TreePop();
-    }
-
-    if (p_Scene.get() == nullptr) {
-        return;
-    }
-    if (ImGui::TreeNode("Scene")) {
-        if (ImGui::TreeNode("Lights")) {
-            auto& lights = p_Scene->GetLights();
-            for (size_t i = 0; i < lights.size(); i++) {
-                RenderUILight(lights[i], static_cast<int>(i));
-            }
-            ImGui::TreePop();
-        }
-        for (size_t i = 0; i < p_Scene->m_Models.size(); i++) {
-            if (!p_Scene->m_Models[i].m_Parent.has_value()) // roots only
-            {
-                RenderUIModelRecursive(i);
-            }
-        }
-        ImGui::TreePop();
-    }
-}
-
-void SceneManager::RenderUILight(SceneLight& light, int lightIndex) {
-    const std::string label = light.name + "##light_" + std::to_string(lightIndex);
-    if (ImGui::TreeNode(label.c_str())) {
-        ImGui::Text("Type: %s", light.type == LightType::POINT ? "Point" : "Unknown");
-        bool lightChanged = false;
-        lightChanged |= ImGui::DragFloat3("Position", glm::value_ptr(light.position), 0.1f, 0.0f, 0.0f, "%.3f");
-        lightChanged |= ImGui::ColorEdit3("Color", glm::value_ptr(light.color));
-        lightChanged |= ImGui::SliderFloat("Intensity", &light.intensity, 0.0f, 4.0f, "%.2f");
-        if (lightChanged && p_RenderInvalidationSink_ != nullptr) {
-            p_RenderInvalidationSink_->OnSceneMutated();
-        }
-        ImGui::TreePop();
-    }
-}
-
-void SceneManager::RenderUIModelRecursive(int modelIndex) {
-    auto& model = p_Scene->m_Models[modelIndex];
-    constexpr ImGuiTreeNodeFlags nodeFlags =
-        ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
-    /*
-    if (scene.m_SelectedModel == modelIndex)
-        nodeFlags |= ImGuiTreeNodeFlags_Selected;
-    */
-    bool opened = true;
-    const std::string label = model.GetName() + "##model_" + std::to_string(modelIndex);
-    if (ImGui::TreeNode(label.c_str())) {
-        if (opened) {
-            glm::vec3 lPos, lRot, lScl;
-            model.GetLocalTRS(lPos, lRot, lScl);
-            bool transformChanged = false;
-            transformChanged |= ImGui::DragFloat3("Local position", glm::value_ptr(lPos), 0.1f, 0.0f, 0.0f, "%.3f");
-            transformChanged |= ImGui::DragFloat3("Local rotation", glm::value_ptr(lRot), 0.5f, 0.0f, 0.0f, "%.2f");
-            transformChanged |= ImGui::DragFloat3("Local scale", glm::value_ptr(lScl), 0.01f, 0.0f, 0.0f, "%.3f");
-            if (transformChanged) {
-                model.SetLocalTRS(lPos, lRot, lScl);
-            }
-            if (transformChanged && p_RenderInvalidationSink_ != nullptr) {
-                p_RenderInvalidationSink_->OnSceneMutated();
-            }
-
-            for (int childIndex : p_Scene->m_Models[modelIndex].m_Children) {
-                RenderUIModelRecursive(childIndex);
-            }
-        }
-        ImGui::TreePop();
-    }
 }
 } // namespace RetroRenderer

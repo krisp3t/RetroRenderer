@@ -12,7 +12,7 @@ namespace RetroRenderer {
 class SceneManager {
   public:
     SceneManager() = default;
-    ~SceneManager();
+    ~SceneManager() = default;
     void BindDependencies(std::shared_ptr<Config> config, IRenderInvalidationSink& renderInvalidationSink);
     void ResetScene();
     bool LoadScene(const uint8_t* data, const size_t size, bool append = false);
@@ -20,13 +20,9 @@ class SceneManager {
     bool ProcessInput(InputActionMask actions, unsigned int deltaTime);
     void Update(unsigned int deltaTime, const glm::ivec2& renderResolution);
     void NewFrame();
-    void RenderUI();
+    void NotifySceneMutated();
     [[nodiscard]] std::shared_ptr<Scene> GetScene() const;
     [[nodiscard]] Camera* GetCamera() const;
-
-  private:
-    void RenderUILight(SceneLight& light, int lightIndex);
-    void RenderUIModelRecursive(int modelIndex);
 
     std::shared_ptr<Config> p_Config_ = nullptr;
     IRenderInvalidationSink* p_RenderInvalidationSink_ = nullptr;

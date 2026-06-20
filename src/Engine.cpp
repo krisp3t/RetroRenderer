@@ -59,6 +59,14 @@ bool Engine::Init() {
     if (!p_MaterialManager->Init()) {
         return false;
     }
+    m_DisplaySystem.BindEditorContext(EditorContext{
+        .config = p_config_,
+        .stats = p_stats_,
+        .sceneManager = p_SceneManager.get(),
+        .materialManager = p_MaterialManager.get(),
+        .dispatchImmediate = [this](const Event& event) { DispatchImmediate(event); },
+        .enqueueEvent = [this](std::unique_ptr<Event> event) { EnqueueEvent(std::move(event)); },
+    });
 
     // Default scene (optional)
     // p_SceneManager->LoadScene("frog/frog.obj");

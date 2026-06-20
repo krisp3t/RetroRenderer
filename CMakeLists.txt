@@ -152,6 +152,8 @@ set(RETRO_WINDOW_SOURCES
         src/Window/ConfigPanel.cpp
         src/Window/DisplaySystem.cpp
         src/Window/InputSystem.cpp
+        src/Window/MaterialEditorPanel.cpp
+        src/Window/SceneEditorPanel.cpp
 )
 
 set(SOURCES

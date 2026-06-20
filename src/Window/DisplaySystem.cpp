@@ -73,6 +73,12 @@ bool DisplaySystem::Init(const std::shared_ptr<Config>& config, const std::share
     return m_configPanel_->Init(m_window_, m_glContext_, config, stats);
 }
 
+void DisplaySystem::BindEditorContext(EditorContext editorContext) {
+    if (m_configPanel_) {
+        m_configPanel_->BindEditorContext(std::move(editorContext));
+    }
+}
+
 void DisplaySystem::BeforeFrame() {
     m_configPanel_->BeforeFrame();
 }

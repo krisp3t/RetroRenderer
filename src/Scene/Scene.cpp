@@ -264,12 +264,6 @@ const std::vector<SceneLight>& Scene::GetLights() const {
     return m_Lights;
 }
 
-std::vector<LightSnapshot> Scene::BuildLightSnapshots() const {
-    std::vector<LightSnapshot> snapshots;
-    BuildLightSnapshots(snapshots);
-    return snapshots;
-}
-
 void Scene::BuildLightSnapshots(std::vector<LightSnapshot>& outSnapshots) const {
     outSnapshots.clear();
     outSnapshots.reserve(m_Lights.size());
@@ -299,12 +293,17 @@ void Scene::FrustumCull(const Camera& camera, const Config::CullSettings& cullSe
 }
 
 const glm::mat4& Scene::GetModelWorldTransform(int index) const {
-    assert(index >= 0 && index < m_Models.size() && "Invalid model index");
-    return m_Models[index].GetWorldTransform();
+    const size_t modelIndex = static_cast<size_t>(index);
+    assert(index >= 0 && modelIndex < m_Models.size() && "Invalid model index");
+    return m_Models[modelIndex].GetWorldTransform();
 }
 
 void Scene::MarkDirtyModel(int index) {
     m_Models[index].MarkDirty();
+}
+
+Model& Scene::GetModel(size_t index) {
+    return m_Models.at(index);
 }
 
 const Model& Scene::GetModel(size_t index) const {

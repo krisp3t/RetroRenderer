@@ -28,9 +28,9 @@
 
 #include "../Base/Event.h"
 #include "../Base/InputActions.h"
-#include "../Engine.h"
 #include "../native/FileDialog.h"
 #include "../Renderer/RetroPalette.h"
+#include "../Scene/MaterialManager.h"
 #include "../Scene/Texture.h"
 #include "ConfigPanel.h"
 #include "ImGuiTexture.h"
@@ -117,6 +117,22 @@ const char* RenderPresetDescription(Config::RenderPreset preset) {
         return "Low-resolution software preset aimed at PS1-style affine textures, 4-bit CLUT-like texture reduction, barycentric shading, projected vertex wobble, RGB555 output, and optional fog.";
     }
     return "";
+}
+
+const char* RenderPresetLabel(Config::RenderPreset preset) {
+    switch (preset) {
+    case Config::RenderPreset::CUSTOM:
+        return "Custom";
+    case Config::RenderPreset::DEFAULT:
+        return "Default";
+    case Config::RenderPreset::PICO8:
+        return "PICO-8";
+    case Config::RenderPreset::PICOCAD:
+        return "picoCAD";
+    case Config::RenderPreset::PS1:
+        return "PS1";
+    }
+    return "Unknown";
 }
 
 ImVec4 PixelToImVec4(const Pixel& pixel) {
@@ -349,13 +365,35 @@ bool ConfigPanel::Init(SDL_Window* window,
     return true;
 }
 
+void ConfigPanel::BindEditorContext(EditorContext editorContext) {
+    m_editorContext_ = std::move(editorContext);
+}
+
+void ConfigPanel::DispatchImmediate(const Event& event) const {
+    if (m_editorContext_ && m_editorContext_->dispatchImmediate) {
+        m_editorContext_->dispatchImmediate(event);
+    }
+}
+
+Camera* ConfigPanel::GetCamera() const {
+    return m_editorContext_ ? m_editorContext_->GetCamera() : nullptr;
+}
+
+std::shared_ptr<Scene> ConfigPanel::GetScene() const {
+    return m_editorContext_ ? m_editorContext_->GetScene() : nullptr;
+}
+
+bool ConfigPanel::HasScene() const {
+    return m_editorContext_ && m_editorContext_->HasScene();
+}
+
 void ConfigPanel::ApplyRendererPreset(Config::RenderPreset preset) {
     if (!p_config_) {
         return;
     }
 
     Config::ApplyRenderPreset(*p_config_, preset);
-    Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_config_->renderer.resolution});
+    DispatchImmediate(OutputImageResizeEvent{p_config_->renderer.resolution});
 }
 
 void ConfigPanel::MarkRendererPresetCustom() {
@@ -424,7 +462,7 @@ void ConfigPanel::StyleColorsEnemymouse() {
 }
 
 void ConfigPanel::DisplayGUI() {
-    assert(p_config_ != nullptr || "Config not initialized!");
+    assert(p_config_ != nullptr && "Config not initialized!");
     if (!p_config_->window.showConfigPanel) {
         return;
     }
@@ -438,7 +476,7 @@ void ConfigPanel::DisplayGUI() {
     // ImGui::ShowDemoWindow(&show);
 
 #ifndef __ANDROID__
-    if (!m_examplesAutoOpened_ && Engine::Get().GetSceneManager().GetScene() == nullptr) {
+    if (!m_examplesAutoOpened_ && !HasScene()) {
         m_examplesAutoOpened_ = true;
         OpenExamplesWindow();
     }
@@ -446,11 +484,9 @@ void ConfigPanel::DisplayGUI() {
 
     DisplayJoysticks();
     DisplayMainMenu();
-    // DisplayPipelineWindow();
     DisplaySceneGraph();
-    // DisplayInspectorWindow();
     DisplayMaterialWindow();
-    DisplayConfigWindow(*p_config_);
+    DisplayConfigWindow();
     DisplayControlsOverlay();
     DisplayMetricsOverlay();
     DisplayExamplesWindow();
@@ -481,7 +517,7 @@ void ConfigPanel::RefreshExamplesCatalog() {
         selectedScenePath = currentScenes[*m_selectedExampleSceneIndex_].relativePath;
     }
 
-    m_exampleSceneCatalog_.Refresh({k_supportedModels});
+    m_exampleSceneCatalog_.Refresh({kSupportedModels});
 
     const auto& directories = m_exampleSceneCatalog_.GetDirectories();
     const auto& scenes = m_exampleSceneCatalog_.GetScenes();
@@ -557,8 +593,7 @@ void ConfigPanel::LoadSelectedExampleScene() {
 
     LOGD("Selected example file: %s", loadablePath->string().c_str());
     m_lastSceneDirectory_ = loadablePath->parent_path();
-    const bool appendToCurrentScene = Engine::Get().GetSceneManager().GetScene() != nullptr;
-    Engine::Get().DispatchImmediate(SceneLoadEvent{loadablePath->string(), appendToCurrentScene});
+    DispatchImmediate(SceneLoadEvent{loadablePath->string(), HasScene()});
     m_examplesStatusMessage_.clear();
 }
 
@@ -644,7 +679,7 @@ void ConfigPanel::DisplayExamplesWindow() {
     if (scenes.empty()) {
         ImGui::Separator();
         ImGui::TextWrapped("No example scenes matching %s were found under %s.",
-                           k_supportedModels,
+                           kSupportedModels,
                            m_exampleSceneCatalog_.GetRootPath().generic_string().c_str());
         ImGui::End();
         return;
@@ -720,32 +755,17 @@ void ConfigPanel::DisplayWindowSettings() {
 }
 
 void ConfigPanel::DisplaySceneGraph() {
-    ImGui::Begin("Scene Graph");
-    ImGuiIO& io = ImGui::GetIO();
-    ImFont* smallFont = io.Fonts->Fonts[0]; // base font (index 0)
-    constexpr float kScale = 0.8f;
-    ImGui::PushFont(smallFont);
-    ImGui::SetWindowFontScale(kScale);
-
-    Engine::Get().GetSceneManager().RenderUI();
-
-    ImGui::SetWindowFontScale(1.0f);
-    ImGui::PopFont();
-    ImGui::End();
-}
-
-void ConfigPanel::DisplayInspectorWindow() {
-    ImGui::Begin("Inspector");
-    ImGui::Text("Inspector");
-    ImGui::End();
+    if (m_editorContext_) {
+        m_sceneEditorPanel_.Draw(*m_editorContext_);
+    }
 }
 
 void ConfigPanel::DisplayMaterialWindow() {
-    ImGui::Begin("Material Editor");
-    Engine::Get().GetMaterialManager().RenderUI([this](const Texture& texture) {
-        DisplayTexturePreview(texture);
-    });
-    ImGui::End();
+    if (m_editorContext_) {
+        m_materialEditorPanel_.Draw(*m_editorContext_, p_Window_, [this](const Texture& texture) {
+            DisplayTexturePreview(texture);
+        });
+    }
 }
 
 void ConfigPanel::DisplayTexturePreview(const Texture& texture) {
@@ -791,7 +811,7 @@ void ConfigPanel::DisplayRenderedImage(bool outputAvailable, RenderOutputOrigin 
     ImVec2 contentSize = ImGui::GetContentRegionAvail();
     glm::ivec2 displaySize = {contentSize.x * r.resolutionScale, contentSize.y * r.resolutionScale};
     if (displaySize.x > 0 && displaySize.y > 0 && r.resolution != displaySize) {
-        Engine::Get().DispatchImmediate(OutputImageResizeEvent{displaySize});
+        DispatchImmediate(OutputImageResizeEvent{displaySize});
     }
 
     auto ReleaseMouse = [&]() {
@@ -808,7 +828,7 @@ void ConfigPanel::DisplayRenderedImage(bool outputAvailable, RenderOutputOrigin 
         int deltaX = 0;
         int deltaY = 0;
         SDL_GetRelativeMouseState(&deltaX, &deltaY);
-        if (auto cam = Engine::Get().GetCamera()) {
+        if (auto cam = GetCamera()) {
             cam->m_EulerRotation.y += deltaX * 0.05f;
             cam->m_EulerRotation.x -= deltaY * 0.05f;
         }
@@ -834,7 +854,7 @@ void ConfigPanel::DisplayRenderedImage(bool outputAvailable, RenderOutputOrigin 
     // 3. ImGui isn't using the mouse for other UI
     bool isViewportActive = isMouseInContent && ImGui::IsWindowHovered();
 
-    if (auto cam = Engine::Get().GetCamera()) {
+    if (auto cam = GetCamera()) {
         if (isViewportActive) {
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
             // TODO: emit event instead?
@@ -877,8 +897,8 @@ void ConfigPanel::DisplayRenderedImage(bool outputAvailable, RenderOutputOrigin 
         ImGui::Text("Renderer output is not available");
     }
 
-    if (auto camera = Engine::Get().GetCamera()) {
-        if (auto scene = Engine::Get().GetSceneManager().GetScene()) {
+    if (auto camera = GetCamera()) {
+        if (auto scene = GetScene()) {
             DrawLightGizmoOverlay(*scene, *camera, *p_config_, imageMin, contentSize);
         }
     }
@@ -925,8 +945,7 @@ void ConfigPanel::DisplayMainMenu() {
             if (const auto scenePath = NativeFileDialog::ShowOpenFileDialog(request)) {
                 LOGD("Selected model file: %s", scenePath->string().c_str());
                 m_lastSceneDirectory_ = scenePath->parent_path();
-                const bool appendToCurrentScene = Engine::Get().GetSceneManager().GetScene() != nullptr;
-                Engine::Get().DispatchImmediate(SceneLoadEvent{scenePath->string(), appendToCurrentScene});
+                DispatchImmediate(SceneLoadEvent{scenePath->string(), HasScene()});
             }
 #endif
         }
@@ -937,7 +956,7 @@ void ConfigPanel::DisplayMainMenu() {
 #endif
 
         if (ImGui::MenuItem("Reset")) {
-            Engine::Get().DispatchImmediate(SceneResetEvent{});
+            DispatchImmediate(SceneResetEvent{});
         }
 
         if (ImGui::MenuItem("About")) {
@@ -968,55 +987,7 @@ void ConfigPanel::DisplayMainMenu() {
     }
 }
 
-void ConfigPanel::DisplayPipelineWindow() {
-    // TODO: disable resizing below min size?
-    // TODO: open separate windows by clicking
-    if (ImGui::Begin("Graphics pipeline")) {
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-        static const char* stages[] = {"Input Assembler", "Vertex Shader",   "Tessellation",  "Geometry Shader",
-                                       "Rasterization",   "Fragment Shader", "Color Blending"};
-        int numStages = sizeof(stages) / sizeof(stages[0]);
-
-        ImVec2 windowPos = ImGui::GetWindowPos(); // Window top-left corner
-        ImVec2 windowSize = ImGui::GetWindowSize();
-        windowSize.y -= ImGui::GetFrameHeight();
-        windowPos.y += ImGui::GetFrameHeight();
-        constexpr ImVec2 padding(40, 0);
-        ImVec2 boxSize(((windowSize.x - (numStages + 1) * padding.x) / numStages), 50);
-        constexpr ImU32 arrowColor = IM_COL32(255, 255, 255, 255);
-
-        ImVec2 startPos = ImVec2(windowPos.x + padding.x, windowPos.y + windowSize.y / 2 - boxSize.y / 2);
-
-        for (int i = 0; i < numStages; ++i) {
-            ImVec2 boxMin = ImVec2(startPos.x + i * (boxSize.x + padding.x), startPos.y);
-            ImVec2 boxMax = ImVec2(boxMin.x + boxSize.x, boxMin.y + boxSize.y);
-            ImU32 boxColor = ImGui::ColorConvertFloat4ToU32(ImVec4(ImColor::HSV(i / (float)numStages, 0.6f, 0.6f)));
-
-            drawList->AddRectFilled(boxMin, boxMax, boxColor, 5.0f); // Rounded box
-            drawList->AddRect(boxMin, boxMax, IM_COL32_BLACK);       // Border
-
-            ImVec2 text_pos = ImVec2(boxMin.x + 10, boxMin.y + 15);
-            drawList->AddText(text_pos, IM_COL32_BLACK, stages[i]);
-
-            if (i < numStages - 1) {
-                ImVec2 arrowStart = ImVec2(boxMax.x, boxMin.y + boxSize.y / 2);
-                ImVec2 arrowEnd = ImVec2(arrowStart.x + padding.x, arrowStart.y);
-
-                // Arrow line
-                drawList->AddLine(arrowStart, arrowEnd, arrowColor, 2.0f);
-
-                // Arrow head
-                ImVec2 arrow_head1 = ImVec2(arrowEnd.x - 5, arrowEnd.y - 5);
-                ImVec2 arrow_head2 = ImVec2(arrowEnd.x - 5, arrowEnd.y + 5);
-                drawList->AddTriangleFilled(arrowEnd, arrow_head1, arrow_head2, arrowColor);
-            }
-        }
-    }
-    ImGui::End();
-}
-
-void ConfigPanel::DisplayConfigWindow(Config& config) {
+void ConfigPanel::DisplayConfigWindow() {
     if (ImGui::Begin("Configuration")) {
         if (ImGui::BeginTabBar("Camera")) {
             if (ImGui::BeginTabItem("Camera")) {
@@ -1054,7 +1025,7 @@ void ConfigPanel::DisplayConfigWindow(Config& config) {
 }
 
 void ConfigPanel::DisplayCameraSettings() {
-    if (auto cam = Engine::Get().GetCamera()) {
+    if (auto cam = GetCamera()) {
         ImGui::SeparatorText("Camera settings");
         ImGui::DragFloat3("Position", glm::value_ptr(cam->m_Position), 0.1f, 0.0f, 0.0f, "%.3f");
         ImGui::DragFloat3("Rotation", glm::value_ptr(cam->m_EulerRotation), 0.1f, -180.0f, 180.0f, "%.3f");
@@ -1078,16 +1049,6 @@ void ConfigPanel::DisplayRendererSettings() {
     auto& r = p_config_->renderer;
     bool manualChange = false;
     ImGui::SeparatorText("Renderer settings");
-    if (ImGui::Button("Take screenshot")) {
-        // TODO: implement screenshot
-        LOGD("Taking screenshot");
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Send to RenderDoc")) {
-        // TODO: implement screenshot
-        LOGD("Sending to RenderDoc");
-    }
-
     ImGui::SeparatorText("Preset");
     const char* presetItems[] = {"Custom", "Default", "PICO-8", "picoCAD", "PS1"};
     int presetIndex = static_cast<int>(p_config_->retro.preset);
@@ -1120,7 +1081,7 @@ void ConfigPanel::DisplayRendererSettings() {
         LOGD("Changed render resolution scale to %.1f", r.resolutionScale);
         glm::ivec2 newResolution = {static_cast<int>(floor(p_config_->renderer.resolution.x * r.resolutionScale)),
                                     static_cast<int>(floor(p_config_->renderer.resolution.y * r.resolutionScale))};
-        Engine::Get().DispatchImmediate(OutputImageResizeEvent{newResolution});
+        DispatchImmediate(OutputImageResizeEvent{newResolution});
     }
 
     ImGui::SeparatorText("Scene");
@@ -1130,7 +1091,7 @@ void ConfigPanel::DisplayRendererSettings() {
     ImGui::SeparatorText("Presentation");
     if (ImGui::Checkbox("Nearest-neighbor presentation", &r.nearestNeighborPresentation)) {
         manualChange = true;
-        Engine::Get().DispatchImmediate(OutputImageResizeEvent{p_config_->renderer.resolution});
+        DispatchImmediate(OutputImageResizeEvent{p_config_->renderer.resolution});
     }
     ImVec4 clearColor = r.clearColor.ToImVec4();
     if (ImGui::ColorEdit4(
@@ -1251,7 +1212,7 @@ void ConfigPanel::DisplayPostFxSettings() {
     };
 
     ImGui::SeparatorText("Retro style");
-    ImGui::Text("Preset: %s", Config::RenderPresetLabel(retro.preset));
+    ImGui::Text("Preset: %s", RenderPresetLabel(retro.preset));
 
     const char* paletteItems[] = {"None", "PICO-8", "DB16", "Sweetie-16", "Custom"};
     int paletteIndex = static_cast<int>(retro.palette);
@@ -1331,10 +1292,15 @@ void ConfigPanel::DisplayPostFxSettings() {
         IM_ARRAYSIZE(ps1MaterialModeItems));
     manualChange |= ImGui::Checkbox("Use 4-bit CLUT texture mode", &retro.usePs1TextureClut);
     if (retro.usePs1TextureClut) {
-        const auto& currentMaterial = Engine::Get().GetMaterialManager().GetCurrentMaterial();
-        if (currentMaterial.texture.has_value() && currentMaterial.texture->HasAutoPalette()) {
-            ImGui::Text("Active texture CLUT preview");
-            DrawPixelPalettePreviewGrid(currentMaterial.texture->GetAutoPalettePixels());
+        const MaterialManager* materialManager = m_editorContext_ ? m_editorContext_->materialManager : nullptr;
+        if (materialManager != nullptr) {
+            const auto& currentMaterial = materialManager->GetCurrentMaterial();
+            if (currentMaterial.texture.has_value() && currentMaterial.texture->HasAutoPalette()) {
+                ImGui::Text("Active texture CLUT preview");
+                DrawPixelPalettePreviewGrid(currentMaterial.texture->GetAutoPalettePixels());
+            } else {
+                ImGui::TextDisabled("Load a texture to preview the derived 16-color CLUT.");
+            }
         } else {
             ImGui::TextDisabled("Load a texture to preview the derived 16-color CLUT.");
         }
@@ -1394,7 +1360,6 @@ void ConfigPanel::DisplayControlsOverlay() {
         return;
     }
 
-    ImGuiIO& io = ImGui::GetIO();
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                                    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
                                    ImGuiWindowFlags_NoNav;
@@ -1459,7 +1424,7 @@ void ConfigPanel::DisplayMetricsOverlay() {
         ImGui::Text("UI: %.3f ms/frame (%.1f FPS)", uiFrameMs, io.Framerate);
         ImGui::Text("%d x %d (%s)", p_config_->renderer.resolution.x, p_config_->renderer.resolution.y,
                     p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE ? "software" : "OpenGL");
-        ImGui::Text("Preset: %s", Config::RenderPresetLabel(p_config_->retro.preset));
+        ImGui::Text("Preset: %s", RenderPresetLabel(p_config_->retro.preset));
         ImGui::Text("%d verts, %d tris", p_stats_->renderedVerts, p_stats_->renderedTris);
         ImGui::Text("0 draw calls");
         ImGui::SeparatorText("Frame timing");
@@ -1532,7 +1497,7 @@ void ConfigPanel::DisplayMetricsOverlay() {
             ImGui::Text("Frames: presented=%" PRIu64 " dropped(ready)=%" PRIu64, swFramesPresented,
                         swFramesDroppedReady);
         }
-        if (auto cam = Engine::Get().GetCamera()) {
+        if (auto cam = GetCamera()) {
             ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", cam->m_Position.x, cam->m_Position.y, cam->m_Position.z);
         }
         assert(p_stats_ != nullptr && "Stats not initialized!");
@@ -1618,7 +1583,7 @@ void ConfigPanel::DisplayJoysticks() {
     DrawJoystick("RotateStick", rightPos, rotateStickState);
 
     // Apply camera movement
-    if (auto cam = Engine::Get().GetCamera()) {
+    if (auto cam = GetCamera()) {
         if (moveStickState.active) {
             glm::vec3 forward = cam->m_Direction;
             glm::vec3 right = glm::normalize(glm::cross(forward, cam->m_Up));

@@ -28,15 +28,12 @@ class Scene {
     [[nodiscard]] std::vector<int>& GetVisibleModels();
     [[nodiscard]] std::vector<SceneLight>& GetLights();
     [[nodiscard]] const std::vector<SceneLight>& GetLights() const;
-    [[nodiscard]] std::vector<LightSnapshot> BuildLightSnapshots() const;
     void BuildLightSnapshots(std::vector<LightSnapshot>& outSnapshots) const;
     [[nodiscard]] const glm::mat4& GetModelWorldTransform(int index) const;
     void MarkDirtyModel(int index);
+    [[nodiscard]] Model& GetModel(size_t index);
     [[nodiscard]] const Model& GetModel(size_t index) const;
     [[nodiscard]] size_t GetModelCount() const;
-
-    std::vector<Model> m_Models;
-    std::vector<SceneLight> m_Lights;
 
   private:
     void InitializeDefaultLighting(const glm::vec3& lightPosition);
@@ -49,5 +46,7 @@ class Scene {
 
     std::unique_ptr<ISceneImporter> p_SceneImporter;
     std::vector<int> m_VisibleModels;
+    std::vector<Model> m_Models;
+    std::vector<SceneLight> m_Lights;
 };
 } // namespace RetroRenderer

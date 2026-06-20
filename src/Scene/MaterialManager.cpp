@@ -1,55 +1,17 @@
 #include "MaterialManager.h"
 
 #include "../Renderer/RenderServices.h"
-#include "../native/FileDialog.h"
-#include "KrisLogger/Logger.h"
-#include <SDL.h>
+#include <KrisLogger/Logger.h>
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
-#include <imgui.h>
 #include <sstream>
 
 #ifdef __ANDROID__
-#include "../native/AndroidBridge.h"
-#elif defined(__EMSCRIPTEN__)
-#include <emscripten.h>
+#include "../native/android/AndroidBridge.h"
 #endif
 
 namespace RetroRenderer {
-#ifdef __EMSCRIPTEN__
-EM_JS(void, OpenWebTexturePicker_JS, (), {
-    let input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.png';
-    input.style.display = 'none';
-
-    input.onchange = e => {
-        let file = e.target.files[0];
-        if (!file)
-            return;
-
-        let reader = new FileReader();
-        reader.onload = function(event) {
-            let data = event.target.result;
-            let size = data.byteLength;
-            let ptr = Module._malloc(size);
-            if (!ptr) {
-                console.error("Failed to allocate memory");
-                return;
-            }
-
-            let heapBytes = new Uint8Array(Module.HEAPU8.buffer, ptr, size);
-            heapBytes.set(new Uint8Array(data));
-            Module.ccall('OnWebTextureSelected', null, [ 'number', 'number' ], [ ptr, size ]);
-        };
-        reader.readAsArrayBuffer(file);
-    };
-
-    document.body.appendChild(input);
-    input.click();
-    document.body.removeChild(input);
-});
-#endif
 
 void MaterialManager::BindRenderServices(IRenderInvalidationSink& renderInvalidationSink) {
     p_RenderInvalidationSink_ = &renderInvalidationSink;
@@ -84,12 +46,19 @@ void MaterialManager::LoadTexture(const uint8_t* data, const size_t size) {
     p_RenderInvalidationSink_->OnTextureMutated();
 }
 
+void MaterialManager::ClearTexture() {
+    if (m_Materials.empty()) {
+        return;
+    }
+    GetCurrentMaterial().texture.reset();
+    p_RenderInvalidationSink_->OnTextureMutated();
+}
+
 void MaterialManager::LoadDefaultShaders() {
     // TODO: extract
     Material phongTexMaterial;
     phongTexMaterial.name = "phong-tex";
     phongTexMaterial.phongParams = PhongParams{};
-    phongTexMaterial.texture = Texture{};
     Material phongVcMaterial;
     phongVcMaterial.name = "phong-vc";
     phongVcMaterial.phongParams = PhongParams{};
@@ -102,6 +71,14 @@ void MaterialManager::LoadDefaultShaders() {
     m_Materials.emplace_back(std::move(phongTexMaterial));
     phongVcMaterial.shaderProgram = CreateShaderProgram(phongVcVs, phongVcFs);
     m_Materials.emplace_back(std::move(phongVcMaterial));
+}
+
+void MaterialManager::SetCurrentMaterialIndex(int materialIndex) {
+    if (m_Materials.empty()) {
+        m_CurrentMaterialIndex = 0;
+        return;
+    }
+    m_CurrentMaterialIndex = std::clamp(materialIndex, 0, static_cast<int>(m_Materials.size()) - 1);
 }
 
 ShaderProgram MaterialManager::CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath) {
@@ -159,67 +136,4 @@ std::string MaterialManager::ReadShaderFile(const std::string& path) {
     return buffer.str();
 }
 
-void MaterialManager::RenderUI(const TexturePreviewCallback& texturePreview) {
-    if (m_Materials.empty()) {
-        return;
-    }
-    ImGui::SeparatorText("Material");
-    constexpr const char* materialNames[] = {"Phong (texture color)", "Phong (vertex color)"};
-    ImGui::Combo("Material Type", &m_CurrentMaterialIndex, materialNames, IM_ARRAYSIZE(materialNames));
-
-    Material& currentMat = GetCurrentMaterial();
-
-    // Texture loading
-    ImGui::SeparatorText("Texture");
-    if (currentMat.texture.has_value()) {
-        if (ImGui::Button("Load texture")) {
-            // TODO: extract platform specific
-#ifdef __ANDROID__
-            auto* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
-            auto activity = static_cast<jobject>(SDL_AndroidGetActivity());
-            jclass cls = env->GetObjectClass(activity);
-            jmethodID mid = env->GetMethodID(cls, "openTexturePicker", "()V");
-            env->CallVoidMethod(activity, mid);
-#elif defined(__EMSCRIPTEN__)
-            OpenWebTexturePicker_JS();
-#else
-            NativeFileDialog::FileDialogRequest request{};
-            request.title = "Choose texture";
-            request.defaultLocation = m_lastTextureDirectory_.empty() ? std::filesystem::path("assets")
-                                                                      : m_lastTextureDirectory_;
-            request.filters.push_back(NativeFileDialog::FileDialogFilter{"PNG images", {"*.png"}});
-            if (const auto texturePath = NativeFileDialog::ShowOpenFileDialog(request)) {
-                LOGD("Selected texture file: %s", texturePath->string().c_str());
-                m_lastTextureDirectory_ = texturePath->parent_path();
-                LoadTexture(texturePath->string());
-            }
-#endif
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Unload texture")) {
-            currentMat.texture = Texture();
-            p_RenderInvalidationSink_->OnTextureMutated();
-        }
-
-        if (currentMat.texture->HasCpuPixels()) {
-            ImGui::Text("Current Texture: %s (%d x %d)",
-                        currentMat.texture->GetPath().c_str(),
-                        currentMat.texture->GetWidth(),
-                        currentMat.texture->GetHeight());
-            if (texturePreview) {
-                texturePreview(*currentMat.texture);
-            }
-        } else {
-            ImGui::Text("Current Texture: none");
-        }
-    }
-    // Shader parameters
-    ImGui::SeparatorText("Shader Parameters");
-    if (currentMat.phongParams.has_value()) {
-        ImGui::SliderFloat("Ambient Strength", &currentMat.phongParams->ambientStrength, 0.0f, 1.0f);
-        ImGui::SliderFloat("Specular Strength", &currentMat.phongParams->specularStrength, 0.0f, 1.0f);
-        ImGui::SliderFloat("Shininess", &currentMat.phongParams->shininess, 2.0f, 256.0f);
-        ImGui::ColorEdit3("Light Color", &currentMat.lightColor[0]);
-    }
-}
 } // namespace RetroRenderer

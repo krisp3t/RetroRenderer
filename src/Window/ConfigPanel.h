@@ -4,7 +4,9 @@
 #include "../Base/Stats.h"
 #include "../Renderer/FrameSubmission.h"
 #include "../Renderer/RenderOutput.h"
-#include "../Scene/Camera.h"
+#include "EditorContext.h"
+#include "MaterialEditorPanel.h"
+#include "SceneEditorPanel.h"
 #include <SDL.h>
 #include <filesystem>
 #include <imgui.h>
@@ -27,6 +29,7 @@ class ConfigPanel {
     ConfigPanel() = default;
     ~ConfigPanel();
     bool Init(SDL_Window* window, SDL_GLContext glContext, std::shared_ptr<Config> config, std::shared_ptr<Stats> stats);
+    void BindEditorContext(EditorContext editorContext);
     void Destroy();
     void BeforeFrame();
     void DisplayRenderedImage();
@@ -48,6 +51,9 @@ class ConfigPanel {
     const Texture* m_previewTextureSource_ = nullptr;
     uint64_t m_previewTextureRevision_ = 0;
     bool m_isDragging_ = false;
+    std::optional<EditorContext> m_editorContext_;
+    SceneEditorPanel m_sceneEditorPanel_;
+    MaterialEditorPanel m_materialEditorPanel_;
     ExampleSceneCatalog m_exampleSceneCatalog_;
     std::filesystem::path m_lastSceneDirectory_;
     std::optional<size_t> m_selectedExampleDirectoryIndex_;
@@ -69,9 +75,7 @@ class ConfigPanel {
     void DisplaySceneGraph();
     void DisplayMaterialWindow();
     void DisplayTexturePreview(const Texture& texture);
-    void DisplayInspectorWindow();
-    void DisplayPipelineWindow();
-    void DisplayConfigWindow(Config& config);
+    void DisplayConfigWindow();
     void DisplayControlsOverlay();
     void DisplayExamplesWindow();
     void DisplayWindowSettings();
@@ -85,8 +89,12 @@ class ConfigPanel {
     void OpenAndroidFilePicker();
     void RefreshExamplesCatalog();
     void SelectExampleDirectory(size_t directoryIndex);
+    void DispatchImmediate(const Event& event) const;
+    [[nodiscard]] Camera* GetCamera() const;
+    [[nodiscard]] std::shared_ptr<Scene> GetScene() const;
+    [[nodiscard]] bool HasScene() const;
 
-    const char* k_supportedModels = ".obj";
+    static constexpr const char* kSupportedModels = ".obj";
     VirtualStickState moveStickState;
     VirtualStickState rotateStickState;
 };
