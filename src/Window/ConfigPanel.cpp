@@ -16,10 +16,10 @@
 #include <KrisLogger/Logger.h>
 #include <SDL.h>
 #include <glm/gtc/type_ptr.hpp>
-#include <imgui_impl_opengl3.h>
 #include <algorithm>
 #include <chrono>
 #include <cinttypes>
+#include <cstring>
 #include <utility>
 
 #ifdef __ANDROID__
@@ -29,10 +29,8 @@
 #include "../Base/Event.h"
 #include "../Base/InputActions.h"
 #include "../Engine.h"
-#include "../Renderer/GLFramePresenter.h"
 #include "../Renderer/RetroPalette.h"
 #include "../Scene/Texture.h"
-#include "../include/kris_glheaders.h"
 #include "ConfigPanel.h"
 #include "ImGuiTexture.h"
 
@@ -280,8 +278,10 @@ ConfigPanel::~ConfigPanel() {
     Destroy();
 }
 
-bool ConfigPanel::Init(SDL_Window* window, SDL_GLContext glContext, std::shared_ptr<Config> config,
-                       const char* glslVersion, std::shared_ptr<Stats> stats) {
+bool ConfigPanel::Init(SDL_Window* window,
+                       SDL_GLContext glContext,
+                       std::shared_ptr<Config> config,
+                       std::shared_ptr<Stats> stats) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -316,14 +316,22 @@ bool ConfigPanel::Init(SDL_Window* window, SDL_GLContext glContext, std::shared_
 #endif
     // io.FontGlobalScale = 2.0f;
     ImGui_ImplSDL2_InitForOpenGL(window, glContext);
-    ImGui_ImplOpenGL3_Init(glslVersion);
+
+    unsigned char* fontPixels = nullptr;
+    int fontWidth = 0;
+    int fontHeight = 0;
+    io.Fonts->GetTexDataAsRGBA32(&fontPixels, &fontWidth, &fontHeight);
+    m_fontAtlas_.width = fontWidth;
+    m_fontAtlas_.height = fontHeight;
+    m_fontAtlas_.pixels.resize(static_cast<size_t>(fontWidth) * static_cast<size_t>(fontHeight));
+    if (fontPixels != nullptr && !m_fontAtlas_.pixels.empty()) {
+        std::memcpy(m_fontAtlas_.pixels.data(), fontPixels, m_fontAtlas_.pixels.size() * sizeof(Pixel));
+    }
+    io.Fonts->SetTexID(ToImTextureID(PresentationTexture::FontAtlas));
 
     p_Window_ = window;
     p_config_ = config;
     p_stats_ = stats;
-    m_cpuOutputPresenter_ = std::make_unique<GLFramePresenter>();
-    m_materialPreviewPresenter_ = std::make_unique<GLFramePresenter>();
-
     return true;
 }
 
@@ -455,9 +463,7 @@ void ConfigPanel::DisplayWindowSettings() {
     // ImGui::Checkbox("Show configuration panel", &w.showConfigPanel);
     ImGui::Checkbox("Show controls", &w.showControls);
     ImGui::Checkbox("Show FPS", &w.showFPS);
-    if (ImGui::Checkbox("Enable VSync", &w.enableVsync)) {
-        SDL_GL_SetSwapInterval(w.enableVsync ? 1 : 0);
-    }
+    ImGui::Checkbox("Enable VSync", &w.enableVsync);
 }
 
 void ConfigPanel::DisplaySceneGraph() {
@@ -494,20 +500,15 @@ void ConfigPanel::DisplayTexturePreview(const Texture& texture) {
         ImGui::Text("Texture preview unavailable");
         return;
     }
-    if (!m_materialPreviewPresenter_) {
-        ImGui::Text("Texture preview presenter unavailable");
-        return;
+    if (m_previewTextureSource_ != &texture || m_previewTextureRevision_ != texture.GetRevision()) {
+        m_previewTextureSnapshot_ = std::make_shared<Texture>(texture.CloneCpuOnly());
+        m_previewTextureSource_ = &texture;
+        m_previewTextureRevision_ = texture.GetRevision();
     }
-
-    const auto& pixels = texture.GetPixels();
-    const size_t width = static_cast<size_t>(texture.GetWidth());
-    const size_t height = static_cast<size_t>(texture.GetHeight());
-    if (pixels.empty() ||
-        !m_materialPreviewPresenter_->Resize(texture.GetWidth(), texture.GetHeight(), p_config_->renderer.nearestNeighborPresentation) ||
-        !m_materialPreviewPresenter_->UploadPixels(pixels.data(), width, height)) {
-        ImGui::Text("Texture preview unavailable");
-        return;
-    }
+    m_uiTextureSnapshots_.push_back(
+        UiTextureSnapshot{PresentationTexture::MaterialPreview,
+                          m_previewTextureSnapshot_,
+                          p_config_->renderer.nearestNeighborPresentation});
 
     constexpr float kMaxPreviewSize = 128.0f;
     const float scale = std::min(kMaxPreviewSize / static_cast<float>(texture.GetWidth()),
@@ -516,7 +517,7 @@ void ConfigPanel::DisplayTexturePreview(const Texture& texture) {
         std::max(1.0f, static_cast<float>(texture.GetWidth()) * scale),
         std::max(1.0f, static_cast<float>(texture.GetHeight()) * scale),
     };
-    ImGui::Image(ToImTextureID(m_materialPreviewPresenter_->GetTextureHandle()), previewSize);
+    ImGui::Image(ToImTextureID(PresentationTexture::MaterialPreview), previewSize);
 }
 
 void ConfigPanel::DisplayRenderedImage() {
@@ -528,7 +529,7 @@ void ConfigPanel::DisplayRenderedImage() {
     ImGui::End();
 }
 
-void ConfigPanel::DisplayRenderedImage(const RenderOutput& output) {
+void ConfigPanel::DisplayRenderedImage(bool outputAvailable, RenderOutputOrigin origin) {
     if (p_stats_) {
         p_stats_->lastCpuOutputUploadNs.store(0, std::memory_order_relaxed);
     }
@@ -612,39 +613,12 @@ void ConfigPanel::DisplayRenderedImage(const RenderOutput& output) {
         }
     }
     const ImVec2 imageMin = ImGui::GetCursorScreenPos();
-    if (output.kind == RenderOutputKind::TextureHandle && output.IsValid()) {
-        const ImTextureID textureId = ToImTextureID(output.textureHandle);
-        if (output.origin == RenderOutputOrigin::BottomLeft) {
+    if (outputAvailable) {
+        const ImTextureID textureId = ToImTextureID(PresentationTexture::Output);
+        if (origin == RenderOutputOrigin::BottomLeft) {
             ImGui::Image(textureId, contentSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
         } else {
             ImGui::Image(textureId, contentSize);
-        }
-    } else if (output.kind == RenderOutputKind::CpuPixels && output.IsValid()) {
-        const auto& pixels = output.cpuPixels;
-        if (pixels.format != RenderOutputPixelFormat::Rgba8) {
-            ImGui::Text("Renderer output pixel format is not supported");
-        } else {
-            const auto uploadStart = TimingClock::now();
-            const bool uploadOk =
-                m_cpuOutputPresenter_ &&
-                m_cpuOutputPresenter_->Resize(static_cast<int>(pixels.width),
-                                              static_cast<int>(pixels.height),
-                                              p_config_->renderer.nearestNeighborPresentation) &&
-                m_cpuOutputPresenter_->UploadPixels(pixels.pixels, pixels.width, pixels.height);
-            if (p_stats_) {
-                p_stats_->lastCpuOutputUploadNs.store(ElapsedNanoseconds(uploadStart), std::memory_order_relaxed);
-            }
-
-            if (!uploadOk) {
-                ImGui::Text("Renderer CPU output is not available");
-            } else {
-                const ImTextureID textureId = ToImTextureID(m_cpuOutputPresenter_->GetTextureHandle());
-                if (output.origin == RenderOutputOrigin::BottomLeft) {
-                    ImGui::Image(textureId, contentSize, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
-                } else {
-                    ImGui::Image(textureId, contentSize);
-                }
-            }
         }
     } else {
         ImGui::Text("Renderer output is not available");
@@ -1256,7 +1230,7 @@ void ConfigPanel::DisplayMetricsOverlay() {
         ImGui::Text("Main update: %.3f ms", ReadTimingMilliseconds(p_stats_->lastMainUpdateNs));
         ImGui::Text("Display before frame: %.3f ms", ReadTimingMilliseconds(p_stats_->lastDisplayBeforeFrameNs));
         ImGui::Text("Build render packet: %.3f ms", ReadTimingMilliseconds(p_stats_->lastRenderPacketBuildNs));
-        ImGui::Text("RenderSystem::Render: %.3f ms", ReadTimingMilliseconds(p_stats_->lastRenderSystemNs));
+        ImGui::Text("Prepare render frame: %.3f ms", ReadTimingMilliseconds(p_stats_->lastRenderSystemNs));
         ImGui::Text("ImGui build/render: %.3f / %.3f ms",
                     ReadTimingMilliseconds(p_stats_->lastImGuiBuildNs),
                     ReadTimingMilliseconds(p_stats_->lastImGuiRenderNs));
@@ -1425,13 +1399,7 @@ void ConfigPanel::DisplayJoysticks() {
 
 void ConfigPanel::BeforeFrame() {
     const auto imguiBuildStart = TimingClock::now();
-    auto const& io = ImGui::GetIO();
-    glViewport(0, 0, (int)io.DisplaySize.x > 0 ? (int)io.DisplaySize.x : 0,
-               (int)io.DisplaySize.y > 0 ? (int)io.DisplaySize.y : 0);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    ImGui_ImplOpenGL3_NewFrame();
+    m_uiTextureSnapshots_.clear();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
@@ -1444,33 +1412,30 @@ void ConfigPanel::BeforeFrame() {
 void ConfigPanel::OnDraw() {
     const auto imguiRenderStart = TimingClock::now();
     ImGui::Render();
-    auto const& io = ImGui::GetIO();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    // Multi-viewport support
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-        // SDL_Window *backupCurrentWindow = SDL_GL_GetCurrentWindow();
-        // SDL_GLContext backupCurrentContext = SDL_GL_GetCurrentContext();
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-        // SDL_GL_MakeCurrent(backupCurrentWindow, backupCurrentContext);
-    }
+    m_uiRenderPacket_ = UiRenderPacket::Capture(ImGui::GetDrawData());
     if (p_stats_) {
         p_stats_->lastImGuiRenderNs.store(ElapsedNanoseconds(imguiRenderStart), std::memory_order_relaxed);
     }
 }
 
 void ConfigPanel::Destroy() {
-    if (m_cpuOutputPresenter_) {
-        m_cpuOutputPresenter_->Destroy();
-        m_cpuOutputPresenter_.reset();
+    if (ImGui::GetCurrentContext() == nullptr) {
+        return;
     }
-    if (m_materialPreviewPresenter_) {
-        m_materialPreviewPresenter_->Destroy();
-        m_materialPreviewPresenter_.reset();
-    }
-    ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
+}
+
+const UiFontAtlas& ConfigPanel::GetFontAtlas() const {
+    return m_fontAtlas_;
+}
+
+UiRenderPacket ConfigPanel::TakeUiRenderPacket() {
+    return std::move(m_uiRenderPacket_);
+}
+
+std::vector<UiTextureSnapshot> ConfigPanel::TakeUiTextureSnapshots() {
+    return std::move(m_uiTextureSnapshots_);
 }
 
 void ConfigPanel::OpenAndroidFilePicker() {

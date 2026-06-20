@@ -109,9 +109,12 @@ set(RETRO_RENDERER_SOURCES
         src/Renderer/GLBackendCommon.cpp
         src/Renderer/GLBackendRendererBase.cpp
         src/Renderer/GLFramePresenter.cpp
+        src/Renderer/GLUiRenderer.cpp
         src/Renderer/GridGizmo.cpp
+        src/Renderer/InlineRenderExecutor.cpp
         src/Renderer/RenderSystem.cpp
         src/Renderer/RetroPalette.cpp
+        src/Renderer/UiRenderPacket.cpp
         src/Renderer/Software/Rasterizer.cpp
         src/Renderer/Software/SWRenderer.cpp
 )

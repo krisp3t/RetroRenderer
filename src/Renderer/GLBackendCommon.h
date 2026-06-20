@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderPacket.h"
+#include "ShaderHandle.h"
 #include "TextureHandle.h"
 #include "../include/kris_glheaders.h"
 #include <unordered_map>

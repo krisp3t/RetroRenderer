@@ -1,23 +1,13 @@
 #include "DisplaySystem.h"
-#include "../Renderer/IFramePresenter.h"
-#include "../Renderer/Buffer.h"
-#include "../include/kris_glheaders.h"
 #include <KrisLogger/Logger.h>
-#include <imgui.h>
 
 namespace RetroRenderer {
-namespace {
-
-void LogOpenGlExtensions() {
-    GLint extensionCount = 0;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount);
-    LOGI("OpenGL extension count: %d", extensionCount);
-}
-
-} // namespace
-
 SDL_Window* DisplaySystem::GetWindow() const {
     return m_window_;
+}
+
+SDL_GLContext DisplaySystem::GetGlContext() const {
+    return m_glContext_;
 }
 
 bool DisplaySystem::Init(const std::shared_ptr<Config>& config, const std::shared_ptr<Stats>& stats) {
@@ -32,13 +22,11 @@ bool DisplaySystem::Init(const std::shared_ptr<Config>& config, const std::share
                                  // TODO: only enable GLAD extensions which are actually used
 #if defined(IMGUI_IMPL_OPENGL_ES2)
     // GL ES 2.0 + GLSL 100
-    const char* glslVersion = "#version 100";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #elif defined(__ANDROID_API__)
-    const char* glslVersion = "#version 300 es";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
@@ -46,13 +34,11 @@ bool DisplaySystem::Init(const std::shared_ptr<Config>& config, const std::share
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 #elif defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
-    const char* glslVersion = "#version 150";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #elif defined(__EMSCRIPTEN__)
-    const char* glslVersion = "#version 300 es";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
@@ -61,7 +47,6 @@ bool DisplaySystem::Init(const std::shared_ptr<Config>& config, const std::share
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 #else
     // Desktop: GL 4.3
-    const char* glslVersion = "#version 330 core";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -84,43 +69,11 @@ bool DisplaySystem::Init(const std::shared_ptr<Config>& config, const std::share
         LOGE("Error creating OpenGL context: %s\n", SDL_GetError());
         return false;
     }
-    SDL_GL_MakeCurrent(m_window_, m_glContext_);
-#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
-    if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
-        LOGE("Error initializing GLAD\n");
-        return false;
-    }
-#endif
-
-    LOGI("OpenGL loaded");
-#ifndef __EMSCRIPTEN__
-    LOGI("OpenGL Vendor:    %s", glGetString(GL_VENDOR));
-    LOGI("OpenGL Renderer:  %s", glGetString(GL_RENDERER));
-    LOGI("OpenGL Version:   %s", glGetString(GL_VERSION));
-    LOGI("GLSL Version:     %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
-    LogOpenGlExtensions();
-    int contextFlags;
-    glGetIntegerv(GL_CONTEXT_FLAGS, &contextFlags);
-    if (contextFlags & GL_CONTEXT_FLAG_DEBUG_BIT) {
-        LOGI("Debug context is active!");
-    } else {
-        LOGW("Debug context not available!");
-    }
-#endif
-
-    glViewport(0, 0, screenWidth, screenHeight);
-    glEnable(GL_DEPTH_TEST);
-
-#ifndef __EMSCRIPTEN__
-    SDL_GL_SetSwapInterval(config->window.enableVsync ? 1 : 0);
-#endif
     m_configPanel_ = std::make_unique<ConfigPanel>();
-    m_configPanel_->Init(m_window_, m_glContext_, config, glslVersion, stats);
-    return true;
+    return m_configPanel_->Init(m_window_, m_glContext_, config, stats);
 }
 
 void DisplaySystem::BeforeFrame() {
-    ResetGlContext();
     m_configPanel_->BeforeFrame();
 }
 
@@ -129,24 +82,31 @@ void DisplaySystem::DrawFrame() {
     m_configPanel_->OnDraw();
 }
 
-void DisplaySystem::DrawFrame(const RenderOutput& output) {
-    ResetGlContext();
-    m_configPanel_->DisplayRenderedImage(output);
+void DisplaySystem::DrawFrame(bool outputAvailable, RenderOutputOrigin origin) {
+    m_configPanel_->DisplayRenderedImage(outputAvailable, origin);
     m_configPanel_->OnDraw();
 }
 
-void DisplaySystem::SwapBuffers() {
-    SDL_GL_MakeCurrent(m_window_, m_glContext_);
-    SDL_GL_SwapWindow(m_window_);
-}
-
 void DisplaySystem::Destroy() {
+    if (m_configPanel_) {
+        m_configPanel_->Destroy();
+        m_configPanel_.reset();
+    }
     SDL_GL_DeleteContext(m_glContext_);
     SDL_DestroyWindow(m_window_);
     SDL_Quit();
 }
 
-void DisplaySystem::ResetGlContext() {
-    SDL_GL_MakeCurrent(m_window_, m_glContext_);
+const UiFontAtlas& DisplaySystem::GetFontAtlas() const {
+    return m_configPanel_->GetFontAtlas();
 }
+
+UiRenderPacket DisplaySystem::TakeUiRenderPacket() {
+    return m_configPanel_->TakeUiRenderPacket();
+}
+
+std::vector<UiTextureSnapshot> DisplaySystem::TakeUiTextureSnapshots() {
+    return m_configPanel_->TakeUiTextureSnapshots();
+}
+
 } // namespace RetroRenderer

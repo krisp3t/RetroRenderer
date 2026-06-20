@@ -6,7 +6,7 @@
 #include "../Scene/Light.h"
 #include "../Scene/Texture.h"
 #include "../Scene/Vertex.h"
-#include "ShaderHandle.h"
+#include "ShaderResource.h"
 #include <glm/mat4x4.hpp>
 #include <limits>
 #include <memory>
@@ -20,7 +20,7 @@ constexpr FrameMaterialId kInvalidFrameMaterialId = std::numeric_limits<FrameMat
 constexpr FrameTextureId kInvalidFrameTextureId = std::numeric_limits<FrameTextureId>::max();
 
 struct FrameMaterialState {
-    ShaderHandle shaderHandle;
+    std::shared_ptr<const RenderShaderSnapshot> shader;
     glm::vec3 lightColor = glm::vec3(1.0f);
     bool useVertexColor = false;
     bool enablePhong = false;
@@ -53,6 +53,8 @@ struct RenderPacket {
     Config configSnapshot{};
     Color clearColor{};
     uint64_t dataRevision = 0;
+    uint64_t sceneResourceRevision = 0;
+    uint64_t textureResourceRevision = 0;
 };
 
 } // namespace RetroRenderer

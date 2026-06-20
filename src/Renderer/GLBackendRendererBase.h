@@ -7,6 +7,7 @@
 #include "IHardwareRenderer.h"
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 namespace RetroRenderer {
 
@@ -93,10 +94,16 @@ class GLBackendRendererBase : public IHardwareRenderer {
     GLMeshResourceCache m_MeshResources;
     GLTextureResourceCache m_TextureResources;
     GLProgramUniformCache m_UniformCache;
+    uint64_t m_SceneResourceRevision = 0;
+    uint64_t m_TextureResourceRevision = 0;
 
   private:
     GLuint CompileShaderStage(GLenum shaderType, const std::string& shaderSource);
+    GLuint ResolveShaderProgram(const std::shared_ptr<const RenderShaderSnapshot>& shader);
+    void DestroyMaterialShaders();
     bool CheckShaderErrors(GLuint object, const char* stage, bool isProgram) const;
+
+    std::unordered_map<std::shared_ptr<const RenderShaderSnapshot>, GLuint> m_MaterialShaders;
 };
 
 } // namespace RetroRenderer

@@ -140,6 +140,7 @@ void GLBackendRendererBase::Destroy() {
     DestroyFramebufferResources();
     DestroyRendererResources();
     m_UniformCache.Clear();
+    DestroyMaterialShaders();
     m_ActiveCamera = nullptr;
     m_SceneLights.clear();
     m_FrameMaterialState = {};
@@ -198,6 +199,16 @@ void GLBackendRendererBase::InvalidateTextureResources() {
 void GLBackendRendererBase::RenderFrame(const RenderPacket& packet) {
     if (!packet.hasScene) {
         return;
+    }
+
+    if (packet.sceneResourceRevision != m_SceneResourceRevision) {
+        m_MeshResources.Clear();
+        m_TextureResources.Clear();
+        m_SceneResourceRevision = packet.sceneResourceRevision;
+        m_TextureResourceRevision = packet.textureResourceRevision;
+    } else if (packet.textureResourceRevision != m_TextureResourceRevision) {
+        m_TextureResources.Clear();
+        m_TextureResourceRevision = packet.textureResourceRevision;
     }
 
     m_FrameCameraSnapshot = packet.camera;
@@ -265,7 +276,7 @@ void GLBackendRendererBase::DrawMeshGpuResources(const GLMeshResourceCache::Mesh
                                                  const Texture* texture,
                                                  const FrameMaterialState& materialState,
                                                  const Config& configSnapshot) {
-    const GLuint shaderProgram = ToGLHandle(materialState.shaderHandle);
+    const GLuint shaderProgram = ResolveShaderProgram(materialState.shader);
     if (shaderProgram == 0 || m_ActiveCamera == nullptr) {
         return;
     }
@@ -439,6 +450,31 @@ ShaderHandle GLBackendRendererBase::CompileShaders(const std::string& vertexCode
     glDeleteShader(fragmentShader);
 
     return ShaderHandle{static_cast<uintptr_t>(shaderProgram)};
+}
+
+GLuint GLBackendRendererBase::ResolveShaderProgram(const std::shared_ptr<const RenderShaderSnapshot>& shader) {
+    if (!shader) {
+        return 0;
+    }
+    auto it = m_MaterialShaders.find(shader);
+    if (it != m_MaterialShaders.end()) {
+        return it->second;
+    }
+
+    const ShaderHandle handle = CompileShaders(shader->vertexCode, shader->fragmentCode);
+    const GLuint program = ToGLHandle(handle);
+    m_MaterialShaders.emplace(shader, program);
+    return program;
+}
+
+void GLBackendRendererBase::DestroyMaterialShaders() {
+    for (const auto& [shader, program] : m_MaterialShaders) {
+        (void)shader;
+        if (program != 0) {
+            glDeleteProgram(program);
+        }
+    }
+    m_MaterialShaders.clear();
 }
 
 void GLBackendRendererBase::CreateFallbackTexture() {

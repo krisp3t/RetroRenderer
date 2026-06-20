@@ -29,20 +29,20 @@ class DisplaySystem {
     ~DisplaySystem() = default;
 
     SDL_Window* GetWindow() const;
+    SDL_GLContext GetGlContext() const;
+    [[nodiscard]] const UiFontAtlas& GetFontAtlas() const;
+    [[nodiscard]] UiRenderPacket TakeUiRenderPacket();
+    [[nodiscard]] std::vector<UiTextureSnapshot> TakeUiTextureSnapshots();
 
     bool Init(const std::shared_ptr<Config>& config, const std::shared_ptr<Stats>& stats);
 
     void Destroy();
 
-    void SwapBuffers();
-
     void BeforeFrame();
 
     void DrawFrame();
 
-    void DrawFrame(const RenderOutput& output);
-
-    void ResetGlContext();
+    void DrawFrame(bool outputAvailable, RenderOutputOrigin origin);
 
   private:
     SDL_Window* m_window_ = nullptr;

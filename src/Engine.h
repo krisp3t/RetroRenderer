@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -6,6 +7,7 @@
 #include "Base/Event.h"
 #include "Base/Stats.h"
 #include "Renderer/RenderSystem.h"
+#include "Renderer/IRenderExecutor.h"
 #include "Scene/MaterialManager.h"
 #include "Scene/SceneManager.h"
 #include "Window/DisplaySystem.h"
@@ -50,11 +52,13 @@ class Engine {
 
     DisplaySystem m_DisplaySystem;
     std::unique_ptr<RenderSystem> p_RenderSystem;
+    std::unique_ptr<IRenderExecutor> p_RenderExecutor;
     InputSystem m_InputSystem;
     std::unique_ptr<SceneManager> p_SceneManager;
     std::unique_ptr<MaterialManager> p_MaterialManager;
 
     Uint32 m_LastFrameTicks = 0;
+    uint64_t m_NextFrameId = 0;
     bool m_Running = true;
 };
 

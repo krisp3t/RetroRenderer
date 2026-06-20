@@ -13,14 +13,12 @@
 #endif
 
 namespace RetroRenderer {
-void MaterialManager::BindRenderServices(IShaderCompiler& shaderCompiler,
-                                         IRenderInvalidationSink& renderInvalidationSink) {
-    p_ShaderCompiler_ = &shaderCompiler;
+void MaterialManager::BindRenderServices(IRenderInvalidationSink& renderInvalidationSink) {
     p_RenderInvalidationSink_ = &renderInvalidationSink;
 }
 
 bool MaterialManager::Init() {
-    if (p_ShaderCompiler_ == nullptr || p_RenderInvalidationSink_ == nullptr) {
+    if (p_RenderInvalidationSink_ == nullptr) {
         LOGE("MaterialManager render services were not bound before initialization");
         return false;
     }
@@ -69,7 +67,20 @@ void MaterialManager::LoadDefaultShaders() {
 }
 
 ShaderProgram MaterialManager::CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath) {
-    return CreateShaderProgram(*p_ShaderCompiler_, vertexPath, fragmentPath);
+    std::string rootPath = "assets/";
+#ifdef __ANDROID__
+    rootPath = g_assetsPath;
+#endif
+    std::string vertexCode = ReadShaderFile(rootPath + vertexPath);
+    std::string fragmentCode = ReadShaderFile(rootPath + fragmentPath);
+    if (vertexCode.empty() || fragmentCode.empty()) {
+        return {ShaderHandle{}, nullptr, "Invalid Shader", vertexPath, fragmentPath};
+    }
+
+    auto source = std::make_shared<RenderShaderSnapshot>();
+    source->vertexCode = std::move(vertexCode);
+    source->fragmentCode = std::move(fragmentCode);
+    return {ShaderHandle{}, std::move(source), vertexPath + "+" + fragmentPath, vertexPath, fragmentPath};
 }
 
 ShaderProgram MaterialManager::CreateShaderProgram(IShaderCompiler& shaderCompiler,
@@ -83,11 +94,11 @@ ShaderProgram MaterialManager::CreateShaderProgram(IShaderCompiler& shaderCompil
     std::string vertexCode = ReadShaderFile(rootPath + vertexPath);
     std::string fragmentCode = ReadShaderFile(rootPath + fragmentPath);
     if (vertexCode.empty() || fragmentCode.empty()) {
-        return {ShaderHandle{}, "Invalid Shader", vertexPath, fragmentPath};
+        return {ShaderHandle{}, nullptr, "Invalid Shader", vertexPath, fragmentPath};
     }
     ShaderHandle handle = shaderCompiler.CompileShaders(vertexCode, fragmentCode);
     if (!handle.IsValid()) {
-        return {ShaderHandle{}, "Invalid Shader", vertexPath, fragmentPath};
+        return {ShaderHandle{}, nullptr, "Invalid Shader", vertexPath, fragmentPath};
     }
     shaderProgram.handle = handle;
     shaderProgram.vertexPath = vertexPath;

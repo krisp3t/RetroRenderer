@@ -1,11 +1,13 @@
 #pragma once
 #include <glm/vec3.hpp>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include "../Renderer/ShaderHandle.h"
+#include "../Renderer/ShaderResource.h"
 #include "Texture.h"
 
 namespace RetroRenderer {
@@ -14,6 +16,7 @@ class IShaderCompiler;
 
 struct ShaderProgram {
     ShaderHandle handle;
+    std::shared_ptr<const RenderShaderSnapshot> source;
     std::string name;
     std::string vertexPath;
     std::string fragmentPath;
@@ -57,7 +60,7 @@ class MaterialManager {
 
     MaterialManager() = default;
     ~MaterialManager() = default;
-    void BindRenderServices(IShaderCompiler& shaderCompiler, IRenderInvalidationSink& renderInvalidationSink);
+    void BindRenderServices(IRenderInvalidationSink& renderInvalidationSink);
     bool Init();
     void LoadTexture(const std::string& path);
     void LoadTexture(const uint8_t* data, const size_t size);
@@ -86,7 +89,6 @@ class MaterialManager {
     char fragPathBuffer[256] = "";
     int newShaderType = 0; // For UI combo box
     const char* k_supportedTextures = ".png";
-    IShaderCompiler* p_ShaderCompiler_ = nullptr;
     IRenderInvalidationSink* p_RenderInvalidationSink_ = nullptr;
 };
 

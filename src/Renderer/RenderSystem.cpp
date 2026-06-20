@@ -1,11 +1,5 @@
 #include "RenderSystem.h"
 #include "../Scene/MaterialManager.h"
-#include "GLFramePresenter.h"
-#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-#include "GLES/GLESRenderer.h"
-#else
-#include "OpenGL/GLRenderer.h"
-#endif
 #include <KrisLogger/Logger.h>
 #include <algorithm>
 #include <cassert>
@@ -30,7 +24,7 @@ uint64_t ClockNanoseconds() {
 
 FrameMaterialState CaptureFrameMaterialState(const MaterialManager::Material& currentMaterial) {
     FrameMaterialState state{};
-    state.shaderHandle = currentMaterial.shaderProgram.handle;
+    state.shader = currentMaterial.shaderProgram.source;
     state.lightColor = currentMaterial.lightColor;
     state.useVertexColor = currentMaterial.name == "phong-vc" ||
                            currentMaterial.shaderProgram.vertexPath.find("phong-vc") != std::string::npos ||
@@ -59,32 +53,13 @@ bool RenderSystem::Init() {
     m_IsDestroyed = false;
     assert(p_Config_ != nullptr && "RenderSystem requires a config instance");
     p_SWRenderer_ = std::make_unique<SWRenderer>();
-    m_GLFramePresenter = std::make_unique<GLFramePresenter>();
-#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-    p_GLRenderer_ = std::make_unique<GLESRenderer>();
-#else
-    p_GLRenderer_ = std::make_unique<GLRenderer>();
-#endif
-
-    p_activeRenderer_ = p_GLRenderer_.get();
     auto& fbResolution = p_Config_->renderer.resolution;
     assert(fbResolution.x > 0 && fbResolution.y > 0 && "Tried to initialize renderers with invalid resolution");
-
-    if (!m_GLFramePresenter->Init(
-            fbResolution.x, fbResolution.y, p_Config_->renderer.nearestNeighborPresentation)) {
-        LOGE("Failed to initialize GL frame presenter");
-        return false;
-    }
 
     if (!p_SWRenderer_->Init(fbResolution.x, fbResolution.y)) {
         LOGE("Failed to initialize SWRenderer");
         return false;
     }
-    if (!p_GLRenderer_->Init(m_GLFramePresenter->GetTextureHandle(), fbResolution.x, fbResolution.y)) {
-        LOGE("Failed to initialize GLRenderer");
-        return false;
-    }
-
 #if !defined(__EMSCRIPTEN__)
     StartSoftwareWorker();
 #endif
@@ -94,42 +69,37 @@ bool RenderSystem::Init() {
 
 void RenderSystem::BeforeFrame(const Color& clearColor) {
     assert(p_Config_ != nullptr && "RenderSystem requires a config instance");
-    switch (p_Config_->renderer.selectedRenderer) {
-    case Config::RendererType::SOFTWARE:
-        p_activeRenderer_ = p_SWRenderer_.get();
-        break;
-    case Config::RendererType::GL:
-        p_activeRenderer_ = p_GLRenderer_.get();
-        break;
-    default:
-        LOGE("Renderer type %d not implemented!", p_Config_->renderer.selectedRenderer);
-        return;
-    }
-
-    assert(p_activeRenderer_ != nullptr && "Active renderer is null");
     m_SoftwareClearColor = clearColor;
 }
 
-const RenderPacket& RenderSystem::BuildRenderPacket(const std::shared_ptr<Scene>& scene, const Camera& camera) {
-    RenderPacket& packet = m_RenderPacketScratch;
-    packet.hasScene = false;
-    packet.lights.clear();
-    packet.materials.clear();
-    packet.textures.clear();
-    packet.items.clear();
-    if (!scene) {
-        return packet;
-    }
+bool RenderSystem::PollSoftwareFrame() {
+#if !defined(__EMSCRIPTEN__)
+    PresentCompletedSoftwareFrame();
+#endif
+    return m_PresentedSoftwareFrame != nullptr;
+}
 
+std::shared_ptr<const RenderPacket> RenderSystem::BuildRenderPacket(const std::shared_ptr<Scene>& scene,
+                                                                    const Camera* camera) {
     assert(p_Config_ != nullptr && "RenderSystem requires a config instance");
-    const auto& currentMaterial = m_MaterialManager.GetCurrentMaterial();
-
-    packet.hasScene = true;
-    packet.camera = camera;
-    scene->BuildLightSnapshots(packet.lights);
+    auto mutablePacket = std::make_shared<RenderPacket>();
+    RenderPacket& packet = *mutablePacket;
     packet.configSnapshot = *p_Config_;
     packet.clearColor = p_Config_->renderer.clearColor;
     packet.dataRevision = m_FrameDataRevision;
+    packet.sceneResourceRevision = m_SceneResourceRevision;
+    packet.textureResourceRevision = m_TextureResourceRevision;
+    if (!scene) {
+        return mutablePacket;
+    }
+
+    const auto& currentMaterial = m_MaterialManager.GetCurrentMaterial();
+
+    packet.hasScene = true;
+    if (camera != nullptr) {
+        packet.camera = *camera;
+    }
+    scene->BuildLightSnapshots(packet.lights);
 
     packet.materials.reserve(1);
     const FrameMaterialId sharedMaterialId = static_cast<FrameMaterialId>(packet.materials.size());
@@ -211,37 +181,32 @@ const RenderPacket& RenderSystem::BuildRenderPacket(const std::shared_ptr<Scene>
         }
     }
 
-    return packet;
+    return mutablePacket;
 }
 
-RenderOutput RenderSystem::Render(const RenderPacket& packet) {
-    assert(packet.hasScene && "Render called with empty render packet");
+std::shared_ptr<const CpuFrame> RenderSystem::PrepareFrame(const std::shared_ptr<const RenderPacket>& packet) {
+    assert(packet && packet->hasScene && "Render called with empty render packet");
     assert(p_Stats_ != nullptr && "RenderSystem requires stats");
     const auto renderSystemStart = TimingClock::now();
     p_Stats_->Reset();
 
-    if (p_activeRenderer_ == p_SWRenderer_.get()) {
+    if (packet->configSnapshot.renderer.selectedRenderer == Config::RendererType::SOFTWARE) {
         p_Stats_->lastGlRenderNs.store(0, std::memory_order_relaxed);
 #if defined(__EMSCRIPTEN__)
-        RenderOutput output = RenderSoftwareSync(packet);
+        RenderSoftwareSync(*packet);
         p_Stats_->lastRenderSystemNs.store(ElapsedNanoseconds(renderSystemStart), std::memory_order_relaxed);
-        return output;
+        return m_PresentedSoftwareFrame;
 #else
         SubmitSoftwareJob(packet);
         PresentCompletedSoftwareFrame();
-        RenderOutput output = MakeSoftwareRenderOutput();
         p_Stats_->lastRenderSystemNs.store(ElapsedNanoseconds(renderSystemStart), std::memory_order_relaxed);
-        return output;
+        return m_PresentedSoftwareFrame;
 #endif
     }
 
     p_Stats_->lastSoftwarePacketCopyNs.store(0, std::memory_order_relaxed);
-    const auto glRenderStart = TimingClock::now();
-    p_activeRenderer_->RenderFrame(packet);
-    p_Stats_->lastGlRenderNs.store(ElapsedNanoseconds(glRenderStart), std::memory_order_relaxed);
-    RenderOutput output = RenderOutput::Texture(m_GLFramePresenter->GetTextureHandle(), RenderOutputOrigin::BottomLeft);
     p_Stats_->lastRenderSystemNs.store(ElapsedNanoseconds(renderSystemStart), std::memory_order_relaxed);
-    return output;
+    return nullptr;
 }
 
 void RenderSystem::Resize(const glm::ivec2& resolution) {
@@ -253,10 +218,8 @@ void RenderSystem::Resize(const glm::ivec2& resolution) {
     StopSoftwareWorker();
 #endif
 
-    m_GLFramePresenter->Resize(resolution.x, resolution.y, p_Config_->renderer.nearestNeighborPresentation);
     LOGI("Resizing output image to %d x %d", resolution.x, resolution.y);
     p_SWRenderer_->Resize(resolution.x, resolution.y);
-    p_GLRenderer_->Resize(m_GLFramePresenter->GetTextureHandle(), resolution.x, resolution.y);
 
 #if !defined(__EMSCRIPTEN__)
     ClearSoftwareWorkerFrameState();
@@ -272,28 +235,24 @@ void RenderSystem::Destroy() {
 
     StopSoftwareWorker();
     ClearRenderResourceSnapshots();
-    if (p_GLRenderer_) {
-        p_GLRenderer_->Destroy();
-    }
     if (p_SWRenderer_) {
         p_SWRenderer_->Destroy();
-    }
-    if (m_GLFramePresenter) {
-        m_GLFramePresenter->Destroy();
     }
 }
 
 void RenderSystem::OnLoadScene(const SceneLoadEvent& e) {
     (void)e;
-    p_GLRenderer_->InvalidateSceneResources();
     ClearRenderResourceSnapshots();
     ++m_FrameDataRevision;
+    ++m_SceneResourceRevision;
+    ++m_TextureResourceRevision;
 }
 
 void RenderSystem::OnResetScene() {
-    p_GLRenderer_->InvalidateSceneResources();
     ClearRenderResourceSnapshots();
     ++m_FrameDataRevision;
+    ++m_SceneResourceRevision;
+    ++m_TextureResourceRevision;
 }
 
 void RenderSystem::OnSceneMutated() {
@@ -301,13 +260,9 @@ void RenderSystem::OnSceneMutated() {
 }
 
 void RenderSystem::OnTextureMutated() {
-    p_GLRenderer_->InvalidateTextureResources();
     m_RenderTextureSnapshots.clear();
     ++m_FrameDataRevision;
-}
-
-ShaderHandle RenderSystem::CompileShaders(const std::string& vertexCode, const std::string& fragmentCode) {
-    return p_GLRenderer_->CompileShaders(vertexCode, fragmentCode);
+    ++m_TextureResourceRevision;
 }
 
 void RenderSystem::ClearSoftwareWorkerFrameState() {
@@ -317,7 +272,7 @@ void RenderSystem::ClearSoftwareWorkerFrameState() {
     m_CompletedSoftwareFrames.clear();
     m_SoftwareWorkerBusy = false;
 #endif
-    m_PresentedSoftwareFrame = {};
+    m_PresentedSoftwareFrame.reset();
     if (p_Stats_) {
         p_Stats_->lastSoftwareFramePresentedNs.store(0, std::memory_order_relaxed);
         p_Stats_->lastSoftwareFramePresentIntervalNs.store(0, std::memory_order_relaxed);
@@ -391,9 +346,9 @@ void RenderSystem::StopSoftwareWorker() {
 #endif
 }
 
-void RenderSystem::SubmitSoftwareJob(const RenderPacket& packet) {
+void RenderSystem::SubmitSoftwareJob(const std::shared_ptr<const RenderPacket>& packet) {
 #if !defined(__EMSCRIPTEN__)
-    if (!packet.hasScene) {
+    if (!packet || !packet->hasScene) {
         return;
     }
     assert(p_Stats_ != nullptr && "RenderSystem requires stats");
@@ -410,7 +365,7 @@ void RenderSystem::SubmitSoftwareJob(const RenderPacket& packet) {
     const auto softwarePacketCopyStart = TimingClock::now();
     job.packet = packet;
     p_Stats_->lastSoftwarePacketCopyNs.store(ElapsedNanoseconds(softwarePacketCopyStart), std::memory_order_relaxed);
-    if (!job.packet.hasScene) {
+    if (!job.packet || !job.packet->hasScene) {
         return;
     }
 
@@ -432,7 +387,7 @@ void RenderSystem::PresentCompletedSoftwareFrame() {
 #if !defined(__EMSCRIPTEN__)
     assert(p_Stats_ != nullptr && "RenderSystem requires stats");
 
-    SoftwareCompletedFrame completedFrame;
+    std::shared_ptr<CpuFrame> completedFrame;
     size_t droppedReadyFrames = 0;
     bool hasFrame = false;
     size_t width = 0;
@@ -440,7 +395,7 @@ void RenderSystem::PresentCompletedSoftwareFrame() {
     {
         std::lock_guard<std::mutex> lock(m_SoftwareWorkerMutex);
         while (!m_CompletedSoftwareFrames.empty() &&
-               m_CompletedSoftwareFrames.back().dataRevision < m_FrameDataRevision) {
+               m_CompletedSoftwareFrames.back()->dataRevision < m_FrameDataRevision) {
             m_CompletedSoftwareFrames.pop_back();
             droppedReadyFrames++;
         }
@@ -451,15 +406,15 @@ void RenderSystem::PresentCompletedSoftwareFrame() {
         droppedReadyFrames = m_CompletedSoftwareFrames.size() - 1;
         m_CompletedSoftwareFrames.clear();
         hasFrame = true;
-        width = completedFrame.width;
-        height = completedFrame.height;
+        width = completedFrame->width;
+        height = completedFrame->height;
     }
-    if (!hasFrame || completedFrame.pixels.empty() || width == 0 || height == 0) {
+    if (!hasFrame || !completedFrame || completedFrame->pixels.empty() || width == 0 || height == 0) {
         return;
     }
 
-    if (completedFrame.pitch == 0) {
-        completedFrame.pitch = completedFrame.width * sizeof(Pixel);
+    if (completedFrame->pitch == 0) {
+        completedFrame->pitch = completedFrame->width * sizeof(Pixel);
     }
     m_PresentedSoftwareFrame = std::move(completedFrame);
 
@@ -498,20 +453,20 @@ void RenderSystem::SoftwareWorkerLoop() {
         }
 
         const auto workerRenderStart = TimingClock::now();
-        p_SWRenderer_->RenderFrame(job.packet);
+        p_SWRenderer_->RenderFrame(*job.packet);
         p_Stats_->lastSoftwareWorkerRenderNs.store(ElapsedNanoseconds(workerRenderStart), std::memory_order_relaxed);
 
         const auto workerCopyStart = TimingClock::now();
         const auto& buffer = p_SWRenderer_->GetFrameBuffer();
-        SoftwareCompletedFrame finishedFrame{};
-        finishedFrame.width = buffer.width;
-        finishedFrame.height = buffer.height;
-        finishedFrame.pitch = buffer.pitch;
-        finishedFrame.jobId = job.jobId;
-        finishedFrame.dataRevision = job.packet.dataRevision;
-        finishedFrame.pixels.resize(buffer.GetCount());
-        if (!finishedFrame.pixels.empty()) {
-            std::memcpy(finishedFrame.pixels.data(), buffer.data, finishedFrame.pixels.size() * sizeof(Pixel));
+        auto finishedFrame = std::make_shared<CpuFrame>();
+        finishedFrame->width = buffer.width;
+        finishedFrame->height = buffer.height;
+        finishedFrame->pitch = buffer.pitch;
+        finishedFrame->frameId = job.jobId;
+        finishedFrame->dataRevision = job.packet->dataRevision;
+        finishedFrame->pixels.resize(buffer.GetCount());
+        if (!finishedFrame->pixels.empty()) {
+            std::memcpy(finishedFrame->pixels.data(), buffer.data, finishedFrame->pixels.size() * sizeof(Pixel));
         }
         p_Stats_->lastSoftwareWorkerCopyNs.store(ElapsedNanoseconds(workerCopyStart), std::memory_order_relaxed);
 
@@ -529,7 +484,7 @@ void RenderSystem::SoftwareWorkerLoop() {
 #endif
 }
 
-RenderOutput RenderSystem::RenderSoftwareSync(const RenderPacket& packet) {
+void RenderSystem::RenderSoftwareSync(const RenderPacket& packet) {
     p_Stats_->lastSoftwarePacketCopyNs.store(0, std::memory_order_relaxed);
 
     const auto workerRenderStart = TimingClock::now();
@@ -541,29 +496,20 @@ RenderOutput RenderSystem::RenderSoftwareSync(const RenderPacket& packet) {
     StoreSoftwareFrame(buffer);
     p_Stats_->lastSoftwareWorkerCopyNs.store(ElapsedNanoseconds(workerCopyStart), std::memory_order_relaxed);
     RecordSoftwareFramePresented();
-    return MakeSoftwareRenderOutput();
-}
-
-RenderOutput RenderSystem::MakeSoftwareRenderOutput() const {
-    return RenderOutput::Pixels(
-        m_PresentedSoftwareFrame.pixels.data(),
-        m_PresentedSoftwareFrame.width,
-        m_PresentedSoftwareFrame.height,
-        m_PresentedSoftwareFrame.pitch,
-        RenderOutputOrigin::TopLeft);
 }
 
 void RenderSystem::StoreSoftwareFrame(const Buffer<Pixel>& buffer) {
-    m_PresentedSoftwareFrame = {};
-    m_PresentedSoftwareFrame.width = buffer.width;
-    m_PresentedSoftwareFrame.height = buffer.height;
-    m_PresentedSoftwareFrame.pitch = buffer.pitch;
-    m_PresentedSoftwareFrame.pixels.resize(buffer.GetCount());
-    if (!m_PresentedSoftwareFrame.pixels.empty()) {
+    auto frame = std::make_shared<CpuFrame>();
+    frame->width = buffer.width;
+    frame->height = buffer.height;
+    frame->pitch = buffer.pitch;
+    frame->pixels.resize(buffer.GetCount());
+    if (!frame->pixels.empty()) {
         std::memcpy(
-            m_PresentedSoftwareFrame.pixels.data(),
+            frame->pixels.data(),
             buffer.data,
-            m_PresentedSoftwareFrame.pixels.size() * sizeof(Pixel));
+            frame->pixels.size() * sizeof(Pixel));
     }
+    m_PresentedSoftwareFrame = std::move(frame);
 }
 } // namespace RetroRenderer

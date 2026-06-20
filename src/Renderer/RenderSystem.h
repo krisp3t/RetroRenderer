@@ -3,12 +3,8 @@
 #include "../Base/Event.h"
 #include "../Base/Stats.h"
 #include "../Scene/Scene.h"
-#include "IFramePresenter.h"
-#include "IHardwareRenderer.h"
-#include "IRenderer.h"
+#include "CpuFrame.h"
 #include "RenderServices.h"
-#include "RenderOutput.h"
-#include "ShaderHandle.h"
 #include "Software/SWRenderer.h"
 #if !defined(__EMSCRIPTEN__)
 #include <condition_variable>
@@ -25,7 +21,7 @@
 namespace RetroRenderer {
 class MaterialManager;
 
-class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
+class RenderSystem : public IRenderInvalidationSink {
   public:
     RenderSystem(std::shared_ptr<Config> config, std::shared_ptr<Stats> stats, const MaterialManager& materialManager);
 
@@ -34,10 +30,13 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     bool Init();
 
     void BeforeFrame(const Color& clearColor);
+    [[nodiscard]] bool PollSoftwareFrame();
 
-    [[nodiscard]] const RenderPacket& BuildRenderPacket(const std::shared_ptr<Scene>& scene, const Camera& camera);
+    [[nodiscard]] std::shared_ptr<const RenderPacket> BuildRenderPacket(const std::shared_ptr<Scene>& scene,
+                                                                        const Camera* camera);
 
-    RenderOutput Render(const RenderPacket& packet);
+    [[nodiscard]] std::shared_ptr<const CpuFrame> PrepareFrame(
+        const std::shared_ptr<const RenderPacket>& packet);
 
     void Resize(const glm::ivec2& resolution);
 
@@ -48,22 +47,10 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     void OnSceneMutated() override;
     void OnTextureMutated() override;
 
-    [[nodiscard]] ShaderHandle CompileShaders(const std::string& vertexCode,
-                                             const std::string& fragmentCode) override;
-
   private:
     struct SoftwareRenderJob {
-        RenderPacket packet;
+        std::shared_ptr<const RenderPacket> packet;
         uint64_t jobId = 0;
-    };
-
-    struct SoftwareCompletedFrame {
-        std::vector<Pixel> pixels;
-        size_t width = 0;
-        size_t height = 0;
-        size_t pitch = 0;
-        uint64_t jobId = 0;
-        uint64_t dataRevision = 0;
     };
 
     void StartSoftwareWorker();
@@ -71,12 +58,11 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     [[nodiscard]] std::shared_ptr<const RenderMeshSnapshot> GetOrCreateRenderMeshSnapshot(const Mesh& mesh);
     [[nodiscard]] std::shared_ptr<const Texture> GetOrCreateRenderTextureSnapshot(const Texture& texture);
     void ClearRenderResourceSnapshots();
-    void SubmitSoftwareJob(const RenderPacket& packet);
+    void SubmitSoftwareJob(const std::shared_ptr<const RenderPacket>& packet);
     void PresentCompletedSoftwareFrame();
     void RecordSoftwareFramePresented();
     void SoftwareWorkerLoop();
-    RenderOutput RenderSoftwareSync(const RenderPacket& packet);
-    [[nodiscard]] RenderOutput MakeSoftwareRenderOutput() const;
+    void RenderSoftwareSync(const RenderPacket& packet);
     void StoreSoftwareFrame(const Buffer<Pixel>& buffer);
     void ClearSoftwareWorkerFrameState();
 
@@ -85,28 +71,25 @@ class RenderSystem : public IRenderInvalidationSink, public IShaderCompiler {
     std::shared_ptr<Stats> p_Stats_;
     const MaterialManager& m_MaterialManager;
     std::unique_ptr<SWRenderer> p_SWRenderer_ = nullptr;
-    std::unique_ptr<IHardwareRenderer> p_GLRenderer_ = nullptr;
-    IRenderer* p_activeRenderer_ = nullptr;
-
-    std::unique_ptr<IFramePresenter> m_GLFramePresenter;
-    RenderPacket m_RenderPacketScratch;
     std::unordered_map<const Mesh*, std::shared_ptr<const RenderMeshSnapshot>> m_RenderMeshSnapshots;
     struct RenderTextureSnapshotCacheEntry {
         uint64_t revision = 0;
         std::shared_ptr<const Texture> texture;
     };
     std::unordered_map<const Texture*, RenderTextureSnapshotCacheEntry> m_RenderTextureSnapshots;
-    SoftwareCompletedFrame m_PresentedSoftwareFrame;
+    std::shared_ptr<const CpuFrame> m_PresentedSoftwareFrame;
     Color m_SoftwareClearColor = Color::DefaultBackground();
     bool m_IsDestroyed = false;
     uint64_t m_FrameDataRevision = 1;
+    uint64_t m_SceneResourceRevision = 1;
+    uint64_t m_TextureResourceRevision = 1;
 
 #if !defined(__EMSCRIPTEN__)
     std::thread m_SoftwareWorkerThread;
     std::condition_variable m_SoftwareWorkerCv;
     std::mutex m_SoftwareWorkerMutex;
     std::optional<SoftwareRenderJob> m_PendingSoftwareJob;
-    std::deque<SoftwareCompletedFrame> m_CompletedSoftwareFrames;
+    std::deque<std::shared_ptr<CpuFrame>> m_CompletedSoftwareFrames;
     uint64_t m_NextSoftwareJobId = 0;
     bool m_SoftwareWorkerStopRequested = false;
     bool m_SoftwareWorkerBusy = false;

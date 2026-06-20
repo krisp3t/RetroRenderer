@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include "Base/MemoryProfiler.h"
+#include "Renderer/InlineRenderExecutor.h"
 #include <KrisLogger/Logger.h>
 #include <algorithm>
 #include <chrono>
@@ -35,6 +36,14 @@ bool Engine::Init() {
     if (!m_DisplaySystem.Init(p_config_, p_stats_)) {
         return false;
     }
+    p_RenderExecutor = std::make_unique<InlineRenderExecutor>();
+    if (!p_RenderExecutor->Init(m_DisplaySystem.GetWindow(),
+                                m_DisplaySystem.GetGlContext(),
+                                p_config_,
+                                p_stats_,
+                                m_DisplaySystem.GetFontAtlas())) {
+        return false;
+    }
     if (!m_InputSystem.Init(p_config_, [this](std::unique_ptr<Event> event) { EnqueueEvent(std::move(event)); })) {
         return false;
     }
@@ -46,7 +55,7 @@ bool Engine::Init() {
     p_SceneManager = std::make_unique<SceneManager>();
     p_SceneManager->BindDependencies(p_config_, *p_RenderSystem);
     LOGD("p_Config_ ref count: %d", p_config_.use_count());
-    p_MaterialManager->BindRenderServices(*p_RenderSystem, *p_RenderSystem);
+    p_MaterialManager->BindRenderServices(*p_RenderSystem);
     if (!p_MaterialManager->Init()) {
         return false;
     }
@@ -100,44 +109,51 @@ void Engine::ProcessFrame() {
     }
     p_stats_->lastMainUpdateNs.store(ElapsedNanoseconds(mainUpdateStart), std::memory_order_relaxed);
 
-    const Color clearColor = p_config_->renderer.clearColor;
     auto scene = p_SceneManager->GetScene();
     auto camera = p_SceneManager->GetCamera();
-    if (scene && camera) {
-        const auto beforeFrameStart = TimingClock::now();
-        m_DisplaySystem.BeforeFrame();
-        p_stats_->lastDisplayBeforeFrameNs.store(ElapsedNanoseconds(beforeFrameStart), std::memory_order_relaxed);
+    const bool hasScene = scene != nullptr && camera != nullptr;
 
-        p_RenderSystem->BeforeFrame(clearColor);
+    const auto beforeFrameStart = TimingClock::now();
+    m_DisplaySystem.BeforeFrame();
+    p_stats_->lastDisplayBeforeFrameNs.store(ElapsedNanoseconds(beforeFrameStart), std::memory_order_relaxed);
 
-        const auto packetStart = TimingClock::now();
-        const RenderPacket& packet = p_RenderSystem->BuildRenderPacket(scene, *camera);
-        p_stats_->lastRenderPacketBuildNs.store(ElapsedNanoseconds(packetStart), std::memory_order_relaxed);
-
-        RenderOutput renderOutput = p_RenderSystem->Render(packet);
-
-        const auto drawStart = TimingClock::now();
-        m_DisplaySystem.DrawFrame(renderOutput);
-        p_stats_->lastDisplayDrawNs.store(ElapsedNanoseconds(drawStart), std::memory_order_relaxed);
+    p_RenderSystem->BeforeFrame(p_config_->renderer.clearColor);
+    const bool outputAvailable =
+        hasScene && (p_config_->renderer.selectedRenderer == Config::RendererType::GL ||
+                     p_RenderSystem->PollSoftwareFrame());
+    const auto drawStart = TimingClock::now();
+    if (hasScene) {
+        const RenderOutputOrigin origin = p_config_->renderer.selectedRenderer == Config::RendererType::GL
+                                              ? RenderOutputOrigin::BottomLeft
+                                              : RenderOutputOrigin::TopLeft;
+        m_DisplaySystem.DrawFrame(outputAvailable, origin);
     } else {
         p_stats_->Reset();
-        p_stats_->lastRenderPacketBuildNs.store(0, std::memory_order_relaxed);
+        m_DisplaySystem.DrawFrame();
+    }
+    p_stats_->lastDisplayDrawNs.store(ElapsedNanoseconds(drawStart), std::memory_order_relaxed);
+
+    const auto packetStart = TimingClock::now();
+    const std::shared_ptr<const RenderPacket> packet = p_RenderSystem->BuildRenderPacket(scene, camera);
+    p_stats_->lastRenderPacketBuildNs.store(ElapsedNanoseconds(packetStart), std::memory_order_relaxed);
+
+    std::shared_ptr<const CpuFrame> softwareFrame;
+    if (hasScene) {
+        softwareFrame = p_RenderSystem->PrepareFrame(packet);
+    } else {
         p_stats_->lastRenderSystemNs.store(0, std::memory_order_relaxed);
         p_stats_->lastGlRenderNs.store(0, std::memory_order_relaxed);
         p_stats_->lastSoftwarePacketCopyNs.store(0, std::memory_order_relaxed);
-
-        const auto beforeFrameStart = TimingClock::now();
-        m_DisplaySystem.BeforeFrame();
-        p_stats_->lastDisplayBeforeFrameNs.store(ElapsedNanoseconds(beforeFrameStart), std::memory_order_relaxed);
-
-        const auto drawStart = TimingClock::now();
-        m_DisplaySystem.DrawFrame();
-        p_stats_->lastDisplayDrawNs.store(ElapsedNanoseconds(drawStart), std::memory_order_relaxed);
     }
 
-    const auto swapStart = TimingClock::now();
-    m_DisplaySystem.SwapBuffers();
-    p_stats_->lastSwapBuffersNs.store(ElapsedNanoseconds(swapStart), std::memory_order_relaxed);
+    FrameSubmission submission{};
+    submission.frameId = ++m_NextFrameId;
+    submission.renderPacket = packet;
+    submission.softwareFrame = std::move(softwareFrame);
+    submission.uiTextures = m_DisplaySystem.TakeUiTextureSnapshots();
+    submission.ui = m_DisplaySystem.TakeUiRenderPacket();
+    submission.enableVsync = p_config_->window.enableVsync;
+    p_RenderExecutor->Execute(std::move(submission));
     p_stats_->lastFrameTotalNs.store(ElapsedNanoseconds(frameStart), std::memory_order_relaxed);
 }
 
@@ -145,6 +161,10 @@ void Engine::Destroy() {
     if (p_RenderSystem) {
         p_RenderSystem->Destroy();
         p_RenderSystem.reset();
+    }
+    if (p_RenderExecutor) {
+        p_RenderExecutor->Destroy();
+        p_RenderExecutor.reset();
     }
     m_DisplaySystem.Destroy();
 }
