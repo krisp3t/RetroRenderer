@@ -16,7 +16,6 @@
 #include <glm/vec2.hpp>
 #include <cstdint>
 #include <memory>
-#include <unordered_map>
 
 namespace RetroRenderer {
 class MaterialManager;
@@ -53,30 +52,27 @@ class RenderSystem : public IRenderInvalidationSink {
         uint64_t jobId = 0;
     };
 
+    [[nodiscard]] bool EnsureSoftwareRenderer();
+    void ReleaseSoftwareRenderer();
     void StartSoftwareWorker();
     void StopSoftwareWorker();
-    [[nodiscard]] std::shared_ptr<const RenderMeshSnapshot> GetOrCreateRenderMeshSnapshot(const Mesh& mesh);
-    [[nodiscard]] std::shared_ptr<const Texture> GetOrCreateRenderTextureSnapshot(const Texture& texture);
-    void ClearRenderResourceSnapshots();
     void SubmitSoftwareJob(const std::shared_ptr<const RenderPacket>& packet);
     void PresentCompletedSoftwareFrame();
     void RecordSoftwareFramePresented();
     void SoftwareWorkerLoop();
     void RenderSoftwareSync(const RenderPacket& packet);
-    void StoreSoftwareFrame(const Buffer<Pixel>& buffer);
+    void StoreSoftwareFrame(const Buffer<Pixel>& buffer, uint64_t frameId, uint64_t dataRevision);
     void ClearSoftwareWorkerFrameState();
+    void UpdateSceneMemoryStats(const Scene* scene);
+    void UpdateSoftwareMemoryStats();
+    void ClearSoftwareMemoryStats();
 
   private:
     std::shared_ptr<Config> p_Config_;
     std::shared_ptr<Stats> p_Stats_;
     const MaterialManager& m_MaterialManager;
     std::unique_ptr<SWRenderer> p_SWRenderer_ = nullptr;
-    std::unordered_map<const Mesh*, std::shared_ptr<const RenderMeshSnapshot>> m_RenderMeshSnapshots;
-    struct RenderTextureSnapshotCacheEntry {
-        uint64_t revision = 0;
-        std::shared_ptr<const Texture> texture;
-    };
-    std::unordered_map<const Texture*, RenderTextureSnapshotCacheEntry> m_RenderTextureSnapshots;
+    SoftwareRendererMemoryStats m_SoftwareRendererMemoryStats{};
     std::shared_ptr<const CpuFrame> m_PresentedSoftwareFrame;
     Color m_SoftwareClearColor = Color::DefaultBackground();
     bool m_IsDestroyed = false;
@@ -89,11 +85,10 @@ class RenderSystem : public IRenderInvalidationSink {
     std::condition_variable m_SoftwareWorkerCv;
     std::mutex m_SoftwareWorkerMutex;
     std::optional<SoftwareRenderJob> m_PendingSoftwareJob;
-    std::deque<std::shared_ptr<CpuFrame>> m_CompletedSoftwareFrames;
+    std::shared_ptr<CpuFrame> m_CompletedSoftwareFrame;
     uint64_t m_NextSoftwareJobId = 0;
     bool m_SoftwareWorkerStopRequested = false;
     bool m_SoftwareWorkerBusy = false;
-    static constexpr size_t kMaxBufferedSoftwareFrames = 3;
 #endif
 };
 

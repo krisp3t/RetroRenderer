@@ -1,5 +1,4 @@
 #include "GLBackendRendererBase.h"
-#include "../Scene/Model.h"
 
 #include <KrisLogger/Logger.h>
 #include <cassert>
@@ -66,6 +65,18 @@ GLenum DepthAttachmentTarget() {
 #endif
 }
 
+uint64_t DepthAttachmentBytes(int width, int height) {
+    if (width <= 0 || height <= 0) {
+        return 0;
+    }
+#if defined(__EMSCRIPTEN__)
+    constexpr uint64_t kDepthBytesPerPixel = 2;
+#else
+    constexpr uint64_t kDepthBytesPerPixel = 4;
+#endif
+    return static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * kDepthBytesPerPixel;
+}
+
 } // namespace
 
 bool GLBackendRendererBase::InitializeBackend(TextureHandle fbTex, int w, int h, const std::string& cubemapPath) {
@@ -75,15 +86,7 @@ bool GLBackendRendererBase::InitializeBackend(TextureHandle fbTex, int w, int h,
     }
 
     CreateFallbackTexture();
-    const GLuint cubeTex = CreateCubemap(cubemapPath);
-    if (cubeTex != 0) {
-        m_SkyboxTexture = cubeTex;
-        m_SkyboxProgram = MaterialManager::CreateShaderProgram(*this, "shaders/skybox.vs", "shaders/skybox.fs");
-        if (m_SkyboxProgram.handle.IsValid()) {
-            m_SkyboxVAO = CreateSkyboxVAO();
-        }
-    }
-
+    m_SkyboxAssetPath = cubemapPath;
     InitializeBackendResources();
     glViewport(0, 0, w, h);
     return true;
@@ -143,7 +146,6 @@ void GLBackendRendererBase::Destroy() {
     DestroyMaterialShaders();
     m_ActiveCamera = nullptr;
     m_SceneLights.clear();
-    m_FrameMaterialState = {};
 }
 
 void GLBackendRendererBase::DestroyFramebufferResources() {
@@ -167,23 +169,7 @@ void GLBackendRendererBase::DestroyRendererResources() {
         glDeleteTextures(1, &m_FallbackTexture);
         m_FallbackTexture = 0;
     }
-    if (m_SkyboxTexture != 0) {
-        glDeleteTextures(1, &m_SkyboxTexture);
-        m_SkyboxTexture = 0;
-    }
-    if (m_SkyboxVBO != 0) {
-        glDeleteBuffers(1, &m_SkyboxVBO);
-        m_SkyboxVBO = 0;
-    }
-    if (m_SkyboxVAO != 0) {
-        glDeleteVertexArrays(1, &m_SkyboxVAO);
-        m_SkyboxVAO = 0;
-    }
-    if (m_SkyboxProgram.handle.IsValid()) {
-        glDeleteProgram(ToGLHandle(m_SkyboxProgram.handle));
-        m_SkyboxProgram = {};
-    }
-
+    ReleaseSkyboxResources();
     DestroyBackendResources();
 }
 
@@ -213,17 +199,18 @@ void GLBackendRendererBase::RenderFrame(const RenderPacket& packet) {
 
     m_FrameCameraSnapshot = packet.camera;
     m_FrameConfigSnapshot = packet.configSnapshot;
-    m_FrameMaterialState = packet.materials.empty() ? FrameMaterialState{} : packet.materials.front();
     SetActiveCamera(m_FrameCameraSnapshot);
     SetSceneLights(packet.lights);
 
     BeforeFrame(packet.clearColor);
     if (packet.configSnapshot.environment.showSkybox) {
         DrawSkybox();
+    } else {
+        ReleaseSkyboxResources();
     }
 
     for (const RenderItem& item : packet.items) {
-        if (!item.mesh) {
+        if (!item.geometry) {
             continue;
         }
 
@@ -232,7 +219,7 @@ void GLBackendRendererBase::RenderFrame(const RenderPacket& packet) {
             continue;
         }
 
-        DrawMesh(*item.mesh, item.worldTransform, ResolveFrameTexture(packet, item.textureId), *materialState, packet.configSnapshot);
+        DrawMesh(*item.geometry, item.worldTransform, nullptr, *materialState, packet.configSnapshot, &packet);
     }
 
     RenderBackendOverlays();
@@ -247,62 +234,81 @@ void GLBackendRendererBase::SetSceneLights(const std::vector<LightSnapshot>& lig
     m_SceneLights = lights;
 }
 
-void GLBackendRendererBase::DrawTriangularMesh(const Model* model) {
-    assert(model != nullptr && "Tried to draw null model");
-
-    for (const Mesh& mesh : model->GetMeshes()) {
-        DrawMesh(mesh, model->GetWorldTransform(), mesh.GetPrimaryTexture(), m_FrameMaterialState, m_FrameConfigSnapshot);
-    }
-}
-
-void GLBackendRendererBase::DrawMesh(const Mesh& mesh,
+void GLBackendRendererBase::DrawMesh(const MeshGeometryData& mesh,
                                      const glm::mat4& worldTransform,
                                      const Texture* texture,
                                      const FrameMaterialState& materialState,
-                                     const Config& configSnapshot) {
-    DrawMeshGpuResources(m_MeshResources.GetOrCreate(mesh), worldTransform, texture, materialState, configSnapshot);
-}
-
-void GLBackendRendererBase::DrawMesh(const RenderMeshSnapshot& mesh,
-                                     const glm::mat4& worldTransform,
-                                     const Texture* texture,
-                                     const FrameMaterialState& materialState,
-                                     const Config& configSnapshot) {
-    DrawMeshGpuResources(m_MeshResources.GetOrCreate(mesh), worldTransform, texture, materialState, configSnapshot);
+                                     const Config& configSnapshot,
+                                     const RenderPacket* packet) {
+    DrawMeshGpuResources(m_MeshResources.GetOrCreate(mesh), worldTransform, texture, materialState, configSnapshot, packet);
 }
 
 void GLBackendRendererBase::DrawMeshGpuResources(const GLMeshResourceCache::MeshGpuResources& gpuMesh,
                                                  const glm::mat4& worldTransform,
                                                  const Texture* texture,
                                                  const FrameMaterialState& materialState,
-                                                 const Config& configSnapshot) {
-    const GLuint shaderProgram = ResolveShaderProgram(materialState.shader);
-    if (shaderProgram == 0 || m_ActiveCamera == nullptr) {
+                                                 const Config& configSnapshot,
+                                                 const RenderPacket* packet) {
+    const std::shared_ptr<const CompiledMaterialTemplate>& compiledTemplate = materialState.compiledTemplate;
+    const GLuint shaderProgram =
+        compiledTemplate != nullptr ? ResolveShaderProgram(compiledTemplate->glShader) : 0;
+    if (shaderProgram == 0 || m_ActiveCamera == nullptr || compiledTemplate == nullptr) {
         return;
     }
 
     const auto& uniforms = m_UniformCache.GetMeshProgram(shaderProgram);
     glUseProgram(shaderProgram);
 
-    const glm::vec3 lightPos =
-        !m_SceneLights.empty() ? m_SceneLights.front().position : configSnapshot.environment.lightPosition;
+    const LightSnapshot light =
+        !m_SceneLights.empty()
+            ? m_SceneLights.front()
+            : LightSnapshot{
+                  .type = LightType::POINT,
+                  .position = configSnapshot.environment.lightPosition,
+                  .color = glm::vec3(1.0f),
+                  .intensity = 1.0f,
+              };
     const glm::mat4& viewMat = m_ActiveCamera->m_ViewMat;
     const glm::mat4& projMat = m_ActiveCamera->m_ProjMat;
-    const glm::mat4 mv = viewMat * worldTransform;
-    const glm::mat4 mvp = projMat * mv;
     const glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(worldTransform)));
+
+    const bool depthTestEnabled = configSnapshot.cull.depthTest && materialState.pipelineState.depthTest;
+    if (depthTestEnabled) {
+        glEnable(GL_DEPTH_TEST);
+    } else {
+        glDisable(GL_DEPTH_TEST);
+    }
+    glDepthMask(materialState.pipelineState.depthWrite ? GL_TRUE : GL_FALSE);
+
+    if (configSnapshot.cull.backfaceCulling && materialState.pipelineState.cullMode != MaterialCullMode::NONE) {
+        glEnable(GL_CULL_FACE);
+        glCullFace(materialState.pipelineState.cullMode == MaterialCullMode::FRONT ? GL_FRONT : GL_BACK);
+        glFrontFace(GL_CCW);
+    } else {
+        glDisable(GL_CULL_FACE);
+    }
+
+    if (materialState.pipelineState.blendMode == MaterialBlendMode::ALPHA_BLEND) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    } else {
+        glDisable(GL_BLEND);
+    }
 
     if (uniforms.modelMatrix >= 0) {
         glUniformMatrix4fv(uniforms.modelMatrix, 1, GL_FALSE, glm::value_ptr(worldTransform));
     }
-    if (uniforms.mvp >= 0) {
-        glUniformMatrix4fv(uniforms.mvp, 1, GL_FALSE, glm::value_ptr(mvp));
+    if (uniforms.viewMatrix >= 0) {
+        glUniformMatrix4fv(uniforms.viewMatrix, 1, GL_FALSE, glm::value_ptr(viewMat));
+    }
+    if (uniforms.projectionMatrix >= 0) {
+        glUniformMatrix4fv(uniforms.projectionMatrix, 1, GL_FALSE, glm::value_ptr(projMat));
     }
     if (uniforms.normalMatrix >= 0) {
         glUniformMatrix3fv(uniforms.normalMatrix, 1, GL_FALSE, glm::value_ptr(normalMatrix));
     }
     if (uniforms.lightPos >= 0) {
-        glUniform3f(uniforms.lightPos, lightPos.x, lightPos.y, lightPos.z);
+        glUniform3f(uniforms.lightPos, light.position.x, light.position.y, light.position.z);
     }
     if (uniforms.viewPos >= 0) {
         glUniform3f(uniforms.viewPos,
@@ -311,36 +317,65 @@ void GLBackendRendererBase::DrawMeshGpuResources(const GLMeshResourceCache::Mesh
                     m_ActiveCamera->m_Position.z);
     }
     if (uniforms.lightColor >= 0) {
-        glUniform3f(uniforms.lightColor,
-                    materialState.lightColor.r,
-                    materialState.lightColor.g,
-                    materialState.lightColor.b);
+        glUniform3f(uniforms.lightColor, light.color.r, light.color.g, light.color.b);
+    }
+    if (uniforms.lightIntensity >= 0) {
+        glUniform1f(uniforms.lightIntensity, light.intensity);
+    }
+    if (uniforms.frameSize >= 0) {
+        glUniform2f(uniforms.frameSize, static_cast<float>(m_FrameWidth), static_cast<float>(m_FrameHeight));
+    }
+    if (uniforms.alphaCutoff >= 0) {
+        glUniform1f(uniforms.alphaCutoff, materialState.pipelineState.alphaCutoff);
+    }
+    if (uniforms.materialParams >= 0 && !materialState.parameterValues.empty()) {
+        glUniform4fv(uniforms.materialParams,
+                     static_cast<GLsizei>(materialState.parameterValues.size()),
+                     glm::value_ptr(materialState.parameterValues.front()));
     }
 
-    if (materialState.enablePhong) {
-        if (uniforms.shininess >= 0) {
-            glUniform1f(uniforms.shininess, materialState.shininess);
+    for (size_t samplerIndex = 0; samplerIndex < uniforms.materialSamplers.size(); samplerIndex++) {
+        const GLint samplerLocation = uniforms.materialSamplers[samplerIndex];
+        if (samplerLocation < 0) {
+            continue;
         }
-        if (uniforms.ambientStrength >= 0) {
-            glUniform1f(uniforms.ambientStrength, materialState.ambientStrength);
-        }
-        if (uniforms.specularStrength >= 0) {
-            glUniform1f(uniforms.specularStrength, materialState.specularStrength);
-        }
-    }
 
-    const GLuint gpuTexture =
-        texture != nullptr ? m_TextureResources.GetOrCreate(*texture, configSnapshot.gl.textureSampling) : 0;
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, gpuTexture != 0 ? gpuTexture : m_FallbackTexture);
-    if (uniforms.texture >= 0) {
-        glUniform1i(uniforms.texture, 0);
+        const Texture* boundTexture = nullptr;
+        if (packet != nullptr && samplerIndex < materialState.textureIds.size()) {
+            boundTexture = ResolveFrameTexture(*packet, materialState.textureIds[samplerIndex]);
+        }
+        if (boundTexture == nullptr && samplerIndex == 0) {
+            boundTexture = texture;
+        }
+
+        glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(samplerIndex));
+        const GLuint gpuTexture =
+            boundTexture != nullptr
+                ? m_TextureResources.GetOrCreate(*boundTexture,
+                                                 compiledTemplate->samplers.size() > samplerIndex
+                                                     ? compiledTemplate->samplers[samplerIndex]
+                                                     : MaterialSamplerDesc{},
+                                                 configSnapshot.gl.textureSampling)
+                : 0;
+        glBindTexture(GL_TEXTURE_2D, gpuTexture != 0 ? gpuTexture : m_FallbackTexture);
+        glUniform1i(samplerLocation, static_cast<GLint>(samplerIndex));
     }
 
     glBindVertexArray(gpuMesh.vao);
     glDrawElements(GL_TRIANGLES, gpuMesh.indexCount, GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);
+    glActiveTexture(GL_TEXTURE0);
     glUseProgram(0);
+}
+
+HardwareRendererMemoryStats GLBackendRendererBase::EstimateResidentMemory() const {
+    HardwareRendererMemoryStats stats{};
+    stats.depthBufferBytes = DepthAttachmentBytes(m_FrameWidth, m_FrameHeight);
+    stats.meshCacheBytes = m_MeshResources.EstimateResidentMemory();
+    stats.textureCacheBytes = m_TextureResources.EstimateResidentMemory();
+    stats.skyboxBytes = m_SkyboxEstimatedBytes;
+    stats.fallbackTextureBytes = m_FallbackTexture != 0 ? 4 : 0;
+    return stats;
 }
 
 void GLBackendRendererBase::BeforeFrame(const Color& clearColor) {
@@ -369,8 +404,10 @@ void GLBackendRendererBase::BeforeFrame(const Color& clearColor) {
 
 void GLBackendRendererBase::EndFrame() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDisable(GL_BLEND);
     glDisable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
     ResetBackendFrameState();
 }
 
@@ -507,6 +544,54 @@ void GLBackendRendererBase::CreateFallbackTexture() {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+bool GLBackendRendererBase::EnsureSkyboxResources() {
+    if (m_SkyboxTexture != 0 && m_SkyboxVAO != 0 && m_SkyboxProgram.handle.IsValid()) {
+        return true;
+    }
+    if (m_SkyboxAssetPath.empty()) {
+        return false;
+    }
+
+    ReleaseSkyboxResources();
+    m_SkyboxTexture = CreateCubemap(m_SkyboxAssetPath);
+    if (m_SkyboxTexture == 0) {
+        return false;
+    }
+
+    m_SkyboxProgram = MaterialManager::CreateShaderProgram(*this, "shaders/skybox.vs", "shaders/skybox.fs");
+    if (!m_SkyboxProgram.handle.IsValid()) {
+        ReleaseSkyboxResources();
+        return false;
+    }
+
+    m_SkyboxVAO = CreateSkyboxVAO();
+    if (m_SkyboxVAO == 0) {
+        ReleaseSkyboxResources();
+        return false;
+    }
+    return true;
+}
+
+void GLBackendRendererBase::ReleaseSkyboxResources() {
+    if (m_SkyboxTexture != 0) {
+        glDeleteTextures(1, &m_SkyboxTexture);
+        m_SkyboxTexture = 0;
+    }
+    if (m_SkyboxVBO != 0) {
+        glDeleteBuffers(1, &m_SkyboxVBO);
+        m_SkyboxVBO = 0;
+    }
+    if (m_SkyboxVAO != 0) {
+        glDeleteVertexArrays(1, &m_SkyboxVAO);
+        m_SkyboxVAO = 0;
+    }
+    if (m_SkyboxProgram.handle.IsValid()) {
+        glDeleteProgram(ToGLHandle(m_SkyboxProgram.handle));
+        m_SkyboxProgram = {};
+    }
+    m_SkyboxEstimatedBytes = 0;
+}
+
 GLuint GLBackendRendererBase::CreateCubemap(const std::string& path) {
     SDL_Surface* surface = IMG_Load(path.c_str());
     if (!surface) {
@@ -565,6 +650,8 @@ GLuint GLBackendRendererBase::CreateCubemap(const std::string& path) {
                      GL_UNSIGNED_BYTE,
                      facePixels.data());
     }
+    m_SkyboxEstimatedBytes = static_cast<uint64_t>(faceSize) * static_cast<uint64_t>(faceSize) *
+                             static_cast<uint64_t>(bpp) * 6ull;
 
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -577,7 +664,7 @@ GLuint GLBackendRendererBase::CreateCubemap(const std::string& path) {
 }
 
 void GLBackendRendererBase::DrawSkybox() {
-    if (m_ActiveCamera == nullptr || m_FrameBuffer == 0 || !m_SkyboxProgram.handle.IsValid() || m_SkyboxVAO == 0 || m_SkyboxTexture == 0) {
+    if (m_ActiveCamera == nullptr || m_FrameBuffer == 0 || !EnsureSkyboxResources()) {
         return;
     }
 

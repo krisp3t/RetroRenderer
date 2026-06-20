@@ -4,6 +4,7 @@
 #include "ShaderHandle.h"
 #include "TextureHandle.h"
 #include "../include/kris_glheaders.h"
+#include <array>
 #include <unordered_map>
 
 namespace RetroRenderer {
@@ -16,15 +17,17 @@ const Texture* ResolveFrameTexture(const RenderPacket& packet, FrameTextureId te
 
 struct GLMeshUniformLocations {
     GLint modelMatrix = -1;
-    GLint mvp = -1;
+    GLint viewMatrix = -1;
+    GLint projectionMatrix = -1;
     GLint normalMatrix = -1;
     GLint lightPos = -1;
     GLint viewPos = -1;
     GLint lightColor = -1;
-    GLint shininess = -1;
-    GLint ambientStrength = -1;
-    GLint specularStrength = -1;
-    GLint texture = -1;
+    GLint lightIntensity = -1;
+    GLint frameSize = -1;
+    GLint alphaCutoff = -1;
+    GLint materialParams = -1;
+    std::array<GLint, 8> materialSamplers = {-1, -1, -1, -1, -1, -1, -1, -1};
 };
 
 struct GLSkyboxUniformLocations {

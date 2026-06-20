@@ -3,6 +3,7 @@
 #include "EditorContext.h"
 #include <filesystem>
 #include <functional>
+#include <memory>
 
 struct SDL_Window;
 
@@ -12,7 +13,7 @@ class Texture;
 
 class MaterialEditorPanel {
   public:
-    using TexturePreviewCallback = std::function<void(const Texture&)>;
+    using TexturePreviewCallback = std::function<void(std::shared_ptr<const Texture>)>;
 
     void Draw(EditorContext& editorContext, SDL_Window* window, const TexturePreviewCallback& texturePreview);
 

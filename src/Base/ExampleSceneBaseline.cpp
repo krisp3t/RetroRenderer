@@ -68,6 +68,7 @@ std::string ReadTextFile(const std::filesystem::path& path) {
 
 bool ExampleSceneBaseline::HasOverrides() const {
     return materialType.has_value() ||
+           materialAsset.has_value() ||
            showSkybox.has_value() ||
            backfaceCulling.has_value() ||
            perspectiveCorrect.has_value() ||
@@ -79,6 +80,11 @@ bool ExampleSceneBaseline::HasOverrides() const {
 void ExampleSceneBaseline::MergeFrom(const ExampleSceneBaseline& other) {
     if (other.materialType.has_value()) {
         materialType = other.materialType;
+        materialAsset.reset();
+    }
+    if (other.materialAsset.has_value()) {
+        materialAsset = other.materialAsset;
+        materialType.reset();
     }
     if (other.showSkybox.has_value()) {
         showSkybox = other.showSkybox;
@@ -145,12 +151,20 @@ bool ParseExampleSceneBaselineText(std::string_view text,
             const std::string loweredValue = ToLowerCopy(value);
             if (loweredValue == "phong_texture") {
                 outBaseline.materialType = ExampleSceneBaseline::MaterialType::PHONG_TEXTURE;
+                outBaseline.materialAsset.reset();
             } else if (loweredValue == "phong_vertex_color") {
                 outBaseline.materialType = ExampleSceneBaseline::MaterialType::PHONG_VERTEX_COLOR;
+                outBaseline.materialAsset.reset();
             } else {
                 AddWarning(warnings, "line " + std::to_string(lineNumber) + ": invalid material_type `" + value + "`");
                 success = false;
             }
+            continue;
+        }
+
+        if (key == "material_asset" || key == "material_template") {
+            outBaseline.materialAsset = std::filesystem::path(value);
+            outBaseline.materialType.reset();
             continue;
         }
 

@@ -5,6 +5,8 @@
 #include <SDL.h>
 
 int SDL_main(int argc, char** argv) {
+    (void)argc;
+    (void)argv;
     auto& retro = RetroRenderer::Engine::Get();
     if (!retro.Init()) {
         LOGE("Failed to initialize RetroRenderer");

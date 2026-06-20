@@ -79,7 +79,7 @@ void Model::RecomputeLocalBounds() {
     bool hasVertices = false;
 
     for (const Mesh& mesh : m_Meshes) {
-        for (const Vertex& vertex : mesh.m_Vertices) {
+        for (const Vertex& vertex : mesh.GetVertices()) {
             const glm::vec3 position = glm::vec3(vertex.position);
             minBounds = glm::min(minBounds, position);
             maxBounds = glm::max(maxBounds, position);

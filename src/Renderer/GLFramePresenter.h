@@ -2,6 +2,7 @@
 
 #include "../include/kris_glheaders.h"
 #include "IFramePresenter.h"
+#include <cstdint>
 
 namespace RetroRenderer {
 
@@ -22,6 +23,7 @@ class GLFramePresenter : public IFramePresenter {
     [[nodiscard]] TextureHandle GetTextureHandle() const override {
         return TextureHandle{static_cast<uintptr_t>(m_TextureId)};
     }
+    [[nodiscard]] uint64_t EstimateResidentMemory() const;
 
   private:
     bool CreateTexture(int width, int height, bool nearestNeighbor);

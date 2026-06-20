@@ -14,6 +14,10 @@ struct CpuFrame {
     size_t pitch = 0;
     uint64_t frameId = 0;
     uint64_t dataRevision = 0;
+
+    [[nodiscard]] uint64_t EstimateResidentMemory() const {
+        return sizeof(CpuFrame) + pixels.capacity() * sizeof(Pixel);
+    }
 };
 
 } // namespace RetroRenderer

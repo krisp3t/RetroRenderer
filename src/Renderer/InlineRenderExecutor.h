@@ -25,8 +25,11 @@ class InlineRenderExecutor final : public IRenderExecutor {
   private:
     void AssertOwnerThread() const;
     GLuint ResolveUiTexture(TextureHandle handle) const;
+    bool EnsureHardwareRenderer();
+    void ReleaseHardwareRenderer();
     bool ApplyOutputConfiguration(const RenderPacket& packet);
     void ApplyUiTextureSnapshots(const std::vector<UiTextureSnapshot>& snapshots);
+    void UpdateMemoryStats();
 
     SDL_Window* m_Window = nullptr;
     SDL_GLContext m_Context = nullptr;

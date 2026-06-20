@@ -40,6 +40,7 @@ class MaterialManager {
     }
     [[nodiscard]] SceneMaterial* GetSelectedSceneMaterial();
     [[nodiscard]] const SceneMaterial* GetSelectedSceneMaterial() const;
+    [[nodiscard]] std::shared_ptr<const Texture> GetSelectedPreviewTextureShared() const;
     [[nodiscard]] const Texture* GetSelectedPreviewTexture() const;
 
     [[nodiscard]] std::shared_ptr<const CompiledMaterialTemplate> GetCompiledTemplate(const std::filesystem::path& templatePath) const;

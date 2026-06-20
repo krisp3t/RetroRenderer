@@ -1,11 +1,10 @@
 #pragma once
 
 #include "../Scene/Mesh.h"
-#include "../Scene/Vertex.h"
-#include "RenderPacket.h"
 #include "../include/kris_glheaders.h"
 #include <KrisLogger/Logger.h>
 #include <cstddef>
+#include <cstdint>
 #include <unordered_map>
 
 namespace RetroRenderer {
@@ -17,6 +16,7 @@ class GLMeshResourceCache {
         GLuint vbo = 0;
         GLuint ebo = 0;
         GLsizei indexCount = 0;
+        uint64_t estimatedBytes = 0;
     };
 
     GLMeshResourceCache() = default;
@@ -24,11 +24,7 @@ class GLMeshResourceCache {
     GLMeshResourceCache(const GLMeshResourceCache&) = delete;
     GLMeshResourceCache& operator=(const GLMeshResourceCache&) = delete;
 
-    const MeshGpuResources& GetOrCreate(const Mesh& mesh) {
-        return GetOrCreate(&mesh, mesh.GetVertices(), mesh.GetIndices());
-    }
-
-    const MeshGpuResources& GetOrCreate(const RenderMeshSnapshot& mesh) {
+    const MeshGpuResources& GetOrCreate(const MeshGeometryData& mesh) {
         return GetOrCreate(&mesh, mesh.vertices, mesh.indices);
     }
 
@@ -48,8 +44,16 @@ class GLMeshResourceCache {
         m_Resources.clear();
     }
 
+    [[nodiscard]] uint64_t EstimateResidentMemory() const {
+        uint64_t totalBytes = 0;
+        for (const auto& entry : m_Resources) {
+            totalBytes += entry.second.estimatedBytes;
+        }
+        return totalBytes;
+    }
+
   private:
-    const MeshGpuResources& GetOrCreate(const void* key,
+    const MeshGpuResources& GetOrCreate(const MeshGeometryData* key,
                                         const std::vector<Vertex>& vertices,
                                         const std::vector<unsigned int>& indices) {
         auto it = m_Resources.find(key);
@@ -92,11 +96,12 @@ class GLMeshResourceCache {
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+        resources.estimatedBytes = vertices.size() * sizeof(Vertex) + indices.size() * sizeof(unsigned int);
         LOGD("Created GL mesh resources: %zu verts, %zu indices", vertices.size(), indices.size());
         return m_Resources.emplace(key, resources).first->second;
     }
 
-    std::unordered_map<const void*, MeshGpuResources> m_Resources;
+    std::unordered_map<const MeshGeometryData*, MeshGpuResources> m_Resources;
 };
 
 } // namespace RetroRenderer

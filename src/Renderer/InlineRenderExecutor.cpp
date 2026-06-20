@@ -16,6 +16,14 @@ uint64_t ElapsedNanoseconds(TimingClock::time_point start) {
     return static_cast<uint64_t>(
         std::chrono::duration_cast<std::chrono::nanoseconds>(TimingClock::now() - start).count());
 }
+
+std::unique_ptr<IHardwareRenderer> CreateHardwareRenderer() {
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+    return std::make_unique<GLESRenderer>();
+#else
+    return std::make_unique<GLRenderer>();
+#endif
+}
 } // namespace
 
 bool InlineRenderExecutor::Init(SDL_Window* window,
@@ -50,17 +58,6 @@ bool InlineRenderExecutor::Init(SDL_Window* window,
         return false;
     }
 
-#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-    m_GLRenderer = std::make_unique<GLESRenderer>();
-#else
-    m_GLRenderer = std::make_unique<GLRenderer>();
-#endif
-    if (!m_GLRenderer->Init(m_OutputPresenter.GetTextureHandle(), initialSize.x, initialSize.y)) {
-        LOGE("Failed to initialize hardware renderer in render executor");
-        Destroy();
-        return false;
-    }
-
     m_OutputSize = initialSize;
     m_NearestNeighbor = config->renderer.nearestNeighborPresentation;
     m_Vsync = config->window.enableVsync;
@@ -68,6 +65,7 @@ bool InlineRenderExecutor::Init(SDL_Window* window,
     SDL_GL_SetSwapInterval(m_Vsync ? 1 : 0);
 #endif
     m_Initialized = true;
+    UpdateMemoryStats();
     return true;
 }
 
@@ -84,9 +82,12 @@ bool InlineRenderExecutor::ApplyOutputConfiguration(const RenderPacket& packet) 
     if (!m_OutputPresenter.Resize(requestedSize.x, requestedSize.y, nearest)) {
         return false;
     }
-    m_GLRenderer->Resize(m_OutputPresenter.GetTextureHandle(), requestedSize.x, requestedSize.y);
+    if (m_GLRenderer) {
+        m_GLRenderer->Resize(m_OutputPresenter.GetTextureHandle(), requestedSize.x, requestedSize.y);
+    }
     m_OutputSize = requestedSize;
     m_NearestNeighbor = nearest;
+    UpdateMemoryStats();
     return true;
 }
 
@@ -103,6 +104,7 @@ void InlineRenderExecutor::ApplyUiTextureSnapshots(const std::vector<UiTextureSn
                                         static_cast<size_t>(texture.GetWidth()),
                                         static_cast<size_t>(texture.GetHeight()));
     }
+    UpdateMemoryStats();
 }
 
 GLuint InlineRenderExecutor::ResolveUiTexture(TextureHandle handle) const {
@@ -137,14 +139,25 @@ void InlineRenderExecutor::Execute(FrameSubmission&& submission) {
     }
 
     if (packet.hasScene && packet.configSnapshot.renderer.selectedRenderer == Config::RendererType::GL) {
-        const auto glRenderStart = TimingClock::now();
-        m_GLRenderer->RenderFrame(packet);
-        p_Stats->lastGlRenderNs.store(ElapsedNanoseconds(glRenderStart), std::memory_order_relaxed);
+        if (EnsureHardwareRenderer()) {
+            const auto glRenderStart = TimingClock::now();
+            m_GLRenderer->RenderFrame(packet);
+            p_Stats->lastGlRenderNs.store(ElapsedNanoseconds(glRenderStart), std::memory_order_relaxed);
+        } else {
+            p_Stats->lastGlRenderNs.store(0, std::memory_order_relaxed);
+        }
+        p_Stats->lastCpuOutputUploadNs.store(0, std::memory_order_relaxed);
     } else if (submission.softwareFrame && !submission.softwareFrame->pixels.empty()) {
+        ReleaseHardwareRenderer();
+        p_Stats->lastGlRenderNs.store(0, std::memory_order_relaxed);
         const CpuFrame& frame = *submission.softwareFrame;
         const auto uploadStart = TimingClock::now();
         m_OutputPresenter.UploadPixels(frame.pixels.data(), frame.width, frame.height);
         p_Stats->lastCpuOutputUploadNs.store(ElapsedNanoseconds(uploadStart), std::memory_order_relaxed);
+    } else {
+        ReleaseHardwareRenderer();
+        p_Stats->lastGlRenderNs.store(0, std::memory_order_relaxed);
+        p_Stats->lastCpuOutputUploadNs.store(0, std::memory_order_relaxed);
     }
 
     ApplyUiTextureSnapshots(submission.uiTextures);
@@ -154,6 +167,7 @@ void InlineRenderExecutor::Execute(FrameSubmission&& submission) {
     const auto swapStart = TimingClock::now();
     SDL_GL_SwapWindow(m_Window);
     p_Stats->lastSwapBuffersNs.store(ElapsedNanoseconds(swapStart), std::memory_order_relaxed);
+    UpdateMemoryStats();
 }
 
 void InlineRenderExecutor::Destroy() {
@@ -163,15 +177,60 @@ void InlineRenderExecutor::Destroy() {
     if (m_Window && m_Context) {
         SDL_GL_MakeCurrent(m_Window, m_Context);
     }
-    if (m_GLRenderer) {
-        m_GLRenderer->Destroy();
-        m_GLRenderer.reset();
-    }
+    ReleaseHardwareRenderer();
     m_UiRenderer.Destroy();
     m_FontPresenter.Destroy();
     m_PreviewPresenter.Destroy();
     m_OutputPresenter.Destroy();
     m_Initialized = false;
+    UpdateMemoryStats();
+}
+
+bool InlineRenderExecutor::EnsureHardwareRenderer() {
+    if (m_GLRenderer) {
+        return true;
+    }
+
+    m_GLRenderer = CreateHardwareRenderer();
+    if (!m_GLRenderer ||
+        !m_GLRenderer->Init(m_OutputPresenter.GetTextureHandle(), m_OutputSize.x, m_OutputSize.y)) {
+        LOGE("Failed to initialize hardware renderer in render executor");
+        if (m_GLRenderer) {
+            m_GLRenderer->Destroy();
+            m_GLRenderer.reset();
+        }
+        UpdateMemoryStats();
+        return false;
+    }
+
+    UpdateMemoryStats();
+    return true;
+}
+
+void InlineRenderExecutor::ReleaseHardwareRenderer() {
+    if (!m_GLRenderer) {
+        return;
+    }
+    m_GLRenderer->Destroy();
+    m_GLRenderer.reset();
+    UpdateMemoryStats();
+}
+
+void InlineRenderExecutor::UpdateMemoryStats() {
+    if (!p_Stats) {
+        return;
+    }
+
+    const HardwareRendererMemoryStats rendererStats =
+        m_GLRenderer ? m_GLRenderer->EstimateResidentMemory() : HardwareRendererMemoryStats{};
+    p_Stats->glRendererDepthBufferBytes = rendererStats.depthBufferBytes;
+    p_Stats->glRendererMeshCacheBytes = rendererStats.meshCacheBytes;
+    p_Stats->glRendererTextureCacheBytes = rendererStats.textureCacheBytes;
+    p_Stats->glRendererSkyboxBytes = rendererStats.skyboxBytes;
+    p_Stats->glRendererFallbackTextureBytes = rendererStats.fallbackTextureBytes;
+    p_Stats->outputPresenterBytes = m_OutputPresenter.EstimateResidentMemory();
+    p_Stats->previewPresenterBytes = m_PreviewPresenter.EstimateResidentMemory();
+    p_Stats->fontPresenterBytes = m_FontPresenter.EstimateResidentMemory();
 }
 
 } // namespace RetroRenderer

@@ -1,10 +1,18 @@
 #pragma once
 #include "../Renderer/MaterialTypes.h"
-#include "Texture.h"
 #include "Vertex.h"
+#include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace RetroRenderer {
+
+struct MeshGeometryData {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+
+    [[nodiscard]] uint64_t EstimateResidentCpuBytes() const;
+};
 
 class Mesh {
   public:
@@ -12,7 +20,8 @@ class Mesh {
     ~Mesh() = default;
     Mesh(std::vector<Vertex> vertices,
          std::vector<unsigned int> indices,
-         std::vector<Texture> textures,
+         SceneMaterialHandle materialHandle = kInvalidSceneMaterialHandle);
+    Mesh(std::shared_ptr<const MeshGeometryData> geometry,
          SceneMaterialHandle materialHandle = kInvalidSceneMaterialHandle);
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;
@@ -21,22 +30,13 @@ class Mesh {
 
     [[nodiscard]] const std::vector<Vertex>& GetVertices() const;
     [[nodiscard]] const std::vector<unsigned int>& GetIndices() const;
-    [[nodiscard]] const std::vector<Texture>& GetTextures() const;
-    [[nodiscard]] const Texture* GetPrimaryTexture() const;
+    [[nodiscard]] const std::shared_ptr<const MeshGeometryData>& GetGeometry() const;
     [[nodiscard]] SceneMaterialHandle GetMaterialHandle() const;
     [[nodiscard]] unsigned int GetVertexCount() const;
     [[nodiscard]] unsigned int GetFaceCount() const;
 
-    // Per-vertex
-    unsigned int m_numVertices = 0;
-    std::vector<Vertex> m_Vertices;
-    std::vector<unsigned int> m_Indices;
-
-    // Per-face
-    unsigned int m_numFaces = 0;
-
-    // Per-mesh
-    std::vector<Texture> m_Textures;
+  private:
+    std::shared_ptr<const MeshGeometryData> m_Geometry;
     SceneMaterialHandle m_MaterialHandle = kInvalidSceneMaterialHandle;
 };
 

@@ -2,6 +2,7 @@
 
 #include "../Base/Config.h"
 #include "../Renderer/MaterialTypes.h"
+#include "../Renderer/RendererMemoryStats.h"
 #include "Camera.h"
 #include "ImportedSceneData.h"
 #include "Light.h"
@@ -40,6 +41,7 @@ class Scene {
     [[nodiscard]] const SceneMaterial* GetMaterial(SceneMaterialHandle handle) const;
     [[nodiscard]] std::vector<SceneMaterial>& GetMaterials();
     [[nodiscard]] const std::vector<SceneMaterial>& GetMaterials() const;
+    [[nodiscard]] SceneMemoryStats EstimateResidentMemory() const;
     void SetAllMaterialTemplates(const std::filesystem::path& templatePath);
 
   private:

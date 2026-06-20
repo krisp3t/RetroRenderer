@@ -19,6 +19,7 @@ struct ExampleSceneBaseline {
     };
 
     std::optional<MaterialType> materialType;
+    std::optional<std::filesystem::path> materialAsset;
     std::optional<bool> showSkybox;
     std::optional<bool> backfaceCulling;
     std::optional<bool> perspectiveCorrect;

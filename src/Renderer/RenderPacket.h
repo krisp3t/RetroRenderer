@@ -4,9 +4,9 @@
 #include "../Base/Config.h"
 #include "../Scene/Camera.h"
 #include "../Scene/Light.h"
+#include "../Scene/Mesh.h"
 #include "../Scene/Texture.h"
-#include "../Scene/Vertex.h"
-#include "ShaderResource.h"
+#include "MaterialTypes.h"
 #include <glm/mat4x4.hpp>
 #include <limits>
 #include <memory>
@@ -20,29 +20,20 @@ constexpr FrameMaterialId kInvalidFrameMaterialId = std::numeric_limits<FrameMat
 constexpr FrameTextureId kInvalidFrameTextureId = std::numeric_limits<FrameTextureId>::max();
 
 struct FrameMaterialState {
-    std::shared_ptr<const RenderShaderSnapshot> shader;
-    glm::vec3 lightColor = glm::vec3(1.0f);
-    bool useVertexColor = false;
-    bool enablePhong = false;
-    float ambientStrength = 0.3f;
-    float specularStrength = 0.3f;
-    float shininess = 32.0f;
-};
-
-struct RenderMeshSnapshot {
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
+    std::shared_ptr<const CompiledMaterialTemplate> compiledTemplate;
+    std::vector<glm::vec4> parameterValues;
+    std::vector<FrameTextureId> textureIds;
+    MaterialPipelineState pipelineState{};
 };
 
 struct RenderItem {
-    std::shared_ptr<const RenderMeshSnapshot> mesh;
+    std::shared_ptr<const MeshGeometryData> geometry;
     glm::mat4 worldTransform = glm::mat4(1.0f);
     FrameMaterialId materialId = kInvalidFrameMaterialId;
-    FrameTextureId textureId = kInvalidFrameTextureId;
 };
 
-// Renderer input packet. It is intentionally detached from live Scene state so
-// renderer work can safely run later or on another thread.
+// Renderer input packet. Per-frame state is copied, while immutable shared
+// geometry and textures are referenced directly to avoid duplicate storage.
 struct RenderPacket {
     bool hasScene = false;
     Camera camera;

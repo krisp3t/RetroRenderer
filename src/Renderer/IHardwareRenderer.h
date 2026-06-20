@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IRenderer.h"
+#include "RendererMemoryStats.h"
 #include "TextureHandle.h"
 
 namespace RetroRenderer {
@@ -14,6 +15,7 @@ class IHardwareRenderer : public IRenderer {
     virtual void Resize(TextureHandle framebufferTexture, int width, int height) = 0;
     virtual void InvalidateSceneResources() = 0;
     virtual void InvalidateTextureResources() = 0;
+    [[nodiscard]] virtual HardwareRendererMemoryStats EstimateResidentMemory() const = 0;
 };
 
 } // namespace RetroRenderer

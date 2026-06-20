@@ -22,11 +22,11 @@ class GLBackendRendererBase : public IHardwareRenderer {
     void InvalidateSceneResources() override;
     void InvalidateTextureResources() override;
     void RenderFrame(const RenderPacket& packet) override;
+    [[nodiscard]] HardwareRendererMemoryStats EstimateResidentMemory() const override;
 
     void SetActiveCamera(const Camera& camera) override;
     void SetSceneLights(const std::vector<LightSnapshot>& lights) override;
 
-    void DrawTriangularMesh(const Model* model) override;
     void DrawSkybox() override;
 
     void BeforeFrame(const Color& clearColor) override;
@@ -39,25 +39,24 @@ class GLBackendRendererBase : public IHardwareRenderer {
 
     bool CreateFramebuffer(TextureHandle fbTex, int w, int h);
     void CreateFallbackTexture();
+    bool EnsureSkyboxResources();
+    void ReleaseSkyboxResources();
     GLuint CreateCubemap(const std::string& path);
     GLuint CreateSkyboxVAO();
     void DestroyFramebufferResources();
     void DestroyRendererResources();
-    void DrawMesh(const Mesh& mesh,
+    void DrawMesh(const MeshGeometryData& mesh,
                   const glm::mat4& worldTransform,
                   const Texture* texture,
                   const FrameMaterialState& materialState,
-                  const Config& configSnapshot);
-    void DrawMesh(const RenderMeshSnapshot& mesh,
-                  const glm::mat4& worldTransform,
-                  const Texture* texture,
-                  const FrameMaterialState& materialState,
-                  const Config& configSnapshot);
+                  const Config& configSnapshot,
+                  const RenderPacket* packet = nullptr);
     void DrawMeshGpuResources(const GLMeshResourceCache::MeshGpuResources& gpuMesh,
                               const glm::mat4& worldTransform,
                               const Texture* texture,
                               const FrameMaterialState& materialState,
-                              const Config& configSnapshot);
+                              const Config& configSnapshot,
+                              const RenderPacket* packet = nullptr);
 
     virtual std::string_view GetShaderPrefix() const = 0;
     virtual const char* GetRendererLogLabel() const = 0;
@@ -78,7 +77,6 @@ class GLBackendRendererBase : public IHardwareRenderer {
     Camera m_FrameCameraSnapshot{};
     const Camera* m_ActiveCamera = nullptr;
     std::vector<LightSnapshot> m_SceneLights;
-    FrameMaterialState m_FrameMaterialState{};
 
     GLuint m_FrameBufferTexture = 0;
     GLuint m_FrameBuffer = 0;
@@ -96,6 +94,8 @@ class GLBackendRendererBase : public IHardwareRenderer {
     GLProgramUniformCache m_UniformCache;
     uint64_t m_SceneResourceRevision = 0;
     uint64_t m_TextureResourceRevision = 0;
+    uint64_t m_SkyboxEstimatedBytes = 0;
+    std::string m_SkyboxAssetPath;
 
   private:
     GLuint CompileShaderStage(GLenum shaderType, const std::string& shaderSource);

@@ -602,10 +602,6 @@ bool SWRenderer::Init(int w, int h) {
     m_FrameBuffer = std::move(fb);
     m_DepthBuffer = std::make_unique<Buffer<float>>(w, h);
     m_Rasterizer = std::make_unique<Rasterizer>();
-    m_HasSkybox = LoadSkyboxCrossImage(DefaultSkyboxCrossPath(), m_SkyboxFaceSize, m_SkyboxFaces);
-    if (!m_HasSkybox) {
-        LOGW("Failed to load software skybox from %s", DefaultSkyboxCrossPath().c_str());
-    }
     m_SkyboxCacheValid = false;
     return true;
 }
@@ -625,6 +621,18 @@ bool SWRenderer::Resize(int w, int h) {
     return true;
 }
 
+void SWRenderer::Destroy() {
+    ReleaseSkyboxResources();
+    m_FrameBuffer.reset();
+    m_DepthBuffer.reset();
+    m_Rasterizer.reset();
+    m_ClipPositionScratch.clear();
+    m_NormalScratch.clear();
+    m_WorldPositionScratch.clear();
+    m_DeferredPs1Triangles.clear();
+    p_Camera = nullptr;
+}
+
 void SWRenderer::RenderFrame(const RenderPacket& packet) {
     if (!packet.hasScene) {
         return;
@@ -634,17 +642,16 @@ void SWRenderer::RenderFrame(const RenderPacket& packet) {
     SetActiveCamera(m_FrameCameraSnapshot);
     SetSceneLights(packet.lights);
     SetFrameConfig(packet.configSnapshot);
-    m_FrameMaterialState =
-        packet.materials.empty() ? SoftwareMaterialState{} : MakeSoftwareMaterialState(packet, packet.materials.front(), packet.configSnapshot);
-    p_FrameFallbackTexture = nullptr;
 
     BeforeFrame(packet.clearColor);
     if (packet.configSnapshot.environment.showSkybox) {
         DrawSkybox();
+    } else {
+        ReleaseSkyboxResources();
     }
 
     for (const RenderItem& item : packet.items) {
-        if (!item.mesh) {
+        if (!item.geometry) {
             continue;
         }
         const FrameMaterialState* materialState = ResolveFrameMaterial(packet, item.materialId);
@@ -653,8 +660,8 @@ void SWRenderer::RenderFrame(const RenderPacket& packet) {
         }
 
         DrawMeshData(
-            item.mesh->vertices,
-            item.mesh->indices,
+            item.geometry->vertices,
+            item.geometry->indices,
             item.worldTransform,
             MakeSoftwareMaterialState(packet, *materialState, packet.configSnapshot),
             nullptr);
@@ -676,22 +683,6 @@ void SWRenderer::SetSceneLights(const std::vector<LightSnapshot>& lights) {
 
 void SWRenderer::SetFrameConfig(const Config& config) {
     m_FrameConfigSnapshot = config;
-}
-
-void SWRenderer::SetMaterialState(const SoftwareMaterialState& materialState) {
-    m_FrameMaterialState = materialState;
-}
-
-void SWRenderer::SetFallbackTexture(const Texture* texture) {
-    p_FrameFallbackTexture = texture;
-}
-
-void SWRenderer::DrawMesh(const Mesh& mesh,
-                          const glm::mat4& worldTransform,
-                          const SoftwareMaterialState& materialState,
-                          const Texture* texture) {
-    const Texture* diffuseTexture = texture != nullptr ? texture : mesh.GetPrimaryTexture();
-    DrawMeshData(mesh.GetVertices(), mesh.GetIndices(), worldTransform, materialState, diffuseTexture);
 }
 
 void SWRenderer::DrawMeshData(const std::vector<Vertex>& vertices,
@@ -864,17 +855,6 @@ void SWRenderer::DrawMeshData(const std::vector<Vertex>& vertices,
     }
 }
 
-/**
- * @brief Draw a model on the framebuffer. Must have triangulated meshes!
- * @param mesh
- */
-void SWRenderer::DrawTriangularMesh(const Model* model) {
-    assert(model != nullptr && "Tried to draw null model");
-    for (const Mesh& mesh : model->GetMeshes()) {
-        DrawMesh(mesh, model->GetWorldTransform(), m_FrameMaterialState, p_FrameFallbackTexture);
-    }
-}
-
 void SWRenderer::BeforeFrame(const Color& clearColor) {
     m_FrameBuffer->Clear(clearColor.ToPixel());
     if (m_DepthBuffer) {
@@ -970,7 +950,7 @@ void SWRenderer::ApplyOutlinePass() {
 }
 
 void SWRenderer::DrawSkybox() {
-    if (!m_HasSkybox || !p_Camera || !m_FrameBuffer) {
+    if (!EnsureSkyboxLoaded() || !p_Camera || !m_FrameBuffer) {
         return;
     }
 
@@ -1043,5 +1023,53 @@ void SWRenderer::DrawGridGizmo() {
 const Buffer<Pixel>& SWRenderer::GetFrameBuffer() const {
     assert(m_FrameBuffer != nullptr && "No render target set. Did you call SWRenderer::Init()?");
     return *m_FrameBuffer;
+}
+
+SoftwareRendererMemoryStats SWRenderer::EstimateResidentMemory() const {
+    SoftwareRendererMemoryStats stats{};
+    if (m_FrameBuffer) {
+        stats.framebufferColorBytes = sizeof(Buffer<Pixel>) + m_FrameBuffer->GetSize();
+    }
+    if (m_DepthBuffer) {
+        stats.depthBufferBytes = sizeof(Buffer<float>) + m_DepthBuffer->GetSize();
+    }
+    stats.scratchBytes =
+        m_ClipPositionScratch.capacity() * sizeof(glm::vec4) +
+        m_NormalScratch.capacity() * sizeof(glm::vec3) +
+        m_WorldPositionScratch.capacity() * sizeof(glm::vec3);
+    stats.deferredTriangleBytes = m_DeferredPs1Triangles.capacity() * sizeof(DeferredTriangle);
+    for (const auto& face : m_SkyboxFaces) {
+        stats.skyboxFaceBytes += face.capacity() * sizeof(Pixel);
+    }
+    stats.skyboxCacheBytes = m_SkyboxCachePixels.capacity() * sizeof(Pixel);
+    return stats;
+}
+
+bool SWRenderer::EnsureSkyboxLoaded() {
+    if (m_HasSkybox) {
+        return true;
+    }
+
+    m_HasSkybox = LoadSkyboxCrossImage(DefaultSkyboxCrossPath(), m_SkyboxFaceSize, m_SkyboxFaces);
+    if (!m_HasSkybox) {
+        LOGW("Failed to load software skybox from %s", DefaultSkyboxCrossPath().c_str());
+        return false;
+    }
+    m_SkyboxCacheValid = false;
+    return true;
+}
+
+void SWRenderer::ReleaseSkyboxResources() {
+    m_HasSkybox = false;
+    m_SkyboxFaceSize = 0;
+    for (auto& face : m_SkyboxFaces) {
+        face.clear();
+        face.shrink_to_fit();
+    }
+    m_SkyboxCachePixels.clear();
+    m_SkyboxCachePixels.shrink_to_fit();
+    m_SkyboxCacheWidth = 0;
+    m_SkyboxCacheHeight = 0;
+    m_SkyboxCacheValid = false;
 }
 } // namespace RetroRenderer

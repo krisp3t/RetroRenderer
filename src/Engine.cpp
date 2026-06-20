@@ -56,6 +56,9 @@ bool Engine::Init() {
     p_SceneManager->BindDependencies(p_config_, *p_RenderSystem);
     LOGD("p_Config_ ref count: %d", p_config_.use_count());
     p_MaterialManager->BindRenderServices(*p_RenderSystem);
+    p_MaterialManager->BindSceneAccessor([this]() {
+        return p_SceneManager ? p_SceneManager->GetScene() : nullptr;
+    });
     if (!p_MaterialManager->Init()) {
         return false;
     }

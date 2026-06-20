@@ -7,6 +7,7 @@
 #include <cmath>
 #include <filesystem>
 #include <limits>
+#include <unordered_set>
 #include <utility>
 
 namespace RetroRenderer {
@@ -263,7 +264,6 @@ void Scene::ProcessImportedMesh(const ImportedMesh& mesh,
                                 const std::string& modelName) {
     std::vector<Vertex> vertices = mesh.vertices;
     std::vector<unsigned int> indices = mesh.indices;
-    std::vector<Texture> textures;
     SceneMaterialHandle materialHandle = kInvalidSceneMaterialHandle;
 
     if (mesh.materialIndex.has_value()) {
@@ -271,10 +271,6 @@ void Scene::ProcessImportedMesh(const ImportedMesh& mesh,
         if (materialIndex >= 0 && materialIndex < static_cast<int>(importedMaterialHandles.size())) {
             materialHandle = importedMaterialHandles[static_cast<size_t>(materialIndex)];
             LOGI("Processing material %d for model %s", materialIndex, modelName.c_str());
-            if (const SceneMaterial* sceneMaterial = GetMaterial(materialHandle);
-                sceneMaterial != nullptr && !sceneMaterial->textureBindings.empty()) {
-                textures.emplace_back(sceneMaterial->textureBindings.front().texture.CloneCpuOnly());
-            }
         }
     }
 
@@ -282,7 +278,7 @@ void Scene::ProcessImportedMesh(const ImportedMesh& mesh,
         materialHandle = GetOrCreateFallbackMaterial(MeshUsesVertexColor(mesh));
     }
 
-    meshes.emplace_back(std::move(vertices), std::move(indices), std::move(textures), materialHandle);
+    meshes.emplace_back(std::move(vertices), std::move(indices), materialHandle);
 }
 
 std::vector<int>& Scene::GetVisibleModels() {
@@ -373,6 +369,31 @@ const std::vector<SceneMaterial>& Scene::GetMaterials() const {
     return m_Materials;
 }
 
+SceneMemoryStats Scene::EstimateResidentMemory() const {
+    SceneMemoryStats stats{};
+    std::unordered_set<const MeshGeometryData*> geometrySet;
+    std::unordered_set<const Texture*> textureSet;
+
+    for (const Model& model : m_Models) {
+        for (const Mesh& mesh : model.GetMeshes()) {
+            const std::shared_ptr<const MeshGeometryData>& geometry = mesh.GetGeometry();
+            if (geometry && geometrySet.emplace(geometry.get()).second) {
+                stats.geometryBytes += geometry->EstimateResidentCpuBytes();
+            }
+        }
+    }
+
+    for (const SceneMaterial& material : m_Materials) {
+        for (const MaterialTextureBinding& binding : material.textureBindings) {
+            if (binding.texture && textureSet.emplace(binding.texture.get()).second) {
+                stats.textureBytes += binding.texture->EstimateResidentCpuBytes();
+            }
+        }
+    }
+
+    return stats;
+}
+
 void Scene::SetAllMaterialTemplates(const std::filesystem::path& templatePath) {
     for (SceneMaterial& material : m_Materials) {
         material.templatePath = templatePath;
@@ -419,7 +440,7 @@ SceneMaterialHandle Scene::AppendImportedMaterial(const ImportedMaterial& materi
         if (texture.LoadFromFile(texturePath.string().c_str())) {
             sceneMaterial.textureBindings.push_back(MaterialTextureBinding{
                 .slotName = "albedo",
-                .texture = std::move(texture),
+                .texture = std::make_shared<Texture>(std::move(texture)),
             });
         } else {
             LOGW("Failed to load diffuse texture '%s' for material %s", texturePath.string().c_str(), name.c_str());

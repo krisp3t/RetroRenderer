@@ -1075,7 +1075,7 @@ void MaterialManager::ClearTexture() {
         return;
     }
     if (!material->textureBindings.empty()) {
-        material->textureBindings.front().texture = Texture{};
+        material->textureBindings.front().texture.reset();
     }
     if (p_RenderInvalidationSink_ != nullptr) {
         p_RenderInvalidationSink_->OnTextureMutated();
@@ -1095,12 +1095,17 @@ const SceneMaterial* MaterialManager::GetSelectedSceneMaterial() const {
     return ResolveSelectedSceneMaterial();
 }
 
-const Texture* MaterialManager::GetSelectedPreviewTexture() const {
+std::shared_ptr<const Texture> MaterialManager::GetSelectedPreviewTextureShared() const {
     const SceneMaterial* material = ResolveSelectedSceneMaterial();
     if (material == nullptr || material->textureBindings.empty()) {
         return nullptr;
     }
-    return &material->textureBindings.front().texture;
+    return material->textureBindings.front().texture;
+}
+
+const Texture* MaterialManager::GetSelectedPreviewTexture() const {
+    const std::shared_ptr<const Texture> texture = GetSelectedPreviewTextureShared();
+    return texture ? texture.get() : nullptr;
 }
 
 std::shared_ptr<const CompiledMaterialTemplate> MaterialManager::GetCompiledTemplate(const SceneMaterial& material) const {
@@ -1236,10 +1241,10 @@ void MaterialManager::LoadTextureIntoSelectedMaterial(Texture texture) {
     if (material->textureBindings.empty()) {
         material->textureBindings.push_back(MaterialTextureBinding{
             .slotName = "albedo",
-            .texture = std::move(texture),
+            .texture = std::make_shared<Texture>(std::move(texture)),
         });
     } else {
-        material->textureBindings.front().texture = std::move(texture);
+        material->textureBindings.front().texture = std::make_shared<Texture>(std::move(texture));
     }
 
     if (p_RenderInvalidationSink_ != nullptr) {

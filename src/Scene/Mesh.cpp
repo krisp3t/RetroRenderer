@@ -2,35 +2,47 @@
 #include <utility>
 
 namespace RetroRenderer {
+namespace {
+const std::vector<Vertex>& EmptyVertices() {
+    static const std::vector<Vertex> empty;
+    return empty;
+}
+
+const std::vector<unsigned int>& EmptyIndices() {
+    static const std::vector<unsigned int> empty;
+    return empty;
+}
+} // namespace
+
+uint64_t MeshGeometryData::EstimateResidentCpuBytes() const {
+    return sizeof(MeshGeometryData) + vertices.capacity() * sizeof(Vertex) + indices.capacity() * sizeof(unsigned int);
+}
+
 Mesh::Mesh(std::vector<Vertex> vertices,
            std::vector<unsigned int> indices,
-           std::vector<Texture> textures,
            SceneMaterialHandle materialHandle)
-    : m_Vertices(std::move(vertices)),
-      m_Indices(std::move(indices)),
-      m_Textures(std::move(textures)),
+    : m_Geometry(std::make_shared<MeshGeometryData>(MeshGeometryData{
+          .vertices = std::move(vertices),
+          .indices = std::move(indices),
+      })),
       m_MaterialHandle(materialHandle) {
-    m_numVertices = m_Vertices.size();
-    m_numFaces = m_Indices.size() / 3;
+}
+
+Mesh::Mesh(std::shared_ptr<const MeshGeometryData> geometry, SceneMaterialHandle materialHandle)
+    : m_Geometry(std::move(geometry)),
+      m_MaterialHandle(materialHandle) {
 }
 
 const std::vector<Vertex>& Mesh::GetVertices() const {
-    return m_Vertices;
+    return m_Geometry ? m_Geometry->vertices : EmptyVertices();
 }
 
 const std::vector<unsigned int>& Mesh::GetIndices() const {
-    return m_Indices;
+    return m_Geometry ? m_Geometry->indices : EmptyIndices();
 }
 
-const std::vector<Texture>& Mesh::GetTextures() const {
-    return m_Textures;
-}
-
-const Texture* Mesh::GetPrimaryTexture() const {
-    if (m_Textures.empty()) {
-        return nullptr;
-    }
-    return &m_Textures.front();
+const std::shared_ptr<const MeshGeometryData>& Mesh::GetGeometry() const {
+    return m_Geometry;
 }
 
 SceneMaterialHandle Mesh::GetMaterialHandle() const {
@@ -38,10 +50,10 @@ SceneMaterialHandle Mesh::GetMaterialHandle() const {
 }
 
 unsigned int Mesh::GetVertexCount() const {
-    return m_numVertices;
+    return static_cast<unsigned int>(GetVertices().size());
 }
 
 unsigned int Mesh::GetFaceCount() const {
-    return m_numFaces;
+    return static_cast<unsigned int>(GetIndices().size() / 3);
 }
 } // namespace RetroRenderer

@@ -10,8 +10,6 @@
 namespace RetroRenderer {
 class Camera;
 
-class Model;
-
 struct Color;
 
 class IRenderer : public IShaderCompiler {
@@ -32,8 +30,6 @@ class IRenderer : public IShaderCompiler {
 
     virtual void SetActiveCamera(const Camera& camera) = 0;
     virtual void SetSceneLights(const std::vector<LightSnapshot>& lights) = 0;
-
-    virtual void DrawTriangularMesh(const Model* model) = 0;
 
     virtual void DrawSkybox() = 0;
 

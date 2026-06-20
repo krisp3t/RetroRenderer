@@ -47,6 +47,7 @@ class Texture {
     bool HasAutoPalette() const {
         return m_HasAutoPalette;
     }
+    [[nodiscard]] uint64_t EstimateResidentCpuBytes() const;
     Texture CloneCpuOnly() const;
     Pixel SampleNearestRepeat(const glm::vec2& uv) const;
     Pixel SampleReducedNearestRepeat(const glm::vec2& uv, int maxDimension) const;

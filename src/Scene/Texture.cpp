@@ -216,6 +216,10 @@ bool Texture::LoadFromMemory(const uint8_t* data, const size_t size) {
     return true;
 }
 
+uint64_t Texture::EstimateResidentCpuBytes() const {
+    return sizeof(Texture) + m_Path.capacity() + m_Pixels.capacity() * sizeof(Pixel);
+}
+
 Texture Texture::CloneCpuOnly() const {
     Texture clone;
     clone.m_Path = m_Path;

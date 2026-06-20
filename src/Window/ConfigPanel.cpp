@@ -91,6 +91,10 @@ double ReadTimingMilliseconds(const std::atomic<uint64_t>& timing) {
     return static_cast<double>(timing.load(std::memory_order_relaxed)) / 1000000.0;
 }
 
+double BytesToMiB(uint64_t bytes) {
+    return static_cast<double>(bytes) / (1024.0 * 1024.0);
+}
+
 std::filesystem::path GetWorkingDirectoryOrFallback() {
     std::error_code ec;
     const std::filesystem::path currentPath = std::filesystem::current_path(ec);
@@ -108,6 +112,23 @@ std::filesystem::path CanonicalizePathIfPossible(const std::filesystem::path& pa
     std::error_code ec;
     const std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(path, ec);
     return ec ? path : canonicalPath;
+}
+
+std::filesystem::path ResolveBaselineMaterialTemplate(MaterialManager& materialManager, const ExampleSceneBaseline& baseline) {
+    if (baseline.materialAsset.has_value()) {
+        return *baseline.materialAsset;
+    }
+    if (!baseline.materialType.has_value()) {
+        return {};
+    }
+
+    switch (*baseline.materialType) {
+    case ExampleSceneBaseline::MaterialType::PHONG_TEXTURE:
+        return materialManager.ResolveBuiltInTemplatePath(false);
+    case ExampleSceneBaseline::MaterialType::PHONG_VERTEX_COLOR:
+        return materialManager.ResolveBuiltInTemplatePath(true);
+    }
+    return {};
 }
 
 const char* RenderPresetDescription(Config::RenderPreset preset) {
@@ -588,8 +609,6 @@ void ConfigPanel::ResetManagedSceneBaseline() {
     }
 
     MaterialManager& materialManager = m_editorContext_->GetMaterialManager();
-    materialManager.ResetBuiltInMaterials();
-    materialManager.SetCurrentMaterialIndex(static_cast<int>(ExampleSceneBaseline::MaterialType::PHONG_TEXTURE));
 
     p_config_->renderer.enablePerspectiveCorrect = true;
     p_config_->environment.showSkybox = false;
@@ -604,8 +623,11 @@ void ConfigPanel::ResetManagedSceneBaseline() {
     }
 
     if (std::shared_ptr<Scene> scene = GetScene()) {
+        materialManager.SelectSceneMaterial(scene->GetMaterialCount() > 0 ? 0 : kInvalidSceneMaterialHandle);
         scene->SetDefaultLightPosition(p_config_->environment.lightPosition);
         m_editorContext_->GetSceneManager().NotifySceneMutated();
+    } else {
+        materialManager.SelectSceneMaterial(kInvalidSceneMaterialHandle);
     }
 }
 
@@ -634,9 +656,6 @@ void ConfigPanel::ApplyManagedSceneBaselineForPath(const std::filesystem::path& 
     }
 
     MaterialManager& materialManager = m_editorContext_->GetMaterialManager();
-    if (baseline.materialType.has_value()) {
-        materialManager.SetCurrentMaterialIndex(static_cast<int>(*baseline.materialType));
-    }
     if (baseline.showSkybox.has_value()) {
         p_config_->environment.showSkybox = *baseline.showSkybox;
     }
@@ -654,6 +673,10 @@ void ConfigPanel::ApplyManagedSceneBaselineForPath(const std::filesystem::path& 
     }
 
     if (std::shared_ptr<Scene> scene = GetScene()) {
+        const std::filesystem::path baselineMaterialTemplate = ResolveBaselineMaterialTemplate(materialManager, baseline);
+        if (!baselineMaterialTemplate.empty()) {
+            scene->SetAllMaterialTemplates(baselineMaterialTemplate);
+        }
         scene->SetDefaultLightPosition(p_config_->environment.lightPosition);
         m_editorContext_->GetSceneManager().NotifySceneMutated();
     }
@@ -876,33 +899,29 @@ void ConfigPanel::DisplaySceneGraph() {
 
 void ConfigPanel::DisplayMaterialWindow() {
     if (m_editorContext_) {
-        m_materialEditorPanel_.Draw(*m_editorContext_, p_Window_, [this](const Texture& texture) {
+        m_materialEditorPanel_.Draw(*m_editorContext_, p_Window_, [this](std::shared_ptr<const Texture> texture) {
             DisplayTexturePreview(texture);
         });
     }
 }
 
-void ConfigPanel::DisplayTexturePreview(const Texture& texture) {
-    if (!texture.HasCpuPixels() || texture.GetWidth() <= 0 || texture.GetHeight() <= 0) {
+void ConfigPanel::DisplayTexturePreview(const std::shared_ptr<const Texture>& texture) {
+    if (!texture || !texture->HasCpuPixels() || texture->GetWidth() <= 0 || texture->GetHeight() <= 0) {
         ImGui::Text("Texture preview unavailable");
         return;
     }
-    if (m_previewTextureSource_ != &texture || m_previewTextureRevision_ != texture.GetRevision()) {
-        m_previewTextureSnapshot_ = std::make_shared<Texture>(texture.CloneCpuOnly());
-        m_previewTextureSource_ = &texture;
-        m_previewTextureRevision_ = texture.GetRevision();
-    }
+    m_previewTextureSnapshot_ = texture;
     m_uiTextureSnapshots_.push_back(
         UiTextureSnapshot{PresentationTexture::MaterialPreview,
                           m_previewTextureSnapshot_,
                           p_config_->renderer.nearestNeighborPresentation});
 
     constexpr float kMaxPreviewSize = 128.0f;
-    const float scale = std::min(kMaxPreviewSize / static_cast<float>(texture.GetWidth()),
-                                 kMaxPreviewSize / static_cast<float>(texture.GetHeight()));
+    const float scale = std::min(kMaxPreviewSize / static_cast<float>(texture->GetWidth()),
+                                 kMaxPreviewSize / static_cast<float>(texture->GetHeight()));
     const ImVec2 previewSize{
-        std::max(1.0f, static_cast<float>(texture.GetWidth()) * scale),
-        std::max(1.0f, static_cast<float>(texture.GetHeight()) * scale),
+        std::max(1.0f, static_cast<float>(texture->GetWidth()) * scale),
+        std::max(1.0f, static_cast<float>(texture->GetHeight()) * scale),
     };
     ImGui::Image(ToImTextureID(PresentationTexture::MaterialPreview), previewSize);
 }
@@ -1412,10 +1431,10 @@ void ConfigPanel::DisplayPostFxSettings() {
     if (retro.usePs1TextureClut) {
         const MaterialManager* materialManager = m_editorContext_ ? m_editorContext_->materialManager : nullptr;
         if (materialManager != nullptr) {
-            const auto& currentMaterial = materialManager->GetCurrentMaterial();
-            if (currentMaterial.texture.has_value() && currentMaterial.texture->HasAutoPalette()) {
+            if (const Texture* previewTexture = materialManager->GetSelectedPreviewTexture();
+                previewTexture != nullptr && previewTexture->HasAutoPalette()) {
                 ImGui::Text("Active texture CLUT preview");
-                DrawPixelPalettePreviewGrid(currentMaterial.texture->GetAutoPalettePixels());
+                DrawPixelPalettePreviewGrid(previewTexture->GetAutoPalettePixels());
             } else {
                 ImGui::TextDisabled("Load a texture to preview the derived 16-color CLUT.");
             }
@@ -1561,25 +1580,64 @@ void ConfigPanel::DisplayMetricsOverlay() {
         }
         ImGui::SeparatorText("Memory");
         if (p_stats_->processMemorySupported) {
-            const double currentMiB = static_cast<double>(p_stats_->processResidentBytes) / (1024.0 * 1024.0);
-            const double peakMiB = static_cast<double>(p_stats_->processResidentPeakBytes) / (1024.0 * 1024.0);
+            const double currentMiB = BytesToMiB(p_stats_->processResidentBytes);
+            const double peakMiB = BytesToMiB(p_stats_->processResidentPeakBytes);
             ImGui::Text("RSS: %.2f MiB", currentMiB);
             ImGui::Text("Peak RSS (app): %.2f MiB", peakMiB);
             if (p_stats_->processResidentPeakOsBytes > 0) {
-                const double peakOsMiB = static_cast<double>(p_stats_->processResidentPeakOsBytes) / (1024.0 * 1024.0);
+                const double peakOsMiB = BytesToMiB(p_stats_->processResidentPeakOsBytes);
                 ImGui::Text("Peak RSS (OS): %.2f MiB", peakOsMiB);
             }
         } else {
             ImGui::Text("Process memory sampling unavailable on this platform");
         }
+        const uint64_t sceneCpuBytes = p_stats_->sceneGeometryCpuBytes + p_stats_->sceneTextureCpuBytes;
+        const uint64_t presentationBytes =
+            p_stats_->outputPresenterBytes + p_stats_->previewPresenterBytes + p_stats_->fontPresenterBytes;
+        const uint64_t glRendererBytes =
+            p_stats_->glRendererDepthBufferBytes +
+            p_stats_->glRendererMeshCacheBytes +
+            p_stats_->glRendererTextureCacheBytes +
+            p_stats_->glRendererSkyboxBytes +
+            p_stats_->glRendererFallbackTextureBytes;
+        const uint64_t swRendererBytes =
+            p_stats_->softwareFramebufferColorBytes +
+            p_stats_->softwareDepthBufferBytes +
+            p_stats_->softwareScratchBytes +
+            p_stats_->softwareDeferredTriangleBytes +
+            p_stats_->softwareSkyboxBytes +
+            p_stats_->softwareReadyFrameBytes +
+            p_stats_->softwarePresentedFrameBytes;
+        ImGui::Text("Known owned: %.2f MiB", BytesToMiB(p_stats_->KnownResidentBytes()));
+        ImGui::Text("Scene CPU: %.2f MiB (geom %.2f, tex %.2f)",
+                    BytesToMiB(sceneCpuBytes),
+                    BytesToMiB(p_stats_->sceneGeometryCpuBytes),
+                    BytesToMiB(p_stats_->sceneTextureCpuBytes));
+        ImGui::Text("Presenters: %.2f MiB (output %.2f, preview %.2f, font %.2f)",
+                    BytesToMiB(presentationBytes),
+                    BytesToMiB(p_stats_->outputPresenterBytes),
+                    BytesToMiB(p_stats_->previewPresenterBytes),
+                    BytesToMiB(p_stats_->fontPresenterBytes));
+        ImGui::Text("GL renderer: %.2f MiB (depth %.2f, mesh %.2f, tex %.2f, sky %.2f)",
+                    BytesToMiB(glRendererBytes),
+                    BytesToMiB(p_stats_->glRendererDepthBufferBytes),
+                    BytesToMiB(p_stats_->glRendererMeshCacheBytes),
+                    BytesToMiB(p_stats_->glRendererTextureCacheBytes),
+                    BytesToMiB(p_stats_->glRendererSkyboxBytes + p_stats_->glRendererFallbackTextureBytes));
+        ImGui::Text("SW renderer: %.2f MiB (fb %.2f, depth %.2f, scratch %.2f, ready %.2f, presented %.2f)",
+                    BytesToMiB(swRendererBytes),
+                    BytesToMiB(p_stats_->softwareFramebufferColorBytes),
+                    BytesToMiB(p_stats_->softwareDepthBufferBytes),
+                    BytesToMiB(p_stats_->softwareScratchBytes + p_stats_->softwareDeferredTriangleBytes + p_stats_->softwareSkyboxBytes),
+                    BytesToMiB(p_stats_->softwareReadyFrameBytes),
+                    BytesToMiB(p_stats_->softwarePresentedFrameBytes));
         if (p_config_->renderer.selectedRenderer == Config::RendererType::SOFTWARE) {
             const uint64_t swJobsSubmitted = p_stats_->swJobsSubmitted.load(std::memory_order_relaxed);
             const uint64_t swJobsCompleted = p_stats_->swJobsCompleted.load(std::memory_order_relaxed);
             const uint64_t swJobsCancelled = p_stats_->swJobsCancelled.load(std::memory_order_relaxed);
-            const uint64_t swJobsDroppedPending = p_stats_->swJobsDroppedPending.load(std::memory_order_relaxed);
-            const uint64_t swJobsSkippedBusy = p_stats_->swJobsSkippedBusy.load(std::memory_order_relaxed);
+            const uint64_t swJobsReplacedPending = p_stats_->swJobsReplacedPending.load(std::memory_order_relaxed);
             const uint64_t swFramesPresented = p_stats_->swFramesPresented.load(std::memory_order_relaxed);
-            const uint64_t swFramesDroppedReady = p_stats_->swFramesDroppedReady.load(std::memory_order_relaxed);
+            const uint64_t swFramesReplacedReady = p_stats_->swFramesReplacedReady.load(std::memory_order_relaxed);
             static double swOutputFps = 0.0;
             static double swOutputSampleTime = 0.0;
             static uint64_t swOutputSamplePresentedFrames = 0;
@@ -1609,11 +1667,10 @@ void ConfigPanel::DisplayMetricsOverlay() {
                         ReadTimingMilliseconds(p_stats_->lastSoftwareWorkerCopyNs));
             ImGui::Text("CPU upload: %.3f ms", ReadTimingMilliseconds(p_stats_->lastCpuOutputUploadNs));
             ImGui::Text("Jobs: submitted=%" PRIu64 " completed=%" PRIu64, swJobsSubmitted, swJobsCompleted);
-            ImGui::Text("Jobs: cancelled=%" PRIu64 " skipped(busy)=%" PRIu64, swJobsCancelled,
-                        swJobsSkippedBusy);
-            ImGui::Text("Jobs: dropped(pending)=%" PRIu64, swJobsDroppedPending);
-            ImGui::Text("Frames: presented=%" PRIu64 " dropped(ready)=%" PRIu64, swFramesPresented,
-                        swFramesDroppedReady);
+            ImGui::Text("Jobs: cancelled=%" PRIu64 " replaced(pending)=%" PRIu64, swJobsCancelled,
+                        swJobsReplacedPending);
+            ImGui::Text("Frames: presented=%" PRIu64 " replaced(ready)=%" PRIu64, swFramesPresented,
+                        swFramesReplacedReady);
         }
         if (auto cam = GetCamera()) {
             ImGui::Text("Camera position: (%.3f, %.3f, %.3f)", cam->m_Position.x, cam->m_Position.y, cam->m_Position.z);

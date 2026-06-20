@@ -87,6 +87,13 @@ bool GLFramePresenter::UploadPixels(const Pixel* pixels, size_t width, size_t he
     return true;
 }
 
+uint64_t GLFramePresenter::EstimateResidentMemory() const {
+    if (m_TextureId == 0 || m_Width <= 0 || m_Height <= 0) {
+        return 0;
+    }
+    return static_cast<uint64_t>(m_Width) * static_cast<uint64_t>(m_Height) * 4ull;
+}
+
 bool GLFramePresenter::CreateTexture(int width, int height, bool nearestNeighbor) {
     if (width <= 0 || height <= 0) {
         LOGE("Cannot create frame presenter texture with invalid size %d x %d", width, height);

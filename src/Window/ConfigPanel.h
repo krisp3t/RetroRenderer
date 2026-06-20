@@ -48,8 +48,6 @@ class ConfigPanel {
     UiRenderPacket m_uiRenderPacket_;
     std::vector<UiTextureSnapshot> m_uiTextureSnapshots_;
     std::shared_ptr<const Texture> m_previewTextureSnapshot_;
-    const Texture* m_previewTextureSource_ = nullptr;
-    uint64_t m_previewTextureRevision_ = 0;
     bool m_isDragging_ = false;
     std::optional<EditorContext> m_editorContext_;
     SceneEditorPanel m_sceneEditorPanel_;
@@ -75,7 +73,7 @@ class ConfigPanel {
     void DisplayMainMenu();
     void DisplaySceneGraph();
     void DisplayMaterialWindow();
-    void DisplayTexturePreview(const Texture& texture);
+    void DisplayTexturePreview(const std::shared_ptr<const Texture>& texture);
     void DisplayConfigWindow();
     void DisplayControlsOverlay();
     void DisplayExamplesWindow();
