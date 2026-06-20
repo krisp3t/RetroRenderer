@@ -1,8 +1,9 @@
 #include "MaterialManager.h"
 
-#include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include "../Renderer/RenderServices.h"
+#include "../native/FileDialog.h"
 #include "KrisLogger/Logger.h"
+#include <SDL.h>
 #include <cstdint>
 #include <fstream>
 #include <imgui.h>
@@ -10,9 +11,46 @@
 
 #ifdef __ANDROID__
 #include "../native/AndroidBridge.h"
+#elif defined(__EMSCRIPTEN__)
+#include <emscripten.h>
 #endif
 
 namespace RetroRenderer {
+#ifdef __EMSCRIPTEN__
+EM_JS(void, OpenWebTexturePicker_JS, (), {
+    let input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.png';
+    input.style.display = 'none';
+
+    input.onchange = e => {
+        let file = e.target.files[0];
+        if (!file)
+            return;
+
+        let reader = new FileReader();
+        reader.onload = function(event) {
+            let data = event.target.result;
+            let size = data.byteLength;
+            let ptr = Module._malloc(size);
+            if (!ptr) {
+                console.error("Failed to allocate memory");
+                return;
+            }
+
+            let heapBytes = new Uint8Array(Module.HEAPU8.buffer, ptr, size);
+            heapBytes.set(new Uint8Array(data));
+            Module.ccall('OnWebTextureSelected', null, [ 'number', 'number' ], [ ptr, size ]);
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+});
+#endif
+
 void MaterialManager::BindRenderServices(IRenderInvalidationSink& renderInvalidationSink) {
     p_RenderInvalidationSink_ = &renderInvalidationSink;
 }
@@ -126,7 +164,7 @@ void MaterialManager::RenderUI(const TexturePreviewCallback& texturePreview) {
         return;
     }
     ImGui::SeparatorText("Material");
-    const char* materialNames[] = {"Phong (texture color)", "Phong (vertex color)"};
+    constexpr const char* materialNames[] = {"Phong (texture color)", "Phong (vertex color)"};
     ImGui::Combo("Material Type", &m_CurrentMaterialIndex, materialNames, IM_ARRAYSIZE(materialNames));
 
     Material& currentMat = GetCurrentMaterial();
@@ -142,11 +180,19 @@ void MaterialManager::RenderUI(const TexturePreviewCallback& texturePreview) {
             jclass cls = env->GetObjectClass(activity);
             jmethodID mid = env->GetMethodID(cls, "openTexturePicker", "()V");
             env->CallVoidMethod(activity, mid);
+#elif defined(__EMSCRIPTEN__)
+            OpenWebTexturePicker_JS();
 #else
-            IGFD::FileDialogConfig sceneDialogConfig;
-            ImGuiFileDialog::Instance()->Close();
-            ImGuiFileDialog::Instance()->OpenDialog("OpenTextureFile", "Choose texture", k_supportedTextures,
-                                                    sceneDialogConfig);
+            NativeFileDialog::FileDialogRequest request{};
+            request.title = "Choose texture";
+            request.defaultLocation = m_lastTextureDirectory_.empty() ? std::filesystem::path("assets")
+                                                                      : m_lastTextureDirectory_;
+            request.filters.push_back(NativeFileDialog::FileDialogFilter{"PNG images", {"*.png"}});
+            if (const auto texturePath = NativeFileDialog::ShowOpenFileDialog(request)) {
+                LOGD("Selected texture file: %s", texturePath->string().c_str());
+                m_lastTextureDirectory_ = texturePath->parent_path();
+                LoadTexture(texturePath->string());
+            }
 #endif
         }
         ImGui::SameLine();

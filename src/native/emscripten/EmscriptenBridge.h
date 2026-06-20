@@ -4,6 +4,8 @@
 #include "../../Base/Event.h"
 #include "../../Engine.h"
 #include <KrisLogger/Logger.h>
+#include <cstdlib>
+#include <cstring>
 #include <emscripten.h>
 #include <vector>
 
@@ -22,6 +24,21 @@ extern "C" EMSCRIPTEN_KEEPALIVE void OnWebFileSelected(uint8_t* data, int size) 
     auto event =
         std::make_unique<RetroRenderer::SceneLoadEvent>(std::move(buffer), static_cast<size_t>(size), appendToCurrentScene);
 
+    RetroRenderer::Engine::Get().EnqueueEvent(std::move(event));
+}
+
+extern "C" EMSCRIPTEN_KEEPALIVE void OnWebTextureSelected(uint8_t* data, int size) {
+    LOGD("OnWebTextureSelected");
+    if (!data || size <= 0) {
+        return;
+    }
+
+    std::vector<uint8_t> buffer(size);
+    std::memcpy(buffer.data(), data, size);
+
+    free(data);
+
+    auto event = std::make_unique<RetroRenderer::TextureLoadEvent>(std::move(buffer), static_cast<size_t>(size));
     RetroRenderer::Engine::Get().EnqueueEvent(std::move(event));
 }
 

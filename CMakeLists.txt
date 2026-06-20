@@ -27,7 +27,7 @@ if(ANDROID)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/extern/vcpkg/scripts/buildsystems/vcpkg.cmake")
     set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "$ENV{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake")
 
-    set(NATIVE_FILES
+    set(RETRO_PLATFORM_SOURCES
             src/native/android/AndroidBridge.h
             src/native/android/AndroidBridge.cpp
     )
@@ -47,7 +47,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
             src/Renderer/GLES/GLESRenderer.h
             src/Renderer/GLES/GLESRenderer.cpp
     )
-    set(NATIVE_FILES
+    set(RETRO_PLATFORM_SOURCES
             src/native/emscripten/EmscriptenBridge.h
             src/native/emscripten/imgui_impl_sdl2.h
             src/native/emscripten/imgui_impl_sdl2.cpp
@@ -86,6 +86,22 @@ else()
             src/Renderer/OpenGL/GLRenderer.h
             src/Renderer/OpenGL/GLRenderer.cpp
     )
+    if(WIN32)
+        set(RETRO_PLATFORM_SOURCES
+                src/native/FileDialog.h
+                src/native/FileDialogWindows.cpp
+        )
+    elseif(APPLE)
+        set(RETRO_PLATFORM_SOURCES
+                src/native/FileDialog.h
+                src/native/FileDialogMac.mm
+        )
+    else()
+        set(RETRO_PLATFORM_SOURCES
+                src/native/FileDialog.h
+                src/native/FileDialogLinux.cpp
+        )
+    endif()
 endif()
 # -----------------------------------------------------------------------------
 # Dependencies (vcpkg)
@@ -102,6 +118,7 @@ find_package(glad      CONFIG REQUIRED)
 # Source files
 # -----------------------------------------------------------------------------
 set(RETRO_BASE_SOURCES
+        src/Base/ExampleSceneCatalog.cpp
         src/Base/MemoryProfiler.cpp
 )
 
@@ -326,22 +343,11 @@ endif()
 # Main target
 # -----------------------------------------------------------------------------
 if(ANDROID)
-    add_library(${PROJECT_NAME} SHARED ${SOURCES} ${RENDERER_BACKENDS} ${NATIVE_FILES})
+    add_library(${PROJECT_NAME} SHARED ${SOURCES} ${RENDERER_BACKENDS} ${RETRO_PLATFORM_SOURCES})
 else()
-    add_executable(${PROJECT_NAME} ${SOURCES} ${RENDERER_BACKENDS} ${NATIVE_FILES})
+    add_executable(${PROJECT_NAME} ${SOURCES} ${RENDERER_BACKENDS} ${RETRO_PLATFORM_SOURCES})
     retro_copy_windows_sanitizer_runtime(${PROJECT_NAME})
 endif()
-
-# -----------------------------------------------------------------------------
-# Extra sources
-# -----------------------------------------------------------------------------
-target_sources(${PROJECT_NAME} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/lib/ImGuiFileDialog/ImGuiFileDialog.cpp
-)
-target_include_directories(${PROJECT_NAME}
-        PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/lib/ImGuiFileDialog.h
-)
 
 # -----------------------------------------------------------------------------
 # C/C++ standards & warnings
@@ -407,6 +413,12 @@ if(WIN32)
             PRIVATE
             psapi
     )
+endif()
+if(APPLE)
+    find_library(RETRO_COCOA_FRAMEWORK Cocoa)
+    if(RETRO_COCOA_FRAMEWORK)
+        target_link_libraries(${PROJECT_NAME} PRIVATE ${RETRO_COCOA_FRAMEWORK})
+    endif()
 endif()
 
 # -----------------------------------------------------------------------------

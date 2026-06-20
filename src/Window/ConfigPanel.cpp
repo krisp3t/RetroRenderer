@@ -12,7 +12,6 @@
 #else
 #include <imgui_impl_sdl2.h>
 #endif
-#include "../../lib/ImGuiFileDialog/ImGuiFileDialog.h"
 #include <KrisLogger/Logger.h>
 #include <SDL.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -20,6 +19,7 @@
 #include <chrono>
 #include <cinttypes>
 #include <cstring>
+#include <filesystem>
 #include <utility>
 
 #ifdef __ANDROID__
@@ -29,6 +29,7 @@
 #include "../Base/Event.h"
 #include "../Base/InputActions.h"
 #include "../Engine.h"
+#include "../native/FileDialog.h"
 #include "../Renderer/RetroPalette.h"
 #include "../Scene/Texture.h"
 #include "ConfigPanel.h"
@@ -87,6 +88,19 @@ uint64_t ClockNanoseconds() {
 
 double ReadTimingMilliseconds(const std::atomic<uint64_t>& timing) {
     return static_cast<double>(timing.load(std::memory_order_relaxed)) / 1000000.0;
+}
+
+std::filesystem::path GetWorkingDirectoryOrFallback() {
+    std::error_code ec;
+    const std::filesystem::path currentPath = std::filesystem::current_path(ec);
+    if (ec || currentPath.empty()) {
+        return std::filesystem::path(".");
+    }
+    return currentPath;
+}
+
+std::filesystem::path GetSceneDialogDefaultLocation(const std::filesystem::path& lastSceneDirectory) {
+    return lastSceneDirectory.empty() ? GetWorkingDirectoryOrFallback() : lastSceneDirectory;
 }
 
 const char* RenderPresetDescription(Config::RenderPreset preset) {
@@ -423,38 +437,277 @@ void ConfigPanel::DisplayGUI() {
     // bool show = true;
     // ImGui::ShowDemoWindow(&show);
 
+#ifndef __ANDROID__
+    if (!m_examplesAutoOpened_ && Engine::Get().GetSceneManager().GetScene() == nullptr) {
+        m_examplesAutoOpened_ = true;
+        OpenExamplesWindow();
+    }
+#endif
+
     DisplayJoysticks();
     DisplayMainMenu();
     // DisplayPipelineWindow();
-    //  TODO: add examples file browser
     DisplaySceneGraph();
     // DisplayInspectorWindow();
     DisplayMaterialWindow();
     DisplayConfigWindow(*p_config_);
     DisplayControlsOverlay();
     DisplayMetricsOverlay();
-    DisplayExamplesDialog();
+    DisplayExamplesWindow();
 }
 
-void ConfigPanel::DisplayExamplesDialog() {
-    if (m_isFileDialogOpen_)
-        return;
+void ConfigPanel::OpenExamplesWindow() {
 #ifdef __ANDROID__
-    // We only support native file picker on Android.
     return;
+#else
+    RefreshExamplesCatalog();
+    m_showExamplesWindow_ = true;
 #endif
-    IGFD::FileDialogConfig examplesDialogConfig;
-    examplesDialogConfig.countSelectionMax = 1;
-    ImGuiFileDialog::Instance()->OpenDialog("OpenExampleFile", "Examples", k_supportedModels, examplesDialogConfig);
-    if (ImGuiFileDialog::Instance()->Display("OpenExampleFile")) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-            LOGD("Selected example file: %s", filePathName.c_str());
-            const bool appendToCurrentScene = Engine::Get().GetSceneManager().GetScene() != nullptr;
-            Engine::Get().DispatchImmediate(SceneLoadEvent{filePathName, appendToCurrentScene});
-            // IGFD::FileManager::SetCurrentPath("tests-visual/basic-tests/");
+}
+
+void ConfigPanel::RefreshExamplesCatalog() {
+#ifdef __ANDROID__
+    return;
+#else
+    std::optional<std::filesystem::path> selectedDirectoryPath;
+    std::optional<std::filesystem::path> selectedScenePath;
+
+    const auto& currentDirectories = m_exampleSceneCatalog_.GetDirectories();
+    if (m_selectedExampleDirectoryIndex_.has_value() && *m_selectedExampleDirectoryIndex_ < currentDirectories.size()) {
+        selectedDirectoryPath = currentDirectories[*m_selectedExampleDirectoryIndex_].relativePath;
+    }
+    const auto& currentScenes = m_exampleSceneCatalog_.GetScenes();
+    if (m_selectedExampleSceneIndex_.has_value() && *m_selectedExampleSceneIndex_ < currentScenes.size()) {
+        selectedScenePath = currentScenes[*m_selectedExampleSceneIndex_].relativePath;
+    }
+
+    m_exampleSceneCatalog_.Refresh({k_supportedModels});
+
+    const auto& directories = m_exampleSceneCatalog_.GetDirectories();
+    const auto& scenes = m_exampleSceneCatalog_.GetScenes();
+
+    m_selectedExampleDirectoryIndex_.reset();
+    m_selectedExampleSceneIndex_.reset();
+    if (selectedScenePath.has_value()) {
+        for (size_t sceneIndex = 0; sceneIndex < scenes.size(); sceneIndex++) {
+            if (scenes[sceneIndex].relativePath == *selectedScenePath) {
+                m_selectedExampleSceneIndex_ = sceneIndex;
+                m_selectedExampleDirectoryIndex_ = scenes[sceneIndex].directoryIndex;
+                break;
+            }
         }
     }
+    if (!m_selectedExampleDirectoryIndex_.has_value() && selectedDirectoryPath.has_value()) {
+        for (size_t directoryIndex = 0; directoryIndex < directories.size(); directoryIndex++) {
+            if (directories[directoryIndex].relativePath == *selectedDirectoryPath) {
+                m_selectedExampleDirectoryIndex_ = directoryIndex;
+                break;
+            }
+        }
+    }
+    if (!m_selectedExampleSceneIndex_.has_value() && !scenes.empty()) {
+        m_selectedExampleSceneIndex_ = 0;
+        m_selectedExampleDirectoryIndex_ = scenes.front().directoryIndex;
+    }
+    if (!m_selectedExampleDirectoryIndex_.has_value() && !directories.empty()) {
+        m_selectedExampleDirectoryIndex_ = 0;
+    }
+    if (m_selectedExampleDirectoryIndex_.has_value() && *m_selectedExampleDirectoryIndex_ < directories.size()) {
+        SelectExampleDirectory(*m_selectedExampleDirectoryIndex_);
+    }
+    m_examplesStatusMessage_.clear();
+#endif
+}
+
+void ConfigPanel::SelectExampleDirectory(size_t directoryIndex) {
+    const auto& directories = m_exampleSceneCatalog_.GetDirectories();
+    if (directoryIndex >= directories.size()) {
+        return;
+    }
+
+    m_selectedExampleDirectoryIndex_ = directoryIndex;
+    const auto& scenes = m_exampleSceneCatalog_.GetScenes();
+    if (m_selectedExampleSceneIndex_.has_value() && *m_selectedExampleSceneIndex_ < scenes.size() &&
+        scenes[*m_selectedExampleSceneIndex_].directoryIndex == directoryIndex) {
+        return;
+    }
+
+    if (!directories[directoryIndex].sceneIndices.empty()) {
+        m_selectedExampleSceneIndex_ = directories[directoryIndex].sceneIndices.front();
+    } else {
+        m_selectedExampleSceneIndex_.reset();
+    }
+}
+
+void ConfigPanel::LoadSelectedExampleScene() {
+    const auto& scenes = m_exampleSceneCatalog_.GetScenes();
+    if (!m_selectedExampleSceneIndex_.has_value() || *m_selectedExampleSceneIndex_ >= scenes.size()) {
+        m_examplesStatusMessage_ = "Select an example scene before loading.";
+        return;
+    }
+
+    const ExampleSceneEntry& selectedScene = scenes[*m_selectedExampleSceneIndex_];
+    const auto loadablePath =
+        ExampleSceneCatalog::CanonicalizeLoadablePath(m_exampleSceneCatalog_.GetRootPath(), selectedScene.absolutePath);
+    if (!loadablePath.has_value()) {
+        m_examplesStatusMessage_ = "The selected example is outside assets/tests-visual and was rejected.";
+        LOGE("Rejected example scene outside examples root: %s", selectedScene.absolutePath.string().c_str());
+        return;
+    }
+
+    LOGD("Selected example file: %s", loadablePath->string().c_str());
+    m_lastSceneDirectory_ = loadablePath->parent_path();
+    const bool appendToCurrentScene = Engine::Get().GetSceneManager().GetScene() != nullptr;
+    Engine::Get().DispatchImmediate(SceneLoadEvent{loadablePath->string(), appendToCurrentScene});
+    m_examplesStatusMessage_.clear();
+}
+
+void ConfigPanel::DrawExampleDirectoryNode(size_t directoryIndex) {
+    const auto& directories = m_exampleSceneCatalog_.GetDirectories();
+    if (directoryIndex >= directories.size()) {
+        return;
+    }
+
+    const ExampleSceneDirectory& directory = directories[directoryIndex];
+    ImGuiTreeNodeFlags flags =
+        ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+    if (directory.childDirectoryIndices.empty()) {
+        flags |= ImGuiTreeNodeFlags_Leaf;
+    }
+    if (m_selectedExampleDirectoryIndex_.has_value() && *m_selectedExampleDirectoryIndex_ == directoryIndex) {
+        flags |= ImGuiTreeNodeFlags_Selected;
+    }
+    if (directoryIndex == 0) {
+        flags |= ImGuiTreeNodeFlags_DefaultOpen;
+    }
+
+    const std::string label = directory.displayName + "##example_dir_" + std::to_string(directoryIndex);
+    const bool opened = ImGui::TreeNodeEx(label.c_str(), flags);
+    if (ImGui::IsItemClicked()) {
+        SelectExampleDirectory(directoryIndex);
+    }
+    if (!opened) {
+        return;
+    }
+
+    for (size_t childDirectoryIndex : directory.childDirectoryIndices) {
+        DrawExampleDirectoryNode(childDirectoryIndex);
+    }
+    if ((flags & ImGuiTreeNodeFlags_Leaf) == 0) {
+        ImGui::TreePop();
+    }
+}
+
+void ConfigPanel::DisplayExamplesWindow() {
+#ifdef __ANDROID__
+    return;
+#else
+    if (!m_showExamplesWindow_) {
+        return;
+    }
+
+    ImGui::SetNextWindowSize(ImVec2(780.0f, 460.0f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Examples", &m_showExamplesWindow_)) {
+        ImGui::End();
+        return;
+    }
+
+    if (ImGui::Button("Refresh")) {
+        RefreshExamplesCatalog();
+    }
+    const auto& directories = m_exampleSceneCatalog_.GetDirectories();
+    const auto& scenes = m_exampleSceneCatalog_.GetScenes();
+    const bool hasSelectedScene = m_selectedExampleSceneIndex_.has_value() && *m_selectedExampleSceneIndex_ < scenes.size();
+
+    ImGui::SameLine();
+    if (!hasSelectedScene) {
+        ImGui::BeginDisabled();
+    }
+    if (ImGui::Button("Load")) {
+        LoadSelectedExampleScene();
+    }
+    if (!hasSelectedScene) {
+        ImGui::EndDisabled();
+    }
+
+    if (!m_examplesStatusMessage_.empty()) {
+        ImGui::SameLine();
+        ImGui::TextWrapped("%s", m_examplesStatusMessage_.c_str());
+    }
+
+    if (!m_exampleSceneCatalog_.RootExists()) {
+        ImGui::Separator();
+        ImGui::TextWrapped("Could not find %s.", m_exampleSceneCatalog_.GetRootPath().generic_string().c_str());
+        ImGui::End();
+        return;
+    }
+    if (scenes.empty()) {
+        ImGui::Separator();
+        ImGui::TextWrapped("No example scenes matching %s were found under %s.",
+                           k_supportedModels,
+                           m_exampleSceneCatalog_.GetRootPath().generic_string().c_str());
+        ImGui::End();
+        return;
+    }
+
+    if (m_selectedExampleDirectoryIndex_.has_value() && *m_selectedExampleDirectoryIndex_ >= directories.size()) {
+        m_selectedExampleDirectoryIndex_.reset();
+    }
+    if (!m_selectedExampleDirectoryIndex_.has_value()) {
+        m_selectedExampleDirectoryIndex_ = scenes.front().directoryIndex;
+    }
+
+    ImGui::Separator();
+    if (ImGui::BeginTable("ExamplesLayout", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV)) {
+        ImGui::TableSetupColumn("Folders", ImGuiTableColumnFlags_WidthFixed, 240.0f);
+        ImGui::TableSetupColumn("Scenes", ImGuiTableColumnFlags_WidthStretch);
+
+        ImGui::TableNextColumn();
+        ImGui::BeginChild("ExamplesFolders", ImVec2(0.0f, 0.0f), true);
+        DrawExampleDirectoryNode(0);
+        ImGui::EndChild();
+
+        ImGui::TableNextColumn();
+        ImGui::BeginChild("ExamplesDetails", ImVec2(0.0f, 0.0f), false);
+
+        const size_t activeDirectoryIndex = m_selectedExampleDirectoryIndex_.value_or(0);
+        const ExampleSceneDirectory& activeDirectory = directories[activeDirectoryIndex];
+        ImGui::Text("Folder: %s",
+                    activeDirectory.relativePath.empty() ? m_exampleSceneCatalog_.GetRootPath().generic_string().c_str()
+                                                         : activeDirectory.relativePath.generic_string().c_str());
+        ImGui::SeparatorText("Scenes");
+        if (activeDirectory.sceneIndices.empty()) {
+            ImGui::TextDisabled("No scenes in this folder.");
+        } else {
+            for (size_t sceneIndex : activeDirectory.sceneIndices) {
+                const ExampleSceneEntry& sceneEntry = scenes[sceneIndex];
+                const bool selected = hasSelectedScene && *m_selectedExampleSceneIndex_ == sceneIndex;
+                const std::string label = sceneEntry.displayName + "##example_scene_" + std::to_string(sceneIndex);
+                if (ImGui::Selectable(label.c_str(), selected)) {
+                    m_selectedExampleSceneIndex_ = sceneIndex;
+                }
+                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    LoadSelectedExampleScene();
+                }
+            }
+        }
+
+        const ExampleSceneDirectory& readmeDirectory =
+            (hasSelectedScene ? directories[scenes[*m_selectedExampleSceneIndex_].directoryIndex] : activeDirectory);
+        ImGui::SeparatorText("README");
+        if (readmeDirectory.readmeText.empty()) {
+            ImGui::TextDisabled("No README.md in this folder.");
+        } else {
+            ImGui::BeginChild("ExamplesReadme", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_HorizontalScrollbar);
+            ImGui::TextUnformatted(readmeDirectory.readmeText.c_str());
+            ImGui::EndChild();
+        }
+
+        ImGui::EndChild();
+        ImGui::EndTable();
+    }
+    ImGui::End();
+#endif
 }
 
 void ConfigPanel::DisplayWindowSettings() {
@@ -664,26 +917,24 @@ void ConfigPanel::DisplayMainMenu() {
 #elif defined(__EMSCRIPTEN__)
             OpenWebFilePicker();
 #else
-            IGFD::FileDialogConfig sceneDialogConfig;
-            ImGuiFileDialog::Instance()->OpenDialog("OpenSceneFile", "Choose scene", k_supportedModels,
-                                                    sceneDialogConfig);
+            NativeFileDialog::FileDialogRequest request{};
+            request.parentWindow = p_Window_;
+            request.title = "Choose scene";
+            request.defaultLocation = GetSceneDialogDefaultLocation(m_lastSceneDirectory_);
+            request.filters.push_back(NativeFileDialog::FileDialogFilter{"OBJ scenes", {"*.obj"}});
+            if (const auto scenePath = NativeFileDialog::ShowOpenFileDialog(request)) {
+                LOGD("Selected model file: %s", scenePath->string().c_str());
+                m_lastSceneDirectory_ = scenePath->parent_path();
+                const bool appendToCurrentScene = Engine::Get().GetSceneManager().GetScene() != nullptr;
+                Engine::Get().DispatchImmediate(SceneLoadEvent{scenePath->string(), appendToCurrentScene});
+            }
 #endif
         }
-        if (ImGuiFileDialog::Instance()->Display("OpenTextureFile")) {
-            m_isFileDialogOpen_ = true;
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                m_isFileDialogOpen_ = false;
-                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                LOGD("Selected texture file: %s", filePathName.c_str());
-                Engine::Get().GetMaterialManager().LoadTexture(filePathName);
-
-                // TODO: event needed?
-                // Engine::Get().DispatchImmediate(TextureLoadEvent{filePathName});
-            }
-            ImGuiFileDialog::Instance()->Close();
-        } else {
-            m_isFileDialogOpen_ = false;
+#if !defined(__ANDROID__)
+        if (ImGui::MenuItem("Examples")) {
+            OpenExamplesWindow();
         }
+#endif
 
         if (ImGui::MenuItem("Reset")) {
             Engine::Get().DispatchImmediate(SceneResetEvent{});
@@ -692,20 +943,6 @@ void ConfigPanel::DisplayMainMenu() {
         if (ImGui::MenuItem("About")) {
             ImGui::OpenPopup("About");
         }
-
-        // Dialog windows
-        // ----------------
-        // Open Model File dialog
-        if (ImGuiFileDialog::Instance()->Display("OpenSceneFile")) {
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                LOGD("Selected model file: %s", filePathName.c_str());
-                const bool appendToCurrentScene = Engine::Get().GetSceneManager().GetScene() != nullptr;
-                Engine::Get().DispatchImmediate(SceneLoadEvent{filePathName, appendToCurrentScene});
-            }
-            ImGuiFileDialog::Instance()->Close();
-        }
-        // Open Texture File dialog
 
         // About dialog
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();

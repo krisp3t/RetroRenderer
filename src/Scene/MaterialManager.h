@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/vec3.hpp>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -90,6 +91,7 @@ class MaterialManager {
     int newShaderType = 0; // For UI combo box
     const char* k_supportedTextures = ".png";
     IRenderInvalidationSink* p_RenderInvalidationSink_ = nullptr;
+    std::filesystem::path m_lastTextureDirectory_;
 };
 
 } // namespace RetroRenderer

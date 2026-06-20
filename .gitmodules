@@ -1,9 +1,6 @@
 [submodule "extern/vcpkg"]
 	path = extern/vcpkg
 	url = https://github.com/microsoft/vcpkg.git
-[submodule "lib/ImGuiFileDialog"]
-	path = lib/ImGuiFileDialog
-	url = https://github.com/aiekick/ImGuiFileDialog
 [submodule "lib/KrisLogger"]
 	path = lib/KrisLogger
 	url = https://github.com/krisp3t/KrisLogger.git

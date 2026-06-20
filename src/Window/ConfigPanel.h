@@ -1,13 +1,17 @@
 #pragma once
+#include "../Base/ExampleSceneCatalog.h"
 #include "../Base/Config.h"
 #include "../Base/Stats.h"
 #include "../Renderer/FrameSubmission.h"
 #include "../Renderer/RenderOutput.h"
 #include "../Scene/Camera.h"
 #include <SDL.h>
+#include <filesystem>
 #include <imgui.h>
-#include <vector>
 #include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace RetroRenderer {
 class Texture;
@@ -44,7 +48,13 @@ class ConfigPanel {
     const Texture* m_previewTextureSource_ = nullptr;
     uint64_t m_previewTextureRevision_ = 0;
     bool m_isDragging_ = false;
-    bool m_isFileDialogOpen_ = false;
+    ExampleSceneCatalog m_exampleSceneCatalog_;
+    std::filesystem::path m_lastSceneDirectory_;
+    std::optional<size_t> m_selectedExampleDirectoryIndex_;
+    std::optional<size_t> m_selectedExampleSceneIndex_;
+    std::string m_examplesStatusMessage_;
+    bool m_showExamplesWindow_ = false;
+    bool m_examplesAutoOpened_ = false;
 
     void StyleColorsEnemymouse();
     void DisplayGUI();
@@ -63,13 +73,18 @@ class ConfigPanel {
     void DisplayPipelineWindow();
     void DisplayConfigWindow(Config& config);
     void DisplayControlsOverlay();
-    void DisplayExamplesDialog();
+    void DisplayExamplesWindow();
     void DisplayWindowSettings();
     void DisplayJoysticks();
     void ApplyRendererPreset(Config::RenderPreset preset);
     void MarkRendererPresetCustom();
+    void DrawExampleDirectoryNode(size_t directoryIndex);
+    void LoadSelectedExampleScene();
+    void OpenExamplesWindow();
     void OpenWebFilePicker();
     void OpenAndroidFilePicker();
+    void RefreshExamplesCatalog();
+    void SelectExampleDirectory(size_t directoryIndex);
 
     const char* k_supportedModels = ".obj";
     VirtualStickState moveStickState;
