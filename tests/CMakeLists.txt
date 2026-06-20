@@ -11,8 +11,10 @@ add_executable(retrorenderer_tests
     ${CMAKE_CURRENT_LIST_DIR}/IntegrationTests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/LightweightObjSceneImporterTests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/RasterizerTests.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/RenderSubmissionTests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/SanitizerSmokeTests.cpp
     ${CMAKE_SOURCE_DIR}/src/Renderer/RetroPalette.cpp
+    ${CMAKE_SOURCE_DIR}/src/Renderer/UiRenderPacket.cpp
     ${CMAKE_SOURCE_DIR}/src/Renderer/Software/Rasterizer.cpp
     ${CMAKE_SOURCE_DIR}/src/Scene/LightweightObjSceneImporter.cpp
     ${CMAKE_SOURCE_DIR}/src/Scene/Texture.cpp
@@ -85,6 +87,7 @@ target_link_libraries(retrorenderer_tests
     PRIVATE
     $<IF:$<TARGET_EXISTS:glm::glm-header-only>,glm::glm-header-only,glm::glm>
     KrisLogger
+    imgui::imgui
     retro_sanitizers
     $<$<TARGET_EXISTS:SDL2::SDL2>:SDL2::SDL2>
     $<$<TARGET_EXISTS:SDL2::SDL2-static>:SDL2::SDL2-static>
