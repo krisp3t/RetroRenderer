@@ -244,10 +244,14 @@ TEST_CASE("OBJ importer loads material libraries and splits meshes on usemtl", "
         REQUIRE(mtlFile.is_open());
         mtlFile << "newmtl left\n"
                    "Kd 1.0 0.0 0.0\n"
+                   "Ns 96.0\n"
+                   "d 0.5\n"
                    "map_Kd left.bmp\n"
                    "\n"
                    "newmtl right\n"
                    "Kd 0.0 1.0 0.0\n"
+                   "Ns 12.0\n"
+                   "Tr 0.25\n"
                    "map_Kd right.bmp\n";
     }
 
@@ -256,8 +260,14 @@ TEST_CASE("OBJ importer loads material libraries and splits meshes on usemtl", "
     REQUIRE(importer.LoadFromFile(objPath.string(), sceneData));
 
     REQUIRE(sceneData.materials.size() == 2);
+    REQUIRE(sceneData.materials[0].name == "left");
     REQUIRE(sceneData.materials[0].diffuseTexturePath == "left.bmp");
+    REQUIRE(sceneData.materials[0].shininess == Catch::Approx(96.0f));
+    REQUIRE(sceneData.materials[0].alpha == Catch::Approx(0.5f));
+    REQUIRE(sceneData.materials[1].name == "right");
     REQUIRE(sceneData.materials[1].diffuseTexturePath == "right.bmp");
+    REQUIRE(sceneData.materials[1].shininess == Catch::Approx(12.0f));
+    REQUIRE(sceneData.materials[1].alpha == Catch::Approx(0.75f));
     REQUIRE(sceneData.meshes.size() == 2);
     REQUIRE(sceneData.meshes[0].materialIndex.has_value());
     REQUIRE(sceneData.meshes[0].materialIndex.value() == 0);

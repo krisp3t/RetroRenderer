@@ -204,8 +204,9 @@ bool ParseMaterialLibrary(const std::filesystem::path& path,
 
         if (keyword == "newmtl") {
             ImportedMaterial material{};
+            material.name = std::string(payload);
             currentMaterialIndex = static_cast<int>(outSceneData.materials.size());
-            materialLookup[std::string(payload)] = currentMaterialIndex;
+            materialLookup[material.name] = currentMaterialIndex;
             outSceneData.materials.push_back(std::move(material));
             continue;
         }
@@ -224,6 +225,24 @@ bool ParseMaterialLibrary(const std::filesystem::path& path,
             std::istringstream stream{std::string(payload)};
             if (!(stream >> material.specularColor.r >> material.specularColor.g >> material.specularColor.b)) {
                 LOGW("OBJ importer: invalid material specular color at line %zu", lineNumber);
+            }
+        } else if (keyword == "Ns") {
+            std::istringstream stream{std::string(payload)};
+            if (!(stream >> material.shininess)) {
+                LOGW("OBJ importer: invalid material shininess at line %zu", lineNumber);
+            }
+        } else if (keyword == "d") {
+            std::istringstream stream{std::string(payload)};
+            if (!(stream >> material.alpha)) {
+                LOGW("OBJ importer: invalid material alpha at line %zu", lineNumber);
+            }
+        } else if (keyword == "Tr") {
+            float transparency = 0.0f;
+            std::istringstream stream{std::string(payload)};
+            if (!(stream >> transparency)) {
+                LOGW("OBJ importer: invalid material transparency at line %zu", lineNumber);
+            } else {
+                material.alpha = 1.0f - transparency;
             }
         } else if (keyword == "map_Kd") {
             material.diffuseTexturePath = std::string(payload);
