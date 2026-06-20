@@ -2,8 +2,14 @@
 #include <utility>
 
 namespace RetroRenderer {
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures)
-    : m_Vertices(std::move(vertices)), m_Indices(std::move(indices)), m_Textures(std::move(textures)) {
+Mesh::Mesh(std::vector<Vertex> vertices,
+           std::vector<unsigned int> indices,
+           std::vector<Texture> textures,
+           SceneMaterialHandle materialHandle)
+    : m_Vertices(std::move(vertices)),
+      m_Indices(std::move(indices)),
+      m_Textures(std::move(textures)),
+      m_MaterialHandle(materialHandle) {
     m_numVertices = m_Vertices.size();
     m_numFaces = m_Indices.size() / 3;
 }
@@ -25,6 +31,10 @@ const Texture* Mesh::GetPrimaryTexture() const {
         return nullptr;
     }
     return &m_Textures.front();
+}
+
+SceneMaterialHandle Mesh::GetMaterialHandle() const {
+    return m_MaterialHandle;
 }
 
 unsigned int Mesh::GetVertexCount() const {

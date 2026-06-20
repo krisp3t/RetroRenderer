@@ -2,7 +2,9 @@
 #include "ISceneImporter.h"
 #include "../Base/Config.h"
 #include <KrisLogger/Logger.h>
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <filesystem>
 #include <limits>
 #include <utility>
@@ -104,6 +106,17 @@ bool IsModelVisibleInFrustum(const Model& model, const std::array<FrustumPlane, 
     }
     return true;
 }
+
+MaterialValue MakeMaterialValue(MaterialDataType type, const glm::vec4& data) {
+    return MaterialValue{.type = type, .data = data};
+}
+
+MaterialParameterOverride MakeMaterialParameter(const std::string& name, MaterialDataType type, const glm::vec4& data) {
+    return MaterialParameterOverride{
+        .name = name,
+        .value = MakeMaterialValue(type, data),
+    };
+}
 } // namespace
 
 Scene::Scene() : p_SceneImporter(CreateDefaultSceneImporter()) {
@@ -163,6 +176,7 @@ bool Scene::Load(const std::string& path, bool append) {
 bool Scene::ProcessImportedScene(const ImportedSceneData& sceneData, bool append) {
     if (!append) {
         m_Models.clear();
+        m_Materials.clear();
     }
     m_VisibleModels.clear();
 
@@ -171,7 +185,26 @@ bool Scene::ProcessImportedScene(const ImportedSceneData& sceneData, bool append
         return false;
     }
 
-    if (ProcessImportedNode(sceneData.rootNodeIndex, sceneData, -1)) {
+    std::vector<SceneMaterialHandle> importedMaterialHandles;
+    importedMaterialHandles.reserve(sceneData.materials.size());
+    for (size_t materialIndex = 0; materialIndex < sceneData.materials.size(); materialIndex++) {
+        bool preferVertexColor = false;
+        for (const ImportedMesh& mesh : sceneData.meshes) {
+            if (mesh.materialIndex.has_value() && mesh.materialIndex.value() == static_cast<int>(materialIndex) && MeshUsesVertexColor(mesh)) {
+                preferVertexColor = true;
+                break;
+            }
+        }
+        importedMaterialHandles.push_back(
+            AppendImportedMaterial(sceneData.materials[materialIndex],
+                                   sceneData.sourceDirectory,
+                                   preferVertexColor,
+                                   sceneData.materials[materialIndex].name.empty()
+                                       ? "Imported material " + std::to_string(materialIndex)
+                                       : sceneData.materials[materialIndex].name));
+    }
+
+    if (ProcessImportedNode(sceneData.rootNodeIndex, sceneData, importedMaterialHandles, -1)) {
         LOGI("%s scene: %s",
              append ? "Successfully appended" : "Successfully processed",
              sceneData.nodes[sceneData.rootNodeIndex].name.c_str());
@@ -180,7 +213,10 @@ bool Scene::ProcessImportedScene(const ImportedSceneData& sceneData, bool append
     return false;
 }
 
-bool Scene::ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneData, int parentIndex) {
+bool Scene::ProcessImportedNode(int nodeIndex,
+                                const ImportedSceneData& sceneData,
+                                const std::vector<SceneMaterialHandle>& importedMaterialHandles,
+                                int parentIndex) {
     if (nodeIndex < 0 || nodeIndex >= static_cast<int>(sceneData.nodes.size())) {
         LOGE("Imported scene node index %d is out of range", nodeIndex);
         return false;
@@ -200,7 +236,7 @@ bool Scene::ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneDat
         }
         const ImportedMesh& mesh = sceneData.meshes[meshIndex];
         if (!mesh.vertices.empty() && !mesh.indices.empty()) {
-            ProcessImportedMesh(mesh, sceneData, newModel.m_Meshes, node.name);
+            ProcessImportedMesh(mesh, sceneData, importedMaterialHandles, newModel.m_Meshes, node.name);
         }
     }
     newModel.RecomputeLocalBounds();
@@ -213,7 +249,7 @@ bool Scene::ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneDat
     m_Models.emplace_back(std::move(newModel));
 
     for (int childNodeIndex : node.childNodeIndices) {
-        if (!ProcessImportedNode(childNodeIndex, sceneData, currentNodeIndex)) {
+        if (!ProcessImportedNode(childNodeIndex, sceneData, importedMaterialHandles, currentNodeIndex)) {
             return false;
         }
     }
@@ -221,35 +257,32 @@ bool Scene::ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneDat
 }
 
 void Scene::ProcessImportedMesh(const ImportedMesh& mesh,
-                                const ImportedSceneData& sceneData,
+                                const ImportedSceneData&,
+                                const std::vector<SceneMaterialHandle>& importedMaterialHandles,
                                 std::vector<Mesh>& meshes,
                                 const std::string& modelName) {
     std::vector<Vertex> vertices = mesh.vertices;
     std::vector<unsigned int> indices = mesh.indices;
     std::vector<Texture> textures;
+    SceneMaterialHandle materialHandle = kInvalidSceneMaterialHandle;
 
     if (mesh.materialIndex.has_value()) {
         const int materialIndex = mesh.materialIndex.value();
-        if (materialIndex >= 0 && materialIndex < static_cast<int>(sceneData.materials.size())) {
+        if (materialIndex >= 0 && materialIndex < static_cast<int>(importedMaterialHandles.size())) {
+            materialHandle = importedMaterialHandles[static_cast<size_t>(materialIndex)];
             LOGI("Processing material %d for model %s", materialIndex, modelName.c_str());
-            const ImportedMaterial& material = sceneData.materials[materialIndex];
-            if (!material.diffuseTexturePath.empty()) {
-                std::filesystem::path texturePath = material.diffuseTexturePath;
-                if (texturePath.is_relative() && !sceneData.sourceDirectory.empty()) {
-                    texturePath = std::filesystem::path(sceneData.sourceDirectory) / texturePath;
-                }
-
-                Texture texture;
-                if (texture.LoadFromFile(texturePath.string().c_str())) {
-                    textures.emplace_back(std::move(texture));
-                } else {
-                    LOGW("Failed to load diffuse texture '%s' for model %s", texturePath.string().c_str(), modelName.c_str());
-                }
+            if (const SceneMaterial* sceneMaterial = GetMaterial(materialHandle);
+                sceneMaterial != nullptr && !sceneMaterial->textureBindings.empty()) {
+                textures.emplace_back(sceneMaterial->textureBindings.front().texture.CloneCpuOnly());
             }
         }
     }
 
-    meshes.emplace_back(std::move(vertices), std::move(indices), std::move(textures));
+    if (materialHandle == kInvalidSceneMaterialHandle) {
+        materialHandle = GetOrCreateFallbackMaterial(MeshUsesVertexColor(mesh));
+    }
+
+    meshes.emplace_back(std::move(vertices), std::move(indices), std::move(textures), materialHandle);
 }
 
 std::vector<int>& Scene::GetVisibleModels() {
@@ -312,5 +345,129 @@ const Model& Scene::GetModel(size_t index) const {
 
 size_t Scene::GetModelCount() const {
     return m_Models.size();
+}
+
+size_t Scene::GetMaterialCount() const {
+    return m_Materials.size();
+}
+
+SceneMaterial* Scene::GetMaterial(SceneMaterialHandle handle) {
+    if (handle == kInvalidSceneMaterialHandle || handle >= m_Materials.size()) {
+        return nullptr;
+    }
+    return &m_Materials[handle];
+}
+
+const SceneMaterial* Scene::GetMaterial(SceneMaterialHandle handle) const {
+    if (handle == kInvalidSceneMaterialHandle || handle >= m_Materials.size()) {
+        return nullptr;
+    }
+    return &m_Materials[handle];
+}
+
+std::vector<SceneMaterial>& Scene::GetMaterials() {
+    return m_Materials;
+}
+
+const std::vector<SceneMaterial>& Scene::GetMaterials() const {
+    return m_Materials;
+}
+
+void Scene::SetAllMaterialTemplates(const std::filesystem::path& templatePath) {
+    for (SceneMaterial& material : m_Materials) {
+        material.templatePath = templatePath;
+    }
+}
+
+SceneMaterialHandle Scene::AppendImportedMaterial(const ImportedMaterial& material,
+                                                  const std::string& sourceDirectory,
+                                                  bool preferVertexColor,
+                                                  const std::string& name) {
+    SceneMaterial sceneMaterial{};
+    sceneMaterial.name = name;
+    if (!material.diffuseTexturePath.empty()) {
+        sceneMaterial.templatePath = kMaterialAssetPhongTextured;
+    } else if (preferVertexColor) {
+        sceneMaterial.templatePath = kMaterialAssetPhongVertexColor;
+    } else {
+        sceneMaterial.templatePath = kMaterialAssetPhongConstant;
+    }
+
+    const float specularStrength = std::max({material.specularColor.r, material.specularColor.g, material.specularColor.b});
+    sceneMaterial.parameterOverrides.push_back(
+        MakeMaterialParameter("tint", MaterialDataType::VEC4, glm::vec4(material.diffuseColor, material.alpha)));
+    sceneMaterial.parameterOverrides.push_back(
+        MakeMaterialParameter("baseColor", MaterialDataType::VEC4, glm::vec4(material.diffuseColor, material.alpha)));
+    sceneMaterial.parameterOverrides.push_back(
+        MakeMaterialParameter("ambientStrength", MaterialDataType::FLOAT1, glm::vec4(0.3f, 0.0f, 0.0f, 0.0f)));
+    sceneMaterial.parameterOverrides.push_back(
+        MakeMaterialParameter("specularStrength", MaterialDataType::FLOAT1, glm::vec4(specularStrength, 0.0f, 0.0f, 0.0f)));
+    sceneMaterial.parameterOverrides.push_back(
+        MakeMaterialParameter("shininess", MaterialDataType::FLOAT1, glm::vec4(material.shininess, 0.0f, 0.0f, 0.0f)));
+
+    if (material.alpha < 0.999f) {
+        sceneMaterial.pipelineOverrides.blendMode = MaterialBlendMode::ALPHA_BLEND;
+    }
+
+    if (!material.diffuseTexturePath.empty()) {
+        std::filesystem::path texturePath = material.diffuseTexturePath;
+        if (texturePath.is_relative() && !sourceDirectory.empty()) {
+            texturePath = std::filesystem::path(sourceDirectory) / texturePath;
+        }
+
+        Texture texture;
+        if (texture.LoadFromFile(texturePath.string().c_str())) {
+            sceneMaterial.textureBindings.push_back(MaterialTextureBinding{
+                .slotName = "albedo",
+                .texture = std::move(texture),
+            });
+        } else {
+            LOGW("Failed to load diffuse texture '%s' for material %s", texturePath.string().c_str(), name.c_str());
+        }
+    }
+
+    const SceneMaterialHandle handle = static_cast<SceneMaterialHandle>(m_Materials.size());
+    m_Materials.push_back(std::move(sceneMaterial));
+    return handle;
+}
+
+SceneMaterialHandle Scene::GetOrCreateFallbackMaterial(bool preferVertexColor) {
+    const std::filesystem::path templatePath = preferVertexColor ? std::filesystem::path(kMaterialAssetPhongVertexColor)
+                                                                 : std::filesystem::path(kMaterialAssetPhongConstant);
+    for (SceneMaterialHandle handle = 0; handle < m_Materials.size(); handle++) {
+        if (m_Materials[handle].templatePath == templatePath &&
+            m_Materials[handle].name == (preferVertexColor ? "Default vertex-color material" : "Default material")) {
+            return handle;
+        }
+    }
+
+    SceneMaterial sceneMaterial{};
+    sceneMaterial.name = preferVertexColor ? "Default vertex-color material" : "Default material";
+    sceneMaterial.templatePath = templatePath;
+    sceneMaterial.parameterOverrides.push_back(
+        MakeMaterialParameter("baseColor", MaterialDataType::VEC4, glm::vec4(1.0f)));
+    sceneMaterial.parameterOverrides.push_back(
+        MakeMaterialParameter("tint", MaterialDataType::VEC4, glm::vec4(1.0f)));
+    sceneMaterial.parameterOverrides.push_back(
+        MakeMaterialParameter("ambientStrength", MaterialDataType::FLOAT1, glm::vec4(0.3f, 0.0f, 0.0f, 0.0f)));
+    sceneMaterial.parameterOverrides.push_back(
+        MakeMaterialParameter("specularStrength", MaterialDataType::FLOAT1, glm::vec4(0.3f, 0.0f, 0.0f, 0.0f)));
+    sceneMaterial.parameterOverrides.push_back(
+        MakeMaterialParameter("shininess", MaterialDataType::FLOAT1, glm::vec4(32.0f, 0.0f, 0.0f, 0.0f)));
+
+    const SceneMaterialHandle handle = static_cast<SceneMaterialHandle>(m_Materials.size());
+    m_Materials.push_back(std::move(sceneMaterial));
+    return handle;
+}
+
+bool Scene::MeshUsesVertexColor(const ImportedMesh& mesh) {
+    for (const Vertex& vertex : mesh.vertices) {
+        if (std::abs(vertex.color.r - 1.0f) > 1e-5f ||
+            std::abs(vertex.color.g - 1.0f) > 1e-5f ||
+            std::abs(vertex.color.b - 1.0f) > 1e-5f) {
+            return true;
+        }
+    }
+    return false;
 }
 } // namespace RetroRenderer

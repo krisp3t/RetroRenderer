@@ -1,17 +1,17 @@
 #pragma once
-#include <glm/vec3.hpp>
-#include <memory>
-#include <optional>
-#include <string>
-#include <vector>
 
+#include "../Renderer/MaterialTypes.h"
+#include "../Renderer/RenderServices.h"
 #include "../Renderer/ShaderHandle.h"
 #include "../Renderer/ShaderResource.h"
-#include "Texture.h"
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace RetroRenderer {
-class IRenderInvalidationSink;
-class IShaderCompiler;
+
+class Scene;
 
 struct ShaderProgram {
     ShaderHandle handle;
@@ -19,75 +19,53 @@ struct ShaderProgram {
     std::string name;
     std::string vertexPath;
     std::string fragmentPath;
-    // time_t lastModified = 0;
 };
 
 class MaterialManager {
   public:
-    struct alignas(16) LightingParamsUBO {
-        int lightingModel; // 0 = none, 1 = Phong, 2 = Blinn-Phong, 3 = PBR
-        float padding1, padding2, padding3;
-
-        float phongAmbient;
-        float phongSpecular;
-        float phongShininess;
-        float padding4;
-
-        float blinnAmbient;
-        float blinnSpecular;
-        float blinnShininess;
-        float padding5;
-
-        float pbrMetallic;
-        float pbrRoughness;
-        float pbrAO;
-        float padding6;
-    };
-
-    struct PhongParams {
-        float ambientStrength = 0.3f;
-        float specularStrength = 0.3f;
-        float shininess = 32.0f;
-    };
-    struct Material {
-        ShaderProgram shaderProgram;
-        std::optional<Texture> texture;
-        std::string name;
-        std::optional<PhongParams> phongParams;
-        glm::vec3 lightColor = glm::vec3(1.0f);
-    };
-
     MaterialManager() = default;
     ~MaterialManager() = default;
+
     void BindRenderServices(IRenderInvalidationSink& renderInvalidationSink);
+    void BindSceneAccessor(std::function<std::shared_ptr<Scene>()> sceneAccessor);
     bool Init();
+
     void LoadTexture(const std::string& path);
     void LoadTexture(const uint8_t* data, const size_t size);
     void ClearTexture();
-    void ResetBuiltInMaterials();
-    void LoadDefaultShaders();
-    [[nodiscard]] int GetCurrentMaterialIndex() const {
-        return m_CurrentMaterialIndex;
+
+    void SelectSceneMaterial(SceneMaterialHandle handle);
+    [[nodiscard]] SceneMaterialHandle GetSelectedSceneMaterialHandle() const {
+        return m_SelectedSceneMaterialHandle;
     }
-    void SetCurrentMaterialIndex(int materialIndex);
-    Material& GetCurrentMaterial() {
-        return m_Materials[m_CurrentMaterialIndex];
-    }
-    const Material& GetCurrentMaterial() const {
-        return m_Materials[m_CurrentMaterialIndex];
-    }
+    [[nodiscard]] SceneMaterial* GetSelectedSceneMaterial();
+    [[nodiscard]] const SceneMaterial* GetSelectedSceneMaterial() const;
+    [[nodiscard]] const Texture* GetSelectedPreviewTexture() const;
+
+    [[nodiscard]] std::shared_ptr<const CompiledMaterialTemplate> GetCompiledTemplate(const std::filesystem::path& templatePath) const;
+    [[nodiscard]] std::shared_ptr<const CompiledMaterialTemplate> GetCompiledTemplate(const SceneMaterial& material) const;
+    [[nodiscard]] std::filesystem::path ResolveBuiltInTemplatePath(bool useVertexColor) const;
+
     static ShaderProgram CreateShaderProgram(IShaderCompiler& shaderCompiler,
                                              const std::string& vertexPath,
                                              const std::string& fragmentPath);
-    ShaderProgram CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath);
+    static ShaderProgram CreateShaderProgram(const std::string& vertexPath, const std::string& fragmentPath);
 
   private:
-    static std::string ReadShaderFile(const std::string& path);
+    static std::string ReadTextFile(const std::string& path);
+    static std::string ReadTextFile(const std::filesystem::path& path);
+
+    std::shared_ptr<const CompiledMaterialTemplate> LoadAndCompileTemplate(const std::filesystem::path& templatePath) const;
+    void LoadTextureIntoSelectedMaterial(Texture texture);
+    SceneMaterial* ResolveSelectedSceneMaterial();
+    const SceneMaterial* ResolveSelectedSceneMaterial() const;
+    std::filesystem::path ResolveTemplateAssetPath(const std::filesystem::path& templatePath) const;
 
   private:
-    std::vector<Material> m_Materials;
-    int m_CurrentMaterialIndex = 0;
     IRenderInvalidationSink* p_RenderInvalidationSink_ = nullptr;
+    std::function<std::shared_ptr<Scene>()> m_SceneAccessor;
+    SceneMaterialHandle m_SelectedSceneMaterialHandle = kInvalidSceneMaterialHandle;
+    mutable std::unordered_map<std::string, std::shared_ptr<const CompiledMaterialTemplate>> m_TemplateCache;
 };
 
 } // namespace RetroRenderer

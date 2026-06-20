@@ -1,4 +1,5 @@
 #pragma once
+#include "../Renderer/MaterialTypes.h"
 #include "Texture.h"
 #include "Vertex.h"
 #include <vector>
@@ -9,7 +10,10 @@ class Mesh {
   public:
     Mesh() = default;
     ~Mesh() = default;
-    Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
+    Mesh(std::vector<Vertex> vertices,
+         std::vector<unsigned int> indices,
+         std::vector<Texture> textures,
+         SceneMaterialHandle materialHandle = kInvalidSceneMaterialHandle);
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;
     Mesh(Mesh&&) noexcept = default;
@@ -19,6 +23,7 @@ class Mesh {
     [[nodiscard]] const std::vector<unsigned int>& GetIndices() const;
     [[nodiscard]] const std::vector<Texture>& GetTextures() const;
     [[nodiscard]] const Texture* GetPrimaryTexture() const;
+    [[nodiscard]] SceneMaterialHandle GetMaterialHandle() const;
     [[nodiscard]] unsigned int GetVertexCount() const;
     [[nodiscard]] unsigned int GetFaceCount() const;
 
@@ -32,6 +37,7 @@ class Mesh {
 
     // Per-mesh
     std::vector<Texture> m_Textures;
+    SceneMaterialHandle m_MaterialHandle = kInvalidSceneMaterialHandle;
 };
 
 } // namespace RetroRenderer

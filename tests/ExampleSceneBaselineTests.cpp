@@ -70,6 +70,20 @@ TEST_CASE("Example scene baseline parser reads supported keys", "[examples][base
     REQUIRE(baseline.glTextureSampling == Config::GLTextureSampling::RETRO_NEAREST);
 }
 
+TEST_CASE("Example scene baseline parser accepts material assets and overrides legacy material type", "[examples][baseline]") {
+    ExampleSceneBaseline baseline{};
+    std::vector<std::string> warnings;
+    REQUIRE(ParseExampleSceneBaselineText(
+        "material_type = phong_vertex_color\n"
+        "material_asset = materials/unlit-textured.rrmatdef.json\n",
+        baseline,
+        &warnings));
+
+    REQUIRE(warnings.empty());
+    REQUIRE_FALSE(baseline.materialType.has_value());
+    REQUIRE(baseline.materialAsset == std::filesystem::path("materials/unlit-textured.rrmatdef.json"));
+}
+
 TEST_CASE("Example scene baseline loader merges ancestor baselines root to leaf", "[examples][baseline]") {
     ScopedTempDirectory tempDirectory;
     const std::filesystem::path rootPath = tempDirectory.path() / "assets";

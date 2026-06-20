@@ -9,8 +9,11 @@
 namespace RetroRenderer {
 
 struct ImportedMaterial {
+    std::string name;
     glm::vec3 diffuseColor = glm::vec3(1.0f);
     glm::vec3 specularColor = glm::vec3(0.0f);
+    float alpha = 1.0f;
+    float shininess = 32.0f;
     std::string diffuseTexturePath;
 };
 

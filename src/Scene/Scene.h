@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Base/Config.h"
+#include "../Renderer/MaterialTypes.h"
 #include "Camera.h"
 #include "ImportedSceneData.h"
 #include "Light.h"
@@ -34,19 +35,36 @@ class Scene {
     [[nodiscard]] Model& GetModel(size_t index);
     [[nodiscard]] const Model& GetModel(size_t index) const;
     [[nodiscard]] size_t GetModelCount() const;
+    [[nodiscard]] size_t GetMaterialCount() const;
+    [[nodiscard]] SceneMaterial* GetMaterial(SceneMaterialHandle handle);
+    [[nodiscard]] const SceneMaterial* GetMaterial(SceneMaterialHandle handle) const;
+    [[nodiscard]] std::vector<SceneMaterial>& GetMaterials();
+    [[nodiscard]] const std::vector<SceneMaterial>& GetMaterials() const;
+    void SetAllMaterialTemplates(const std::filesystem::path& templatePath);
 
   private:
     void InitializeDefaultLighting(const glm::vec3& lightPosition);
     bool ProcessImportedScene(const ImportedSceneData& sceneData, bool append);
-    bool ProcessImportedNode(int nodeIndex, const ImportedSceneData& sceneData, int parentIndex);
+    bool ProcessImportedNode(int nodeIndex,
+                             const ImportedSceneData& sceneData,
+                             const std::vector<SceneMaterialHandle>& importedMaterialHandles,
+                             int parentIndex);
     void ProcessImportedMesh(const ImportedMesh& mesh,
                              const ImportedSceneData& sceneData,
+                             const std::vector<SceneMaterialHandle>& importedMaterialHandles,
                              std::vector<Mesh>& meshes,
                              const std::string& modelName);
+    SceneMaterialHandle AppendImportedMaterial(const ImportedMaterial& material,
+                                               const std::string& sourceDirectory,
+                                               bool preferVertexColor,
+                                               const std::string& name);
+    SceneMaterialHandle GetOrCreateFallbackMaterial(bool preferVertexColor);
+    static bool MeshUsesVertexColor(const ImportedMesh& mesh);
 
     std::unique_ptr<ISceneImporter> p_SceneImporter;
     std::vector<int> m_VisibleModels;
     std::vector<Model> m_Models;
+    std::vector<SceneMaterial> m_Materials;
     std::vector<SceneLight> m_Lights;
 };
 } // namespace RetroRenderer
