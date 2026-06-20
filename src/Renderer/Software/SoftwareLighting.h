@@ -1,16 +1,17 @@
 #pragma once
 
-#include <glm/vec3.hpp>
+#include "../MaterialRuntime.h"
+#include "../MaterialTypes.h"
+#include <memory>
+#include <vector>
 
 namespace RetroRenderer {
 
 struct SoftwareMaterialState {
-    glm::vec3 lightColor = glm::vec3(1.0f);
-    float ambientStrength = 0.0f;
-    float specularStrength = 0.0f;
-    float shininess = 32.0f;
-    bool enablePhong = false;
-    bool useVertexColor = false;
+    std::shared_ptr<const CompiledMaterialTemplate> compiledTemplate;
+    std::vector<glm::vec4> parameterValues;
+    std::vector<ResolvedMaterialSampler> samplers;
+    MaterialPipelineState pipelineState{};
 };
 
 } // namespace RetroRenderer

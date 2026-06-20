@@ -57,7 +57,13 @@ struct ClipVertex {
     glm::vec3 worldPosition = glm::vec3(0.0f);
     glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
     glm::vec2 texCoords = glm::vec2(0.0f);
-    glm::vec3 color = glm::vec3(1.0f);
+    glm::vec4 color = glm::vec4(1.0f);
+    std::array<glm::vec4, 4> varyings = {
+        glm::vec4(0.0f),
+        glm::vec4(0.0f),
+        glm::vec4(0.0f),
+        glm::vec4(0.0f),
+    };
 };
 
 struct ClippedPolygon {
@@ -76,6 +82,9 @@ ClipVertex LerpVertex(const ClipVertex& a, const ClipVertex& b, float t) {
     out.normal = glm::mix(a.normal, b.normal, t);
     out.texCoords = glm::mix(a.texCoords, b.texCoords, t);
     out.color = glm::mix(a.color, b.color, t);
+    for (size_t varyingIndex = 0; varyingIndex < out.varyings.size(); varyingIndex++) {
+        out.varyings[varyingIndex] = glm::mix(a.varyings[varyingIndex], b.varyings[varyingIndex], t);
+    }
     return out;
 }
 
@@ -123,6 +132,7 @@ bool TryMakeRasterVertex(const ClipVertex& clipVertex, RasterVertex& outVertex) 
     outVertex.clipW = clipVertex.clipPosition.w;
     outVertex.texCoords = clipVertex.texCoords;
     outVertex.color = clipVertex.color;
+    outVertex.varyings = clipVertex.varyings;
     return true;
 }
 
@@ -153,14 +163,30 @@ bool ShouldDeferPs1Triangles(const Config& cfg) {
            cfg.retro.enablePs1SemiTransparency;
 }
 
-SoftwareMaterialState MakeSoftwareMaterialState(const FrameMaterialState& materialState) {
+const Texture* ResolveFrameTexture(const RenderPacket& packet, FrameTextureId textureId);
+
+SoftwareMaterialState MakeSoftwareMaterialState(const RenderPacket& packet,
+                                                const FrameMaterialState& materialState,
+                                                const Config& config) {
     SoftwareMaterialState state{};
-    state.lightColor = materialState.lightColor;
-    state.useVertexColor = materialState.useVertexColor;
-    state.enablePhong = materialState.enablePhong;
-    state.ambientStrength = materialState.ambientStrength;
-    state.specularStrength = materialState.specularStrength;
-    state.shininess = materialState.shininess;
+    state.compiledTemplate = materialState.compiledTemplate;
+    state.parameterValues = materialState.parameterValues;
+    state.pipelineState = materialState.pipelineState;
+    if (materialState.compiledTemplate != nullptr) {
+        state.samplers.reserve(materialState.compiledTemplate->samplers.size());
+        for (size_t samplerIndex = 0; samplerIndex < materialState.compiledTemplate->samplers.size(); samplerIndex++) {
+            const MaterialSamplerDesc& samplerDesc = materialState.compiledTemplate->samplers[samplerIndex];
+            const Texture* texture =
+                samplerIndex < materialState.textureIds.size() ? ResolveFrameTexture(packet, materialState.textureIds[samplerIndex]) : nullptr;
+            ResolvedMaterialSampler resolvedSampler{};
+            resolvedSampler.texture = texture;
+            resolvedSampler.filter =
+                (config.retro.usePs1ShadingModel || config.retro.enablePalette) ? MaterialFilterMode::NEAREST : samplerDesc.filter;
+            resolvedSampler.wrapU = samplerDesc.wrapU;
+            resolvedSampler.wrapV = samplerDesc.wrapV;
+            state.samplers.push_back(resolvedSampler);
+        }
+    }
     return state;
 }
 
@@ -608,7 +634,8 @@ void SWRenderer::RenderFrame(const RenderPacket& packet) {
     SetActiveCamera(m_FrameCameraSnapshot);
     SetSceneLights(packet.lights);
     SetFrameConfig(packet.configSnapshot);
-    m_FrameMaterialState = packet.materials.empty() ? SoftwareMaterialState{} : MakeSoftwareMaterialState(packet.materials.front());
+    m_FrameMaterialState =
+        packet.materials.empty() ? SoftwareMaterialState{} : MakeSoftwareMaterialState(packet, packet.materials.front(), packet.configSnapshot);
     p_FrameFallbackTexture = nullptr;
 
     BeforeFrame(packet.clearColor);
@@ -629,8 +656,8 @@ void SWRenderer::RenderFrame(const RenderPacket& packet) {
             item.mesh->vertices,
             item.mesh->indices,
             item.worldTransform,
-            MakeSoftwareMaterialState(*materialState),
-            ResolveFrameTexture(packet, item.textureId));
+            MakeSoftwareMaterialState(packet, *materialState, packet.configSnapshot),
+            nullptr);
     }
 
     EndFrame();
@@ -683,7 +710,7 @@ void SWRenderer::DrawMeshData(const std::vector<Vertex>& vertices,
     const glm::mat4 n = glm::transpose(glm::inverse(worldTransform));
 
     const auto& cfg = m_FrameConfigSnapshot;
-    if (vertices.empty() || indices.empty() || indices.size() % 3 != 0) {
+    if (!materialState.compiledTemplate || vertices.empty() || indices.empty() || indices.size() % 3 != 0) {
         return;
     }
     const unsigned int faceCount = static_cast<unsigned int>(indices.size() / 3);
@@ -692,17 +719,35 @@ void SWRenderer::DrawMeshData(const std::vector<Vertex>& vertices,
     m_ClipPositionScratch.resize(vertices.size());
     m_NormalScratch.resize(vertices.size());
     m_WorldPositionScratch.resize(vertices.size());
+    std::vector<MaterialVertexStageOutput> vertexStageOutputs(vertices.size());
     auto& clipPositions = m_ClipPositionScratch;
     auto& transformedNormals = m_NormalScratch;
     auto& worldPositions = m_WorldPositionScratch;
+    const float materialTimeSeconds = static_cast<float>(SDL_GetTicks()) / 1000.0f;
     for (size_t vertexIndex = 0; vertexIndex < vertices.size(); vertexIndex++) {
         const Vertex& sourceVertex = vertices[vertexIndex];
-        clipPositions[vertexIndex] = mvp * sourceVertex.position;
-        transformedNormals[vertexIndex] = glm::normalize(glm::vec3(n * glm::vec4(sourceVertex.normal, 0.0f)));
-        worldPositions[vertexIndex] = glm::vec3(worldTransform * sourceVertex.position);
-    }
+        MaterialVertexStageInput stageInput{};
+        stageInput.positionOS = sourceVertex.position;
+        stageInput.normalOS = sourceVertex.normal;
+        stageInput.uv0 = sourceVertex.texCoords;
+        stageInput.color0 = glm::vec4(sourceVertex.color, 1.0f);
+        stageInput.time = materialTimeSeconds;
+        EvaluateMaterialVertexStage(*materialState.compiledTemplate, materialState.parameterValues, stageInput, vertexStageOutputs[vertexIndex]);
 
-    const Texture* diffuseTexture = texture;
+        clipPositions[vertexIndex] = mvp * vertexStageOutputs[vertexIndex].positionOS;
+        transformedNormals[vertexIndex] =
+            glm::normalize(glm::vec3(n * glm::vec4(vertexStageOutputs[vertexIndex].normalOS, 0.0f)));
+        worldPositions[vertexIndex] = glm::vec3(worldTransform * vertexStageOutputs[vertexIndex].positionOS);
+    }
+    SoftwareMaterialState drawMaterialState = materialState;
+    if (drawMaterialState.samplers.empty() && texture != nullptr) {
+        drawMaterialState.samplers.push_back(ResolvedMaterialSampler{
+            .texture = texture,
+            .filter = MaterialFilterMode::LINEAR,
+            .wrapU = MaterialWrapMode::REPEAT,
+            .wrapV = MaterialWrapMode::REPEAT,
+        });
+    }
     if (deferPs1Triangles) {
         m_DeferredPs1Triangles.reserve(m_DeferredPs1Triangles.size() + faceCount);
     }
@@ -711,8 +756,8 @@ void SWRenderer::DrawMeshData(const std::vector<Vertex>& vertices,
         if (deferPs1Triangles) {
             DeferredTriangle deferredTriangle{};
             deferredTriangle.vertices = rasterVertices;
-            deferredTriangle.texture = diffuseTexture;
-            deferredTriangle.materialState = materialState;
+            deferredTriangle.texture = texture;
+            deferredTriangle.materialState = drawMaterialState;
             deferredTriangle.sortKey = ComputeDeferredTriangleSortKey(rasterVertices, p_Camera->m_Position);
             m_DeferredPs1Triangles.push_back(deferredTriangle);
             return;
@@ -725,9 +770,9 @@ void SWRenderer::DrawMeshData(const std::vector<Vertex>& vertices,
             drawVertices,
             cfg,
             m_FrameLights,
-            materialState,
+            drawMaterialState,
             p_Camera->m_Position,
-            diffuseTexture);
+            texture);
     };
 
     for (unsigned int i = 0; i < faceCount; i++) {
@@ -759,12 +804,12 @@ void SWRenderer::DrawMeshData(const std::vector<Vertex>& vertices,
         const glm::vec4 clipPositionsForTri[3] = {clipPos0, clipPos1, clipPos2};
         for (int v = 0; v < 3; v++) {
             const unsigned int vertexIndex = triangleIndices[v];
-            const Vertex& sourceVertex = vertices[vertexIndex];
             clipVertices[v].clipPosition = clipPositionsForTri[v];
             clipVertices[v].worldPosition = worldPositions[vertexIndex];
             clipVertices[v].normal = cfg.retro.flatFaceLighting ? triangleNormal : transformedNormals[vertexIndex];
-            clipVertices[v].texCoords = sourceVertex.texCoords;
-            clipVertices[v].color = sourceVertex.color;
+            clipVertices[v].texCoords = vertexStageOutputs[vertexIndex].uv0;
+            clipVertices[v].color = vertexStageOutputs[vertexIndex].color0;
+            clipVertices[v].varyings = vertexStageOutputs[vertexIndex].varyings;
         }
 
         if (cfg.cull.rasterClip && IsTriangleTriviallyRejectedByDepth(clipVertices)) {

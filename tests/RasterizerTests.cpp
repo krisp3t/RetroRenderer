@@ -3,11 +3,17 @@
 
 #include "Base/Config.h"
 #include "Renderer/Buffer.h"
+#include "Renderer/MaterialRuntime.h"
 #include "Renderer/Software/Rasterizer.h"
+#include "Scene/Texture.h"
 #include "Scene/Vertex.h"
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <memory>
 #include <vector>
 
 namespace RetroRenderer {
@@ -40,6 +46,18 @@ bool BuffersEqual(const Buffer<Pixel>& lhs, const Buffer<Pixel>& rhs) {
     return true;
 }
 
+template <typename TPredicate>
+size_t CountPixelsIf(const Buffer<Pixel>& framebuffer, TPredicate predicate) {
+    size_t count = 0;
+    const size_t pixelCount = framebuffer.width * framebuffer.height;
+    for (size_t i = 0; i < pixelCount; i++) {
+        if (predicate(framebuffer.data[i])) {
+            count++;
+        }
+    }
+    return count;
+}
+
 Vertex MakeVertex(float x, float y, float z) {
     Vertex vertex{};
     vertex.position = glm::vec4(x, y, z, 1.0f);
@@ -55,9 +73,152 @@ RasterVertex MakeLitRasterVertex(float x, float y, float ndcZ, float worldZ) {
     vertex.cullPosition = glm::vec3(x, -y, ndcZ);
     vertex.worldPosition = glm::vec3(x, y, worldZ);
     vertex.normal = glm::vec3(0.0f, 0.0f, 1.0f);
-    vertex.color = glm::vec3(1.0f);
+    vertex.color = glm::vec4(1.0f);
     vertex.clipW = 1.0f;
     return vertex;
+}
+
+SoftwareMaterialState MakeVertexColorPhongMaterialState() {
+    auto material = std::make_shared<CompiledMaterialTemplate>();
+    material->pipelineState.shadingModel = MaterialShadingModel::PHONG;
+    material->usesVertexColor = true;
+
+    MaterialInstruction color{};
+    color.opcode = MaterialOpcode::SEMANTIC;
+    color.resultType = MaterialDataType::VEC4;
+    color.semantic = MaterialSemantic::COLOR0;
+    color.componentCount = 4;
+    color.dstRegister = 0;
+    material->fragmentProgram.instructions.push_back(color);
+    material->fragmentProgram.registerTypes.push_back(MaterialDataType::VEC4);
+    material->fragmentProgram.registerCount = 1;
+    material->fragmentOutputs.baseColorRegister = 0;
+
+    const auto appendFloatConstant = [&](float value) {
+        MaterialInstruction instruction{};
+        instruction.opcode = MaterialOpcode::CONSTANT;
+        instruction.resultType = MaterialDataType::FLOAT1;
+        instruction.immediate = glm::vec4(value, 0.0f, 0.0f, 0.0f);
+        instruction.componentCount = 1;
+        instruction.dstRegister = material->fragmentProgram.registerCount;
+        material->fragmentProgram.instructions.push_back(instruction);
+        material->fragmentProgram.registerTypes.push_back(MaterialDataType::FLOAT1);
+        material->fragmentProgram.registerCount++;
+        return instruction.dstRegister;
+    };
+
+    material->fragmentOutputs.alphaRegister = appendFloatConstant(1.0f);
+    material->fragmentOutputs.ambientStrengthRegister = appendFloatConstant(0.0f);
+    material->fragmentOutputs.specularStrengthRegister = appendFloatConstant(0.0f);
+    material->fragmentOutputs.shininessRegister = appendFloatConstant(32.0f);
+
+    SoftwareMaterialState state{};
+    state.compiledTemplate = std::move(material);
+    state.pipelineState = state.compiledTemplate->pipelineState;
+    return state;
+}
+
+SoftwareMaterialState MakeVertexColorUnlitMaterialState() {
+    auto material = std::make_shared<CompiledMaterialTemplate>();
+    material->pipelineState.shadingModel = MaterialShadingModel::UNLIT;
+    material->usesVertexColor = true;
+
+    MaterialInstruction color{};
+    color.opcode = MaterialOpcode::SEMANTIC;
+    color.resultType = MaterialDataType::VEC4;
+    color.semantic = MaterialSemantic::COLOR0;
+    color.componentCount = 4;
+    color.dstRegister = 0;
+    material->fragmentProgram.instructions.push_back(color);
+    material->fragmentProgram.registerTypes.push_back(MaterialDataType::VEC4);
+    material->fragmentProgram.registerCount = 1;
+    material->fragmentOutputs.baseColorRegister = 0;
+
+    MaterialInstruction alpha{};
+    alpha.opcode = MaterialOpcode::CONSTANT;
+    alpha.resultType = MaterialDataType::FLOAT1;
+    alpha.immediate = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+    alpha.componentCount = 1;
+    alpha.dstRegister = 1;
+    material->fragmentProgram.instructions.push_back(alpha);
+    material->fragmentProgram.registerTypes.push_back(MaterialDataType::FLOAT1);
+    material->fragmentProgram.registerCount = 2;
+    material->fragmentOutputs.alphaRegister = 1;
+
+    SoftwareMaterialState state{};
+    state.compiledTemplate = std::move(material);
+    state.pipelineState = state.compiledTemplate->pipelineState;
+    return state;
+}
+
+std::shared_ptr<CompiledMaterialTemplate> MakeTexturedUnlitMaterialTemplate() {
+    auto material = std::make_shared<CompiledMaterialTemplate>();
+    material->pipelineState.shadingModel = MaterialShadingModel::UNLIT;
+    material->usesTextureSampling = true;
+    material->samplers.push_back(MaterialSamplerDesc{
+        .name = "albedo",
+        .filter = MaterialFilterMode::NEAREST,
+        .wrapU = MaterialWrapMode::REPEAT,
+        .wrapV = MaterialWrapMode::REPEAT,
+    });
+
+    MaterialInstruction uv{};
+    uv.opcode = MaterialOpcode::SEMANTIC;
+    uv.resultType = MaterialDataType::VEC2;
+    uv.semantic = MaterialSemantic::UV0;
+    uv.componentCount = 2;
+    uv.dstRegister = 0;
+    material->fragmentProgram.instructions.push_back(uv);
+    material->fragmentProgram.registerTypes.push_back(MaterialDataType::VEC2);
+    material->fragmentProgram.registerCount = 1;
+
+    MaterialInstruction sample{};
+    sample.opcode = MaterialOpcode::SAMPLE_TEXTURE;
+    sample.resultType = MaterialDataType::VEC4;
+    sample.samplerIndex = 0;
+    sample.srcRegisters[0] = 0;
+    sample.componentCount = 4;
+    sample.dstRegister = 1;
+    material->fragmentProgram.instructions.push_back(sample);
+    material->fragmentProgram.registerTypes.push_back(MaterialDataType::VEC4);
+    material->fragmentProgram.registerCount = 2;
+    material->fragmentOutputs.baseColorRegister = 1;
+
+    MaterialInstruction alpha{};
+    alpha.opcode = MaterialOpcode::CONSTANT;
+    alpha.resultType = MaterialDataType::FLOAT1;
+    alpha.immediate = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+    alpha.componentCount = 1;
+    alpha.dstRegister = 2;
+    material->fragmentProgram.instructions.push_back(alpha);
+    material->fragmentProgram.registerTypes.push_back(MaterialDataType::FLOAT1);
+    material->fragmentProgram.registerCount = 3;
+    material->fragmentOutputs.alphaRegister = 2;
+    return material;
+}
+
+std::filesystem::path MakeTempDir(const char* name) {
+    const std::filesystem::path dir =
+        std::filesystem::temp_directory_path() / "retrorenderer_rasterizer_tests" / name;
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+    std::filesystem::create_directories(dir, ec);
+    return dir;
+}
+
+std::filesystem::path WriteRedBmp(const std::filesystem::path& directory) {
+    static constexpr uint8_t kRedBmpBytes[] = {
+        0x42, 0x4D, 0x3A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x36, 0x00, 0x00, 0x00,
+        0x28, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00,
+        0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x13, 0x0B, 0x00, 0x00,
+        0x13, 0x0B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0xFF, 0x00,
+    };
+
+    const std::filesystem::path texturePath = directory / "red.bmp";
+    std::ofstream file(texturePath, std::ios::binary);
+    file.write(reinterpret_cast<const char*>(kRedBmpBytes), sizeof(kRedBmpBytes));
+    return texturePath;
 }
 
 std::array<Vertex, 3> MakeLargeTriangle(float ndcZ) {
@@ -414,12 +575,7 @@ TEST_CASE("Point light attenuation darkens identical surfaces with distance", "[
         config.cull.depthTest = false;
         config.environment.lightPosition = glm::vec3(0.0f, 0.0f, 5.0f);
 
-        SoftwareMaterialState materialState{};
-        materialState.lightColor = glm::vec3(1.0f);
-        materialState.ambientStrength = 0.0f;
-        materialState.specularStrength = 0.0f;
-        materialState.enablePhong = true;
-        materialState.useVertexColor = true;
+        const SoftwareMaterialState materialState = MakeVertexColorPhongMaterialState();
 
         std::array<RasterVertex, 3> triangle = {
             MakeLitRasterVertex(-0.6f, -0.5f, 0.0f, worldZ),
@@ -442,6 +598,102 @@ TEST_CASE("Point light attenuation darkens identical surfaces with distance", "[
     REQUIRE(farPixel.a == 255);
     REQUIRE(PixelLuminance(nearPixel) > PixelLuminance(midPixel));
     REQUIRE(PixelLuminance(midPixel) > PixelLuminance(farPixel));
+}
+
+TEST_CASE("Software material rendering uses the material graph for scanline fill mode", "[rasterizer][material]") {
+    Buffer<Pixel> framebuffer(32, 32);
+    Buffer<float> depthBuffer(32, 32);
+    const Pixel clearColor{0, 0, 0, 0};
+    const std::vector<LightSnapshot> noLights;
+    const glm::vec3 viewPosition(0.0f, 0.0f, 3.0f);
+
+    Config config{};
+    config.cull.backfaceCulling = false;
+    config.cull.depthTest = false;
+    config.cull.rasterClip = true;
+    config.software.rasterizer.polygonMode = Config::RasterizationPolygonMode::FILL;
+    config.software.rasterizer.fillMode = Config::RasterizationFillMode::SCANLINE;
+
+    SECTION("vertex color material") {
+        framebuffer.Clear(clearColor);
+        depthBuffer.Clear(1.0f);
+
+        SoftwareMaterialState materialState = MakeVertexColorUnlitMaterialState();
+        MaterialFragmentStageInput fragmentInput{};
+        fragmentInput.color0 = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+        const MaterialFragmentStageOutput fragmentOutput =
+            EvaluateMaterialFragmentStage(*materialState.compiledTemplate, materialState.parameterValues, materialState.samplers, fragmentInput);
+        REQUIRE(fragmentOutput.baseColor.g == Catch::Approx(1.0f));
+        REQUIRE(fragmentOutput.baseColor.r == Catch::Approx(0.0f));
+        REQUIRE(fragmentOutput.baseColor.b == Catch::Approx(0.0f));
+
+        std::array<RasterVertex, 3> triangle = {
+            MakeLitRasterVertex(-0.7f, -0.6f, 0.0f, 0.0f),
+            MakeLitRasterVertex(0.0f, 0.7f, 0.0f, 0.0f),
+            MakeLitRasterVertex(0.7f, -0.6f, 0.0f, 0.0f),
+        };
+        for (RasterVertex& vertex : triangle) {
+            vertex.color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+        }
+
+        Rasterizer::DrawTriangle(framebuffer, depthBuffer, triangle, config, noLights, materialState, viewPosition, nullptr);
+
+        const size_t drawnPixels = CountPixelsIf(framebuffer, [&](const Pixel& pixel) {
+            return !PixelsEqual(pixel, clearColor);
+        });
+        const size_t greenPixels = CountPixelsIf(framebuffer, [](const Pixel& pixel) {
+            return pixel.g > 200 && pixel.r < 32 && pixel.b < 32;
+        });
+        REQUIRE(drawnPixels > 0);
+        REQUIRE(greenPixels > 0);
+    }
+
+    SECTION("textured material") {
+        framebuffer.Clear(clearColor);
+        depthBuffer.Clear(1.0f);
+
+        const std::filesystem::path tempDir = MakeTempDir("textured_material");
+        const std::filesystem::path texturePath = WriteRedBmp(tempDir);
+        Texture texture;
+        REQUIRE(texture.LoadFromFile(texturePath.string().c_str()));
+
+        SoftwareMaterialState materialState{};
+        materialState.compiledTemplate = MakeTexturedUnlitMaterialTemplate();
+        materialState.pipelineState = materialState.compiledTemplate->pipelineState;
+        materialState.samplers.push_back(ResolvedMaterialSampler{
+            .texture = &texture,
+            .filter = MaterialFilterMode::NEAREST,
+            .wrapU = MaterialWrapMode::REPEAT,
+            .wrapV = MaterialWrapMode::REPEAT,
+        });
+        MaterialFragmentStageInput fragmentInput{};
+        fragmentInput.uv0 = glm::vec2(0.5f, 0.5f);
+        const MaterialFragmentStageOutput fragmentOutput =
+            EvaluateMaterialFragmentStage(*materialState.compiledTemplate, materialState.parameterValues, materialState.samplers, fragmentInput);
+        REQUIRE(fragmentOutput.baseColor.r == Catch::Approx(1.0f).margin(0.01f));
+        REQUIRE(fragmentOutput.baseColor.g == Catch::Approx(0.0f).margin(0.01f));
+        REQUIRE(fragmentOutput.baseColor.b == Catch::Approx(0.0f).margin(0.01f));
+
+        std::array<RasterVertex, 3> triangle = {
+            MakeLitRasterVertex(-0.7f, -0.6f, 0.0f, 0.0f),
+            MakeLitRasterVertex(0.0f, 0.7f, 0.0f, 0.0f),
+            MakeLitRasterVertex(0.7f, -0.6f, 0.0f, 0.0f),
+        };
+        triangle[0].texCoords = glm::vec2(0.0f, 0.0f);
+        triangle[1].texCoords = glm::vec2(0.5f, 1.0f);
+        triangle[2].texCoords = glm::vec2(1.0f, 0.0f);
+
+        Rasterizer::DrawTriangle(framebuffer, depthBuffer, triangle, config, noLights, materialState, viewPosition, nullptr);
+
+        const size_t drawnPixels = CountPixelsIf(framebuffer, [&](const Pixel& pixel) {
+            return !PixelsEqual(pixel, clearColor);
+        });
+        const size_t redPixels = CountPixelsIf(framebuffer, [](const Pixel& pixel) {
+            return pixel.r > 200 && pixel.g < 32 && pixel.b < 32;
+        });
+        REQUIRE(drawnPixels > 0);
+        REQUIRE(redPixels > 0);
+    }
 }
 
 } // namespace RetroRenderer

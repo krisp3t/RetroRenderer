@@ -17,8 +17,14 @@ bool UsePs1ShadingModel(const Config& cfg);
 struct FragmentInterpolants {
     glm::vec3 worldPosition = glm::vec3(0.0f);
     glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
-    glm::vec3 color = glm::vec3(1.0f);
+    glm::vec4 color = glm::vec4(1.0f);
     glm::vec2 texCoords = glm::vec2(0.0f);
+    std::array<glm::vec4, 4> varyings = {
+        glm::vec4(0.0f),
+        glm::vec4(0.0f),
+        glm::vec4(0.0f),
+        glm::vec4(0.0f),
+    };
 };
 
 enum class InterpolationMode {
@@ -46,22 +52,17 @@ int Bayer4x4Value(int x, int y) {
     return kBayer4x4[DitherPatternIndex(x, y)];
 }
 
-Color MakeColorFromVec3(const glm::vec3& value, uint8_t alpha = 255) {
-    return Color(
-        Color::Uint8Tag{},
-        static_cast<uint8_t>(std::clamp(value.r, 0.0f, 1.0f) * 255.0f),
-        static_cast<uint8_t>(std::clamp(value.g, 0.0f, 1.0f) * 255.0f),
-        static_cast<uint8_t>(std::clamp(value.b, 0.0f, 1.0f) * 255.0f),
-        alpha);
-}
-
 Color MakeColorFromPixel(const Pixel& pixel) {
     return Color(Color::Uint8Tag{}, pixel.r, pixel.g, pixel.b, pixel.a);
 }
 
 Color ComputeAverageVertexColor(const std::array<RasterVertex, 3>& vertices) {
-    const glm::vec3 averageColor = glm::clamp((vertices[0].color + vertices[1].color + vertices[2].color) / 3.0f, 0.0f, 1.0f);
-    return MakeColorFromVec3(averageColor);
+    const glm::vec4 averageColor = glm::clamp((vertices[0].color + vertices[1].color + vertices[2].color) / 3.0f, 0.0f, 1.0f);
+    return Color(Color::Uint8Tag{},
+                 static_cast<uint8_t>(std::clamp(std::lround(averageColor.r * 255.0f), 0L, 255L)),
+                 static_cast<uint8_t>(std::clamp(std::lround(averageColor.g * 255.0f), 0L, 255L)),
+                 static_cast<uint8_t>(std::clamp(std::lround(averageColor.b * 255.0f), 0L, 255L)),
+                 static_cast<uint8_t>(std::clamp(std::lround(averageColor.a * 255.0f), 0L, 255L)));
 }
 
 Color WhiteColor() {
@@ -296,7 +297,7 @@ bool UsePs1ShadingModel(const Config& cfg) {
 bool Ps1ModeUsesTexture(Config::Ps1MaterialMode mode, const SoftwareMaterialState& materialState) {
     switch (mode) {
     case Config::Ps1MaterialMode::MATERIAL_DRIVEN:
-        return !materialState.useVertexColor;
+        return materialState.compiledTemplate != nullptr && materialState.compiledTemplate->usesTextureSampling;
     case Config::Ps1MaterialMode::TEXTURED_LIT:
     case Config::Ps1MaterialMode::TEXTURED_UNLIT:
         return true;
@@ -312,7 +313,7 @@ bool Ps1ModeUsesTexture(Config::Ps1MaterialMode mode, const SoftwareMaterialStat
 bool Ps1ModeUsesVertexColor(Config::Ps1MaterialMode mode, const SoftwareMaterialState& materialState) {
     switch (mode) {
     case Config::Ps1MaterialMode::MATERIAL_DRIVEN:
-        return materialState.useVertexColor;
+        return materialState.compiledTemplate != nullptr && materialState.compiledTemplate->usesVertexColor;
     case Config::Ps1MaterialMode::VERTEX_LIT:
     case Config::Ps1MaterialMode::VERTEX_UNLIT:
         return true;
@@ -355,15 +356,6 @@ Color GetPs1FallbackBaseColor(Config::Ps1MaterialMode mode, const Config& cfg) {
     return GetStableUntexturedBaseColor(cfg);
 }
 
-Color MultiplyBaseColor(Color baseColor, const Pixel& texel) {
-    return Color(
-        Color::Uint8Tag{},
-        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.r) * static_cast<unsigned int>(texel.r)) / 255U),
-        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.g) * static_cast<unsigned int>(texel.g)) / 255U),
-        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.b) * static_cast<unsigned int>(texel.b)) / 255U),
-        static_cast<uint8_t>((static_cast<unsigned int>(baseColor.a) * static_cast<unsigned int>(texel.a)) / 255U));
-}
-
 glm::vec2 QuantizeTextureCoords(const glm::vec2& uv, const Config& cfg) {
     if (!UsePs1ShadingModel(cfg) || cfg.retro.textureCoordPrecisionBits <= 0) {
         return uv;
@@ -403,7 +395,7 @@ FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex
         vertices[0].worldPosition, vertices[1].worldPosition, vertices[2].worldPosition};
     const std::array<glm::vec3, 3> normals = {
         vertices[0].normal, vertices[1].normal, vertices[2].normal};
-    const std::array<glm::vec3, 3> colors = {
+    const std::array<glm::vec4, 3> colors = {
         vertices[0].color, vertices[1].color, vertices[2].color};
     const std::array<glm::vec2, 3> texCoords = {
         vertices[0].texCoords, vertices[1].texCoords, vertices[2].texCoords};
@@ -412,6 +404,14 @@ FragmentInterpolants InterpolateFragmentAttributes(const std::array<RasterVertex
     interpolants.normal = InterpolateAttribute(normals, weights, shadingMode);
     interpolants.color = glm::clamp(InterpolateAttribute(colors, weights, varyingMode), 0.0f, 1.0f);
     interpolants.texCoords = InterpolateAttribute(texCoords, weights, varyingMode);
+    for (size_t varyingIndex = 0; varyingIndex < interpolants.varyings.size(); varyingIndex++) {
+        const std::array<glm::vec4, 3> varyings = {
+            vertices[0].varyings[varyingIndex],
+            vertices[1].varyings[varyingIndex],
+            vertices[2].varyings[varyingIndex],
+        };
+        interpolants.varyings[varyingIndex] = InterpolateAttribute(varyings, weights, varyingMode);
+    }
     const float normalLengthSq = glm::dot(interpolants.normal, interpolants.normal);
     if (normalLengthSq > 1e-8f) {
         interpolants.normal *= glm::inversesqrt(normalLengthSq);
@@ -433,7 +433,10 @@ glm::vec3 ComputeLighting(const glm::vec3& worldPosition,
                           const glm::vec3& normal,
                           const glm::vec3& viewPosition,
                           const std::vector<LightSnapshot>& lights,
-                          const SoftwareMaterialState& materialState,
+                          float ambientStrength,
+                          float specularStrength,
+                          float shininess,
+                          MaterialShadingModel shadingModel,
                           const Config& cfg,
                           bool allowSpecular) {
     constexpr float kLightLinearAttenuation = 0.09f;
@@ -443,9 +446,12 @@ glm::vec3 ComputeLighting(const glm::vec3& worldPosition,
     const glm::vec3 viewVector = viewPosition - worldPosition;
     const float viewLengthSq = glm::dot(viewVector, viewVector);
     const glm::vec3 viewDir = viewLengthSq > 1e-8f ? viewVector * glm::inversesqrt(viewLengthSq) : safeNormal;
-    glm::vec3 lighting = materialState.enablePhong ? materialState.ambientStrength * materialState.lightColor : glm::vec3(0.0f);
+    if (shadingModel == MaterialShadingModel::UNLIT) {
+        return glm::vec3(1.0f);
+    }
+    glm::vec3 lighting = ambientStrength * glm::vec3(1.0f);
 
-    const auto accumulateFromLight = [&](const glm::vec3& lightPosition, float intensity) {
+    const auto accumulateFromLight = [&](const glm::vec3& lightPosition, const glm::vec3& lightColor, float intensity) {
         const glm::vec3 lightVector = lightPosition - worldPosition;
         const float lightLengthSq = glm::dot(lightVector, lightVector);
         if (lightLengthSq <= 1e-8f) {
@@ -457,22 +463,22 @@ glm::vec3 ComputeLighting(const glm::vec3& worldPosition,
             1.0f / (1.0f + kLightLinearAttenuation * lightDistance + kLightQuadraticAttenuation * lightDistance * lightDistance);
         const glm::vec3 lightDir = lightVector * glm::inversesqrt(lightLengthSq);
         const float diff = std::max(glm::dot(safeNormal, lightDir), 0.0f);
-        lighting += diff * materialState.lightColor * intensity * attenuation;
-        if (allowSpecular && materialState.enablePhong && materialState.specularStrength > 0.0f && diff > 0.0f) {
+        lighting += diff * lightColor * intensity * attenuation;
+        if (allowSpecular && shadingModel == MaterialShadingModel::PHONG && specularStrength > 0.0f && diff > 0.0f) {
             const glm::vec3 reflectDir = glm::reflect(-lightDir, safeNormal);
-            const float spec = std::pow(std::max(glm::dot(viewDir, reflectDir), 0.0f), std::max(materialState.shininess, 1.0f));
-            lighting += materialState.specularStrength * spec * materialState.lightColor * intensity * attenuation;
+            const float spec = std::pow(std::max(glm::dot(viewDir, reflectDir), 0.0f), std::max(shininess, 1.0f));
+            lighting += specularStrength * spec * lightColor * intensity * attenuation;
         }
     };
 
     if (lights.empty()) {
-        accumulateFromLight(cfg.environment.lightPosition, 1.0f);
+        accumulateFromLight(cfg.environment.lightPosition, glm::vec3(1.0f), 1.0f);
     } else {
         for (const LightSnapshot& light : lights) {
             if (light.type != LightType::POINT) {
                 continue;
             }
-            accumulateFromLight(light.position, std::max(light.intensity, 0.0f));
+            accumulateFromLight(light.position, light.color, std::max(light.intensity, 0.0f));
         }
     }
     return glm::max(lighting, glm::vec3(0.0f));
@@ -482,27 +488,94 @@ glm::vec3 ComputePhongLighting(const glm::vec3& worldPosition,
                                const glm::vec3& normal,
                                const glm::vec3& viewPosition,
                                const std::vector<LightSnapshot>& lights,
-                               const SoftwareMaterialState& materialState,
+                               float ambientStrength,
+                               float specularStrength,
+                               float shininess,
                                const Config& cfg) {
-    return ComputeLighting(worldPosition, normal, viewPosition, lights, materialState, cfg, true);
+    return ComputeLighting(worldPosition,
+                           normal,
+                           viewPosition,
+                           lights,
+                           ambientStrength,
+                           specularStrength,
+                           shininess,
+                           MaterialShadingModel::PHONG,
+                           cfg,
+                           true);
 }
 
 glm::vec3 ComputePs1Lighting(const glm::vec3& worldPosition,
                              const glm::vec3& normal,
                              const glm::vec3& viewPosition,
                              const std::vector<LightSnapshot>& lights,
-                             const SoftwareMaterialState& materialState,
+                             float ambientStrength,
                              const Config& cfg) {
-    return QuantizePs1Lighting(ComputeLighting(worldPosition, normal, viewPosition, lights, materialState, cfg, false), cfg);
+    return QuantizePs1Lighting(
+        ComputeLighting(worldPosition,
+                        normal,
+                        viewPosition,
+                        lights,
+                        ambientStrength,
+                        0.0f,
+                        1.0f,
+                        MaterialShadingModel::LAMBERT,
+                        cfg,
+                        false),
+        cfg);
 }
 
 glm::vec3 ComputePs1VertexLighting(const glm::vec3& worldPosition,
                                    const glm::vec3& normal,
                                    const glm::vec3& viewPosition,
                                    const std::vector<LightSnapshot>& lights,
-                                   const SoftwareMaterialState& materialState,
+                                   float ambientStrength,
                                    const Config& cfg) {
-    return ComputeLighting(worldPosition, normal, viewPosition, lights, materialState, cfg, false);
+    return ComputeLighting(worldPosition,
+                           normal,
+                           viewPosition,
+                           lights,
+                           ambientStrength,
+                           0.0f,
+                           1.0f,
+                           MaterialShadingModel::LAMBERT,
+                           cfg,
+                           false);
+}
+
+Color MakeColorFromVec4(const glm::vec4& value) {
+    return Color(Color::Uint8Tag{},
+                 static_cast<uint8_t>(std::clamp(std::lround(value.r * 255.0f), 0L, 255L)),
+                 static_cast<uint8_t>(std::clamp(std::lround(value.g * 255.0f), 0L, 255L)),
+                 static_cast<uint8_t>(std::clamp(std::lround(value.b * 255.0f), 0L, 255L)),
+                 static_cast<uint8_t>(std::clamp(std::lround(value.a * 255.0f), 0L, 255L)));
+}
+
+Pixel AddEmissiveToPixel(Pixel inputColor, const glm::vec3& emissive) {
+    return Pixel{
+        static_cast<uint8_t>(std::clamp(std::lround(inputColor.r + emissive.r * 255.0f), 0L, 255L)),
+        static_cast<uint8_t>(std::clamp(std::lround(inputColor.g + emissive.g * 255.0f), 0L, 255L)),
+        static_cast<uint8_t>(std::clamp(std::lround(inputColor.b + emissive.b * 255.0f), 0L, 255L)),
+        inputColor.a,
+    };
+}
+
+Pixel BlendSourceOver(Pixel destinationColor, Pixel sourceColor) {
+    const float alpha = static_cast<float>(sourceColor.a) / 255.0f;
+    if (alpha <= 0.0f) {
+        return destinationColor;
+    }
+    const auto blendChannel = [&](uint8_t dst, uint8_t src) {
+        return static_cast<uint8_t>(std::clamp(
+            std::lround(static_cast<double>(dst) * static_cast<double>(1.0f - alpha) + static_cast<double>(src) * static_cast<double>(alpha)),
+            0L,
+            255L));
+    };
+    return Pixel{
+        blendChannel(destinationColor.r, sourceColor.r),
+        blendChannel(destinationColor.g, sourceColor.g),
+        blendChannel(destinationColor.b, sourceColor.b),
+        255,
+    };
 }
 
 Pixel ShadeRetroColor(const Color& baseColor,
@@ -624,7 +697,8 @@ void WriteTrianglePixel(Buffer<Pixel>& framebuffer,
                         const Config& cfg,
                         Pixel fillColor,
                         const DitherPattern* fillPattern = nullptr,
-                        const Texture* paletteTexture = nullptr) {
+                        const Texture* paletteTexture = nullptr,
+                        const MaterialPipelineState* pipelineState = nullptr) {
     if (!cfg.cull.rasterClip) {
         if (x < 0 || x >= static_cast<int>(framebuffer.width) || y < 0 || y >= static_cast<int>(framebuffer.height)) {
             return;
@@ -633,19 +707,26 @@ void WriteTrianglePixel(Buffer<Pixel>& framebuffer,
 
     const size_t pixelIndex = static_cast<size_t>(y) * framebuffer.width + static_cast<size_t>(x);
     const float quantizedDepth = QuantizeDepth(z, cfg);
-    if (!cfg.cull.depthTest || quantizedDepth < depthBuffer.data[pixelIndex]) {
+    const bool depthTestEnabled = cfg.cull.depthTest && (pipelineState == nullptr || pipelineState->depthTest);
+    if (!depthTestEnabled || quantizedDepth < depthBuffer.data[pixelIndex]) {
         const Pixel retroColor =
             fillPattern ? (*fillPattern)[DitherPatternIndex(x, y)] : ApplyRetroFillStyle(fillColor, glm::ivec2{x, y}, cfg, paletteTexture);
         if (retroColor.a == 0) {
             return;
         }
         const Pixel sourceColor = ApplyPs1OutputStyle(ApplyPs1SourceTransparency(retroColor, cfg), glm::ivec2{x, y}, cfg);
-        if (ShouldWriteDepthForPixel(sourceColor, cfg)) {
+        const bool shouldWriteDepth =
+            (pipelineState == nullptr || pipelineState->depthWrite) && ShouldWriteDepthForPixel(sourceColor, cfg);
+        if (shouldWriteDepth) {
             depthBuffer.data[pixelIndex] = quantizedDepth;
         }
         if (UsePs1ShadingModel(cfg) && cfg.retro.enablePs1SemiTransparency && sourceColor.a < 255) {
             const Pixel blendedColor = BlendPs1SemiTransparent(framebuffer.data[pixelIndex], sourceColor, cfg);
             framebuffer.data[pixelIndex] = ApplyPs1OutputStyle(blendedColor, glm::ivec2{x, y}, cfg);
+            return;
+        }
+        if (pipelineState != nullptr && pipelineState->blendMode == MaterialBlendMode::ALPHA_BLEND && sourceColor.a < 255) {
+            framebuffer.data[pixelIndex] = BlendSourceOver(framebuffer.data[pixelIndex], sourceColor);
             return;
         }
         framebuffer.data[pixelIndex] = sourceColor;
@@ -770,19 +851,28 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
 
     // Backface cull in unsnapped NDC space. Viewport conversion flips Y in our framebuffer coordinates,
     // so doing the winding test after NDCToViewport would invert the front-face convention.
-    if (cfg.cull.backfaceCulling) {
-        if (IsTriangleDegenerate(cullVertices) || IsBackface(cullVertices)) {
+    if (cfg.cull.backfaceCulling && materialState.pipelineState.cullMode != MaterialCullMode::NONE) {
+        const bool backface = IsBackface(cullVertices);
+        const bool shouldCull =
+            materialState.pipelineState.cullMode == MaterialCullMode::FRONT ? !backface : backface;
+        if (IsTriangleDegenerate(cullVertices) || shouldCull) {
             return;
         }
     }
 
     // TODO: add cfg.lineColor
     const bool usePs1Shading = UsePs1ShadingModel(cfg);
-    const bool useVertexColor =
-        usePs1Shading ? Ps1ModeUsesVertexColor(cfg.retro.ps1MaterialMode, materialState) : materialState.useVertexColor;
-    const bool useLighting = !usePs1Shading || Ps1ModeAppliesLighting(cfg.retro.ps1MaterialMode);
+    const bool materialUsesVertexColor = materialState.compiledTemplate != nullptr && materialState.compiledTemplate->usesVertexColor;
+    const bool materialUsesTexture = materialState.compiledTemplate != nullptr && materialState.compiledTemplate->usesTextureSampling;
+    const bool useVertexColor = usePs1Shading ? Ps1ModeUsesVertexColor(cfg.retro.ps1MaterialMode, materialState) : materialUsesVertexColor;
+    const bool useLighting =
+        usePs1Shading ? Ps1ModeAppliesLighting(cfg.retro.ps1MaterialMode)
+                      : materialState.compiledTemplate == nullptr ||
+                            materialState.compiledTemplate->pipelineState.shadingModel != MaterialShadingModel::UNLIT;
+    const Texture* primaryTexture =
+        texture != nullptr ? texture : (!materialState.samplers.empty() ? materialState.samplers.front().texture : nullptr);
     const Texture* shadingTexture =
-        (usePs1Shading ? Ps1ModeUsesTexture(cfg.retro.ps1MaterialMode, materialState) : !materialState.useVertexColor) ? texture : nullptr;
+        (usePs1Shading ? Ps1ModeUsesTexture(cfg.retro.ps1MaterialMode, materialState) : materialUsesTexture) ? primaryTexture : nullptr;
     switch (cfg.software.rasterizer.polygonMode) {
     case Config::RasterizationPolygonMode::POINT:
         DrawPointTriangle(framebuffer, viewportVertices, cfg);
@@ -796,6 +886,14 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
         DrawWireframeTriangle(framebuffer, viewportVertices, cfg);
         break;
     case Config::RasterizationPolygonMode::FILL:
+        if (materialState.compiledTemplate != nullptr) {
+            // The material graph is currently implemented in the barycentric path only.
+            // Route material-backed draws through it so software and GL agree on texture
+            // sampling, vertex colors, alpha, and lighting semantics.
+            DrawBarycentricTriangle(
+                framebuffer, depthBuffer, vertices, viewportVertices, cfg, lights, materialState, viewPosition, shadingTexture);
+            break;
+        }
         switch (cfg.software.rasterizer.fillMode) {
         case Config::RasterizationFillMode::BARYCENTRIC:
             DrawBarycentricTriangle(
@@ -811,14 +909,16 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
                                  ComputeAverageNormal(vertices),
                                  viewPosition,
                                  lights,
-                                 materialState,
+                                 0.3f,
                                  cfg)
                            : ComputePhongLighting(
                                  averageWorldPosition,
                                  ComputeAverageNormal(vertices),
                                  viewPosition,
                                  lights,
-                                 materialState,
+                                 0.3f,
+                                 0.3f,
+                                 32.0f,
                                  cfg))
                     : glm::vec3(1.0f);
             const Color baseColor =
@@ -854,7 +954,7 @@ void Rasterizer::DrawTriangle(Buffer<Pixel>& framebuffer,
         rasterVertices[i].worldPosition = glm::vec3(vertices[i].position);
         rasterVertices[i].normal = vertices[i].normal;
         rasterVertices[i].texCoords = vertices[i].texCoords;
-        rasterVertices[i].color = flatColor;
+        rasterVertices[i].color = glm::vec4(flatColor, static_cast<float>(fillColor.a) / 255.0f);
         rasterVertices[i].clipW = std::abs(vertices[i].position.w) > 1e-6f ? vertices[i].position.w : 1.0f;
     }
 
@@ -890,9 +990,12 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                          const Texture* texture) {
     std::array<RasterVertex, 3> shadeVertices = vertices;
     const bool usePs1Shading = UsePs1ShadingModel(cfg);
-    const bool useVertexColor =
-        usePs1Shading ? Ps1ModeUsesVertexColor(cfg.retro.ps1MaterialMode, materialState) : materialState.useVertexColor;
-    const bool useLighting = !usePs1Shading || Ps1ModeAppliesLighting(cfg.retro.ps1MaterialMode);
+    const bool useLighting =
+        usePs1Shading ? Ps1ModeAppliesLighting(cfg.retro.ps1MaterialMode)
+                      : materialState.compiledTemplate == nullptr ||
+                            materialState.pipelineState.shadingModel != MaterialShadingModel::UNLIT;
+    const Texture* primaryTexture =
+        texture != nullptr ? texture : (!materialState.samplers.empty() ? materialState.samplers.front().texture : nullptr);
     glm::vec2 v0 = {viewportVertices[0].x, viewportVertices[0].y};
     glm::vec2 v1 = {viewportVertices[1].x, viewportVertices[1].y};
     glm::vec2 v2 = {viewportVertices[2].x, viewportVertices[2].y};
@@ -910,6 +1013,7 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
 
     std::array<glm::vec3, 3> vertexLighting{};
     if (cfg.retro.useGouraudShading && useLighting) {
+        const float ambientStrength = 0.3f;
         for (size_t i = 0; i < shadeVertices.size(); i++) {
             vertexLighting[i] = usePs1Shading
                                     ? ComputePs1VertexLighting(
@@ -917,14 +1021,16 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                           shadeVertices[i].normal,
                                           viewPosition,
                                           lights,
-                                          materialState,
+                                          ambientStrength,
                                           cfg)
                                     : ComputePhongLighting(
                                           shadeVertices[i].worldPosition,
                                           shadeVertices[i].normal,
                                           viewPosition,
                                           lights,
-                                          materialState,
+                                          ambientStrength,
+                                          0.3f,
+                                          32.0f,
                                           cfg);
         }
     }
@@ -976,32 +1082,61 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                 const float b2 = w2 * invArea;
                 const float z = viewportVertices[0].z * b0 + viewportVertices[1].z * b1 + viewportVertices[2].z * b2;
                 const FragmentInterpolants interpolants = InterpolateFragmentAttributes(shadeVertices, b0, b1, b2, cfg);
-                Color baseColor =
-                    useVertexColor
-                        ? MakeColorFromVec3(interpolants.color)
-                        : (usePs1Shading ? GetPs1FallbackBaseColor(cfg.retro.ps1MaterialMode, cfg) : GetStableUntexturedBaseColor(cfg));
-                if (texture && texture->HasCpuPixels()) {
-                    const glm::vec2 sampledTexCoords = QuantizeTextureCoords(interpolants.texCoords, cfg);
-                    const bool sampleTexture =
-                        usePs1Shading ? Ps1ModeUsesTexture(cfg.retro.ps1MaterialMode, materialState) : !materialState.useVertexColor;
-                    if (sampleTexture) {
-                        Pixel texel = cfg.retro.textureMaxDimension > 0
-                                          ? texture->SampleReducedNearestRepeat(sampledTexCoords, cfg.retro.textureMaxDimension)
-                                          : texture->SampleNearestRepeat(sampledTexCoords);
-                        if (usePs1Shading) {
-                            texel = ApplyPs1TextureStyle(texel, texture, cfg);
+                MaterialFragmentStageOutput surface{};
+                if (materialState.compiledTemplate != nullptr) {
+                    MaterialFragmentStageInput fragmentInput{};
+                    fragmentInput.worldPosition = interpolants.worldPosition;
+                    fragmentInput.normalWS = interpolants.normal;
+                    fragmentInput.uv0 = interpolants.texCoords;
+                    fragmentInput.color0 = interpolants.color;
+                    fragmentInput.viewDirWS = glm::normalize(viewPosition - interpolants.worldPosition);
+                    fragmentInput.screenUV = glm::vec2((static_cast<float>(x) + 0.5f) / static_cast<float>(framebuffer.width),
+                                                       (static_cast<float>(y) + 0.5f) / static_cast<float>(framebuffer.height));
+                    fragmentInput.varyings = interpolants.varyings;
+                    surface = EvaluateMaterialFragmentStage(
+                        *materialState.compiledTemplate, materialState.parameterValues, materialState.samplers, fragmentInput);
+                }
+
+                surface.baseColor = glm::clamp(surface.baseColor, 0.0f, 1.0f);
+                surface.emissive = glm::max(surface.emissive, glm::vec3(0.0f));
+                surface.alpha = std::clamp(surface.alpha, 0.0f, 1.0f);
+                if (materialState.pipelineState.blendMode == MaterialBlendMode::ALPHA_CUTOUT &&
+                    surface.alpha < materialState.pipelineState.alphaCutoff) {
+                    continue;
+                }
+
+                Color baseColor = MakeColorFromVec4(surface.baseColor);
+                baseColor.a = static_cast<uint8_t>(std::clamp(std::lround(surface.alpha * 255.0f), 0L, 255L));
+                if (usePs1Shading) {
+                    switch (cfg.retro.ps1MaterialMode) {
+                    case Config::Ps1MaterialMode::TEXTURED_LIT:
+                    case Config::Ps1MaterialMode::TEXTURED_UNLIT:
+                        if (primaryTexture && primaryTexture->HasCpuPixels()) {
+                            ResolvedMaterialSampler sampler{};
+                            sampler.texture = primaryTexture;
+                            sampler.filter = MaterialFilterMode::NEAREST;
+                            sampler.wrapU = MaterialWrapMode::REPEAT;
+                            sampler.wrapV = MaterialWrapMode::REPEAT;
+                            Pixel texel = sampler.texture->SampleNearestRepeat(QuantizeTextureCoords(interpolants.texCoords, cfg));
+                            texel = ApplyPs1TextureStyle(texel, primaryTexture, cfg);
+                            baseColor = MakeColorFromPixel(texel);
+                        } else {
+                            baseColor = GetPs1FallbackBaseColor(cfg.retro.ps1MaterialMode, cfg);
                         }
-                        const bool useTexturePalette = UseTextureAutoPalette(texture, cfg);
-                        if (!usePs1Shading && cfg.retro.enablePalette) {
-                            if (useTexturePalette) {
-                                texel = texture->FindNearestAutoPalettePixel(MakeColorFromPixel(texel));
-                            } else if (cfg.retro.palette != Config::PaletteType::NONE) {
-                                texel = RetroPalette::FindNearestPalettePixel(MakeColorFromPixel(texel), cfg.retro);
-                            }
-                        }
-                        baseColor = MultiplyBaseColor(baseColor, texel);
+                        break;
+                    case Config::Ps1MaterialMode::VERTEX_LIT:
+                    case Config::Ps1MaterialMode::VERTEX_UNLIT:
+                        baseColor = MakeColorFromVec4(interpolants.color);
+                        break;
+                    case Config::Ps1MaterialMode::FLAT_COLOR_LIT:
+                    case Config::Ps1MaterialMode::FLAT_COLOR_UNLIT:
+                        baseColor = cfg.retro.untexturedBaseColor;
+                        break;
+                    case Config::Ps1MaterialMode::MATERIAL_DRIVEN:
+                        break;
                     }
                 }
+
                 const glm::vec3 lighting =
                     !useLighting
                         ? glm::vec3(1.0f)
@@ -1018,18 +1153,33 @@ void Rasterizer::DrawBarycentricTriangle(Buffer<Pixel>& framebuffer,
                                                interpolants.normal,
                                                viewPosition,
                                                lights,
-                                               materialState,
+                                               surface.ambientStrength,
                                                cfg)
-                                         : ComputePhongLighting(
-                                               interpolants.worldPosition,
-                                               interpolants.normal,
-                                               viewPosition,
-                                               lights,
-                                               materialState,
-                                               cfg));
-                const Pixel shadedColor = usePs1Shading ? ShadePs1Color(baseColor, lighting) : ShadeRetroColor(baseColor, lighting, cfg, texture);
+                                         : (materialState.pipelineState.shadingModel == MaterialShadingModel::PHONG
+                                                ? ComputePhongLighting(interpolants.worldPosition,
+                                                                       interpolants.normal,
+                                                                       viewPosition,
+                                                                       lights,
+                                                                       surface.ambientStrength,
+                                                                       surface.specularStrength,
+                                                                       surface.shininess,
+                                                                       cfg)
+                                                : ComputeLighting(interpolants.worldPosition,
+                                                                  interpolants.normal,
+                                                                  viewPosition,
+                                                                  lights,
+                                                                  surface.ambientStrength,
+                                                                  0.0f,
+                                                                  1.0f,
+                                                                  MaterialShadingModel::LAMBERT,
+                                                                  cfg,
+                                                                  false)));
+                Pixel shadedColor =
+                    usePs1Shading ? ShadePs1Color(baseColor, lighting) : ShadeRetroColor(baseColor, lighting, cfg, primaryTexture);
+                shadedColor = AddEmissiveToPixel(shadedColor, surface.emissive);
+                shadedColor.a = baseColor.a;
                 const Pixel fillColor = ApplyDistanceFog(shadedColor, interpolants.worldPosition, viewPosition, cfg);
-                WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, nullptr, texture);
+                WriteTrianglePixel(framebuffer, depthBuffer, x, y, z, cfg, fillColor, nullptr, primaryTexture, &materialState.pipelineState);
             }
             w0 += w0StepX;
             w1 += w1StepX;

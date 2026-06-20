@@ -17,6 +17,7 @@ add_executable(retrorenderer_tests
     ${CMAKE_CURRENT_LIST_DIR}/SanitizerSmokeTests.cpp
     ${CMAKE_SOURCE_DIR}/src/Base/ExampleSceneBaseline.cpp
     ${CMAKE_SOURCE_DIR}/src/Base/ExampleSceneCatalog.cpp
+    ${CMAKE_SOURCE_DIR}/src/Renderer/MaterialRuntime.cpp
     ${CMAKE_SOURCE_DIR}/src/Renderer/RetroPalette.cpp
     ${CMAKE_SOURCE_DIR}/src/Renderer/UiRenderPacket.cpp
     ${CMAKE_SOURCE_DIR}/src/Renderer/Software/Rasterizer.cpp
