@@ -1,0 +1,53 @@
+{
+    "name": "Phong Textured",
+    "pipeline": {
+        "shadingModel": "phong",
+        "blendMode": "opaque",
+        "cullMode": "back",
+        "depthTest": true,
+        "depthWrite": true,
+        "alphaCutoff": 0.5
+    },
+    "parameters": [
+        {"name": "tint", "type": "vec4", "default": [1.0, 1.0, 1.0, 1.0]},
+        {"name": "ambientStrength", "type": "float", "default": 0.3},
+        {"name": "specularStrength", "type": "float", "default": 0.3},
+        {"name": "shininess", "type": "float", "default": 32.0}
+    ],
+    "samplers": [
+        {"name": "albedo", "filter": "linear", "wrap": "repeat"}
+    ],
+    "vertex": {
+        "ops": [
+            {"id": "position", "op": "semantic", "type": "vec4", "semantic": "position_os"},
+            {"id": "normal", "op": "semantic", "type": "vec3", "semantic": "normal_os"},
+            {"id": "uv0", "op": "semantic", "type": "vec2", "semantic": "uv0"},
+            {"id": "color0", "op": "semantic", "type": "vec4", "semantic": "color0"}
+        ],
+        "outputs": {
+            "positionOS": "position",
+            "normalOS": "normal",
+            "uv0": "uv0",
+            "color0": "color0"
+        }
+    },
+    "fragment": {
+        "ops": [
+            {"id": "uv0", "op": "semantic", "type": "vec2", "semantic": "uv0"},
+            {"id": "albedoTex", "op": "sample_texture", "type": "vec4", "sampler": "albedo", "uv": "uv0"},
+            {"id": "tint", "op": "parameter", "type": "vec4", "parameter": "tint"},
+            {"id": "baseColor", "op": "multiply", "type": "vec4", "inputs": ["albedoTex", "tint"]},
+            {"id": "alpha", "op": "swizzle", "type": "float", "input": "baseColor", "pattern": "w"},
+            {"id": "ambientStrength", "op": "parameter", "type": "float", "parameter": "ambientStrength"},
+            {"id": "specularStrength", "op": "parameter", "type": "float", "parameter": "specularStrength"},
+            {"id": "shininess", "op": "parameter", "type": "float", "parameter": "shininess"}
+        ],
+        "outputs": {
+            "baseColor": "baseColor",
+            "alpha": "alpha",
+            "ambientStrength": "ambientStrength",
+            "specularStrength": "specularStrength",
+            "shininess": "shininess"
+        }
+    }
+}
