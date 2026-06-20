@@ -7,12 +7,14 @@ endif()
 
 add_executable(retrorenderer_tests
     ${CMAKE_CURRENT_LIST_DIR}/ConcurrencyTests.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/ExampleSceneCatalogTests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GoldenRenderingTests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/IntegrationTests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/LightweightObjSceneImporterTests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/RasterizerTests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/RenderSubmissionTests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/SanitizerSmokeTests.cpp
+    ${CMAKE_SOURCE_DIR}/src/Base/ExampleSceneCatalog.cpp
     ${CMAKE_SOURCE_DIR}/src/Renderer/RetroPalette.cpp
     ${CMAKE_SOURCE_DIR}/src/Renderer/UiRenderPacket.cpp
     ${CMAKE_SOURCE_DIR}/src/Renderer/Software/Rasterizer.cpp
