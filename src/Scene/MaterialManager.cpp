@@ -54,6 +54,20 @@ void MaterialManager::ClearTexture() {
     p_RenderInvalidationSink_->OnTextureMutated();
 }
 
+void MaterialManager::ResetBuiltInMaterials() {
+    bool textureChanged = false;
+    for (Material& material : m_Materials) {
+        textureChanged |= material.texture.has_value();
+        material.texture.reset();
+        material.phongParams = PhongParams{};
+        material.lightColor = glm::vec3(1.0f);
+    }
+
+    if (textureChanged && p_RenderInvalidationSink_ != nullptr) {
+        p_RenderInvalidationSink_->OnTextureMutated();
+    }
+}
+
 void MaterialManager::LoadDefaultShaders() {
     // TODO: extract
     Material phongTexMaterial;

@@ -26,6 +26,7 @@
 #include "../native/AndroidBridge.h"
 #endif
 
+#include "../Base/ExampleSceneBaseline.h"
 #include "../Base/Event.h"
 #include "../Base/InputActions.h"
 #include "../native/FileDialog.h"
@@ -101,6 +102,12 @@ std::filesystem::path GetWorkingDirectoryOrFallback() {
 
 std::filesystem::path GetSceneDialogDefaultLocation(const std::filesystem::path& lastSceneDirectory) {
     return lastSceneDirectory.empty() ? GetWorkingDirectoryOrFallback() : lastSceneDirectory;
+}
+
+std::filesystem::path CanonicalizePathIfPossible(const std::filesystem::path& path) {
+    std::error_code ec;
+    const std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(path, ec);
+    return ec ? path : canonicalPath;
 }
 
 const char* RenderPresetDescription(Config::RenderPreset preset) {
@@ -575,6 +582,112 @@ void ConfigPanel::SelectExampleDirectory(size_t directoryIndex) {
     }
 }
 
+void ConfigPanel::ResetManagedSceneBaseline() {
+    if (!p_config_ || !m_editorContext_) {
+        return;
+    }
+
+    MaterialManager& materialManager = m_editorContext_->GetMaterialManager();
+    materialManager.ResetBuiltInMaterials();
+    materialManager.SetCurrentMaterialIndex(static_cast<int>(ExampleSceneBaseline::MaterialType::PHONG_TEXTURE));
+
+    p_config_->renderer.enablePerspectiveCorrect = true;
+    p_config_->environment.showSkybox = false;
+    p_config_->environment.lightPosition = glm::vec3(0.0f, 0.0f, 5.0f);
+    p_config_->cull.backfaceCulling = false;
+    p_config_->cull.depthTest = true;
+    p_config_->gl.textureSampling = Config::GLTextureSampling::FILTERED_MIPS;
+
+    if (auto* camera = GetCamera()) {
+        camera->m_Type = CameraType::PERSPECTIVE;
+        camera->UpdateViewMatrix(p_config_->renderer.resolution);
+    }
+
+    if (std::shared_ptr<Scene> scene = GetScene()) {
+        scene->SetDefaultLightPosition(p_config_->environment.lightPosition);
+        m_editorContext_->GetSceneManager().NotifySceneMutated();
+    }
+}
+
+void ConfigPanel::ApplyManagedSceneBaselineForPath(const std::filesystem::path& scenePath) {
+    if (!p_config_ || !m_editorContext_ || !HasScene()) {
+        return;
+    }
+
+    ExampleSceneBaseline baseline{};
+    std::vector<std::string> warnings;
+    std::vector<std::filesystem::path> matchedFiles;
+    const bool hasBaseline = LoadExampleSceneBaselineForScene(scenePath, baseline, &warnings, &matchedFiles);
+
+    for (const std::string& warning : warnings) {
+        LOGW("Scene baseline warning: %s", warning.c_str());
+    }
+
+    if (!hasBaseline && !m_hasManagedSceneBaseline_) {
+        return;
+    }
+
+    ResetManagedSceneBaseline();
+    if (!hasBaseline) {
+        m_hasManagedSceneBaseline_ = false;
+        return;
+    }
+
+    MaterialManager& materialManager = m_editorContext_->GetMaterialManager();
+    if (baseline.materialType.has_value()) {
+        materialManager.SetCurrentMaterialIndex(static_cast<int>(*baseline.materialType));
+    }
+    if (baseline.showSkybox.has_value()) {
+        p_config_->environment.showSkybox = *baseline.showSkybox;
+    }
+    if (baseline.backfaceCulling.has_value()) {
+        p_config_->cull.backfaceCulling = *baseline.backfaceCulling;
+    }
+    if (baseline.perspectiveCorrect.has_value()) {
+        p_config_->renderer.enablePerspectiveCorrect = *baseline.perspectiveCorrect;
+    }
+    if (baseline.glTextureSampling.has_value()) {
+        p_config_->gl.textureSampling = *baseline.glTextureSampling;
+    }
+    if (baseline.lightPosition.has_value()) {
+        p_config_->environment.lightPosition = *baseline.lightPosition;
+    }
+
+    if (std::shared_ptr<Scene> scene = GetScene()) {
+        scene->SetDefaultLightPosition(p_config_->environment.lightPosition);
+        m_editorContext_->GetSceneManager().NotifySceneMutated();
+    }
+    if (auto* camera = GetCamera()) {
+        if (baseline.cameraType.has_value()) {
+            camera->m_Type = *baseline.cameraType;
+        }
+        camera->UpdateViewMatrix(p_config_->renderer.resolution);
+        if (std::shared_ptr<Scene> scene = GetScene()) {
+            scene->FrustumCull(*camera, p_config_->cull);
+        }
+    }
+
+    for (const std::filesystem::path& matchedFile : matchedFiles) {
+        LOGD("Applied scene baseline from %s", matchedFile.generic_string().c_str());
+    }
+    m_hasManagedSceneBaseline_ = baseline.HasOverrides();
+}
+
+void ConfigPanel::LoadSceneFromPath(const std::filesystem::path& scenePath) {
+    const std::filesystem::path resolvedPath = CanonicalizePathIfPossible(scenePath);
+    m_lastSceneDirectory_ = resolvedPath.parent_path();
+    DispatchImmediate(SceneLoadEvent{resolvedPath.string(), false});
+    if (HasScene()) {
+        ApplyManagedSceneBaselineForPath(resolvedPath);
+        if (auto* camera = GetCamera()) {
+            camera->UpdateViewMatrix(p_config_->renderer.resolution);
+            if (std::shared_ptr<Scene> scene = GetScene()) {
+                scene->FrustumCull(*camera, p_config_->cull);
+            }
+        }
+    }
+}
+
 void ConfigPanel::LoadSelectedExampleScene() {
     const auto& scenes = m_exampleSceneCatalog_.GetScenes();
     if (!m_selectedExampleSceneIndex_.has_value() || *m_selectedExampleSceneIndex_ >= scenes.size()) {
@@ -592,8 +705,7 @@ void ConfigPanel::LoadSelectedExampleScene() {
     }
 
     LOGD("Selected example file: %s", loadablePath->string().c_str());
-    m_lastSceneDirectory_ = loadablePath->parent_path();
-    DispatchImmediate(SceneLoadEvent{loadablePath->string(), HasScene()});
+    LoadSceneFromPath(*loadablePath);
     m_examplesStatusMessage_.clear();
 }
 
@@ -946,8 +1058,7 @@ void ConfigPanel::DisplayMainMenu() {
             request.filters.push_back(NativeFileDialog::FileDialogFilter{"OBJ scenes", {"*.obj"}});
             if (const auto scenePath = NativeFileDialog::ShowOpenFileDialog(request)) {
                 LOGD("Selected model file: %s", scenePath->string().c_str());
-                m_lastSceneDirectory_ = scenePath->parent_path();
-                DispatchImmediate(SceneLoadEvent{scenePath->string(), HasScene()});
+                LoadSceneFromPath(*scenePath);
             }
 #endif
         }
@@ -1156,6 +1267,11 @@ void ConfigPanel::DisplayRasterizerSettings() {
         auto& r = p_config_->gl.rasterizer;
         const char* polyItems[] = {"Point", "Wireframe (line)", "Fill triangles"};
         manualChange |= ImGui::Combo("Polygon mode", reinterpret_cast<int*>(&r.polygonMode), polyItems, IM_ARRAYSIZE(polyItems));
+        const char* textureSamplingItems[] = {"Filtered + mipmaps", "Retro nearest"};
+        manualChange |= ImGui::Combo("Texture sampling",
+                                     reinterpret_cast<int*>(&p_config_->gl.textureSampling),
+                                     textureSamplingItems,
+                                     IM_ARRAYSIZE(textureSamplingItems));
     }
 
     if (manualChange) {

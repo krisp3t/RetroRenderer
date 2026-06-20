@@ -142,6 +142,11 @@ struct Config {
         PINEDA
     };
 
+    enum class GLTextureSampling {
+        FILTERED_MIPS,
+        RETRO_NEAREST,
+    };
+
     struct SoftwareRasterizerSettings {
         float pointSize = 1.0f;
         float lineWidth = 1.0f;
@@ -163,6 +168,7 @@ struct Config {
 
     struct GLSpecifics {
         GLRasterizerSettings rasterizer;
+        GLTextureSampling textureSampling = GLTextureSampling::FILTERED_MIPS;
     };
 
     struct RetroStyleSettings {
@@ -286,6 +292,7 @@ struct Config {
         config.software.rasterizer.polygonMode = RasterizationPolygonMode::FILL;
         config.software.rasterizer.fillMode = RasterizationFillMode::SCANLINE;
         config.gl.rasterizer.polygonMode = RasterizationPolygonMode::FILL;
+        config.gl.textureSampling = GLTextureSampling::FILTERED_MIPS;
 
         switch (preset) {
         case RenderPreset::DEFAULT:

@@ -436,6 +436,8 @@ glm::vec3 ComputeLighting(const glm::vec3& worldPosition,
                           const SoftwareMaterialState& materialState,
                           const Config& cfg,
                           bool allowSpecular) {
+    constexpr float kLightLinearAttenuation = 0.09f;
+    constexpr float kLightQuadraticAttenuation = 0.032f;
     const float normalLengthSq = glm::dot(normal, normal);
     const glm::vec3 safeNormal = normalLengthSq > 1e-8f ? normal * glm::inversesqrt(normalLengthSq) : glm::vec3(0.0f, 0.0f, 1.0f);
     const glm::vec3 viewVector = viewPosition - worldPosition;
@@ -450,13 +452,16 @@ glm::vec3 ComputeLighting(const glm::vec3& worldPosition,
             return;
         }
 
+        const float lightDistance = std::sqrt(lightLengthSq);
+        const float attenuation =
+            1.0f / (1.0f + kLightLinearAttenuation * lightDistance + kLightQuadraticAttenuation * lightDistance * lightDistance);
         const glm::vec3 lightDir = lightVector * glm::inversesqrt(lightLengthSq);
         const float diff = std::max(glm::dot(safeNormal, lightDir), 0.0f);
-        lighting += diff * materialState.lightColor * intensity;
+        lighting += diff * materialState.lightColor * intensity * attenuation;
         if (allowSpecular && materialState.enablePhong && materialState.specularStrength > 0.0f && diff > 0.0f) {
             const glm::vec3 reflectDir = glm::reflect(-lightDir, safeNormal);
             const float spec = std::pow(std::max(glm::dot(viewDir, reflectDir), 0.0f), std::max(materialState.shininess, 1.0f));
-            lighting += materialState.specularStrength * spec * materialState.lightColor * intensity;
+            lighting += materialState.specularStrength * spec * materialState.lightColor * intensity * attenuation;
         }
     };
 

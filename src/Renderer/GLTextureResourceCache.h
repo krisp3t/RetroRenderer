@@ -1,8 +1,10 @@
 #pragma once
 
+#include "../Base/Config.h"
 #include "../Scene/Texture.h"
 #include "../include/kris_glheaders.h"
 #include <KrisLogger/Logger.h>
+#include <cstddef>
 #include <cstdint>
 #include <unordered_map>
 
@@ -15,12 +17,13 @@ class GLTextureResourceCache {
     GLTextureResourceCache(const GLTextureResourceCache&) = delete;
     GLTextureResourceCache& operator=(const GLTextureResourceCache&) = delete;
 
-    GLuint GetOrCreate(const Texture& texture) {
+    GLuint GetOrCreate(const Texture& texture, Config::GLTextureSampling sampling) {
         if (!texture.HasCpuPixels()) {
             return 0;
         }
 
-        auto it = m_Resources.find(&texture);
+        const TextureCacheKey key{&texture, sampling};
+        auto it = m_Resources.find(key);
         if (it != m_Resources.end()) {
             if (it->second.revision == texture.GetRevision()) {
                 return it->second.textureId;
@@ -34,8 +37,16 @@ class GLTextureResourceCache {
         glBindTexture(GL_TEXTURE_2D, textureId);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        switch (sampling) {
+        case Config::GLTextureSampling::FILTERED_MIPS:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            break;
+        case Config::GLTextureSampling::RETRO_NEAREST:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            break;
+        }
         glTexImage2D(
             GL_TEXTURE_2D,
             0,
@@ -46,10 +57,12 @@ class GLTextureResourceCache {
             GL_RGBA,
             GL_UNSIGNED_BYTE,
             texture.GetPixels().data());
-        glGenerateMipmap(GL_TEXTURE_2D);
+        if (sampling == Config::GLTextureSampling::FILTERED_MIPS) {
+            glGenerateMipmap(GL_TEXTURE_2D);
+        }
         glBindTexture(GL_TEXTURE_2D, 0);
 
-        m_Resources.emplace(&texture, TextureGpuResource{textureId, texture.GetRevision()});
+        m_Resources.emplace(key, TextureGpuResource{textureId, texture.GetRevision()});
         LOGD("Created GL texture resource: %d x %d", texture.GetWidth(), texture.GetHeight());
         return textureId;
     }
@@ -62,6 +75,23 @@ class GLTextureResourceCache {
     }
 
   private:
+    struct TextureCacheKey {
+        const Texture* texture = nullptr;
+        Config::GLTextureSampling sampling = Config::GLTextureSampling::FILTERED_MIPS;
+
+        bool operator==(const TextureCacheKey& other) const {
+            return texture == other.texture && sampling == other.sampling;
+        }
+    };
+
+    struct TextureCacheKeyHash {
+        size_t operator()(const TextureCacheKey& key) const {
+            const size_t textureHash = std::hash<const Texture*>{}(key.texture);
+            const size_t samplingHash = std::hash<int>{}(static_cast<int>(key.sampling));
+            return textureHash ^ (samplingHash << 1);
+        }
+    };
+
     struct TextureGpuResource {
         GLuint textureId = 0;
         uint64_t revision = 0;
@@ -74,7 +104,7 @@ class GLTextureResourceCache {
         }
     }
 
-    std::unordered_map<const Texture*, TextureGpuResource> m_Resources;
+    std::unordered_map<TextureCacheKey, TextureGpuResource, TextureCacheKeyHash> m_Resources;
 };
 
 } // namespace RetroRenderer

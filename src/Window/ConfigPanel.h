@@ -61,6 +61,7 @@ class ConfigPanel {
     std::string m_examplesStatusMessage_;
     bool m_showExamplesWindow_ = false;
     bool m_examplesAutoOpened_ = false;
+    bool m_hasManagedSceneBaseline_ = false;
 
     void StyleColorsEnemymouse();
     void DisplayGUI();
@@ -83,11 +84,14 @@ class ConfigPanel {
     void ApplyRendererPreset(Config::RenderPreset preset);
     void MarkRendererPresetCustom();
     void DrawExampleDirectoryNode(size_t directoryIndex);
+    void ApplyManagedSceneBaselineForPath(const std::filesystem::path& scenePath);
     void LoadSelectedExampleScene();
+    void LoadSceneFromPath(const std::filesystem::path& scenePath);
     void OpenExamplesWindow();
     void OpenWebFilePicker();
     void OpenAndroidFilePicker();
     void RefreshExamplesCatalog();
+    void ResetManagedSceneBaseline();
     void SelectExampleDirectory(size_t directoryIndex);
     void DispatchImmediate(const Event& event) const;
     [[nodiscard]] Camera* GetCamera() const;

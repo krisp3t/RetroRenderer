@@ -49,6 +49,17 @@ Vertex MakeVertex(float x, float y, float z) {
     return vertex;
 }
 
+RasterVertex MakeLitRasterVertex(float x, float y, float ndcZ, float worldZ) {
+    RasterVertex vertex{};
+    vertex.position = glm::vec3(x, y, ndcZ);
+    vertex.cullPosition = glm::vec3(x, -y, ndcZ);
+    vertex.worldPosition = glm::vec3(x, y, worldZ);
+    vertex.normal = glm::vec3(0.0f, 0.0f, 1.0f);
+    vertex.color = glm::vec3(1.0f);
+    vertex.clipW = 1.0f;
+    return vertex;
+}
+
 std::array<Vertex, 3> MakeLargeTriangle(float ndcZ) {
     return {MakeVertex(-0.8f, -0.8f, ndcZ), MakeVertex(0.8f, -0.8f, ndcZ), MakeVertex(0.0f, 0.8f, ndcZ)};
 }
@@ -68,6 +79,10 @@ Config MakeLineConfig(Config::RasterizationLineMode lineMode) {
     config.cull.rasterClip = true;
     config.software.rasterizer.lineMode = lineMode;
     return config;
+}
+
+int PixelLuminance(const Pixel& pixel) {
+    return static_cast<int>(pixel.r) + static_cast<int>(pixel.g) + static_cast<int>(pixel.b);
 }
 
 } // namespace
@@ -386,6 +401,47 @@ TEST_CASE("Disabling depth test makes later triangle overwrite overlap", "[raste
     for (size_t index : overlapIndices) {
         REQUIRE(PixelsEqual(combined.data[index], farColor));
     }
+}
+
+TEST_CASE("Point light attenuation darkens identical surfaces with distance", "[rasterizer][lighting]") {
+    const auto renderAtDepth = [](float worldZ) {
+        Buffer<Pixel> framebuffer(32, 32);
+        Buffer<float> depthBuffer(32, 32);
+        framebuffer.Clear(Pixel{0, 0, 0, 0});
+        depthBuffer.Clear(1.0f);
+
+        Config config = MakeBarycentricFillConfig();
+        config.cull.depthTest = false;
+        config.environment.lightPosition = glm::vec3(0.0f, 0.0f, 5.0f);
+
+        SoftwareMaterialState materialState{};
+        materialState.lightColor = glm::vec3(1.0f);
+        materialState.ambientStrength = 0.0f;
+        materialState.specularStrength = 0.0f;
+        materialState.enablePhong = true;
+        materialState.useVertexColor = true;
+
+        std::array<RasterVertex, 3> triangle = {
+            MakeLitRasterVertex(-0.6f, -0.5f, 0.0f, worldZ),
+            MakeLitRasterVertex(0.0f, 0.6f, 0.0f, worldZ),
+            MakeLitRasterVertex(0.6f, -0.5f, 0.0f, worldZ),
+        };
+        const std::vector<LightSnapshot> noLights;
+        Rasterizer::DrawTriangle(
+            framebuffer, depthBuffer, triangle, config, noLights, materialState, glm::vec3(0.0f, 0.0f, 3.0f), nullptr);
+        const size_t centerIndex = (framebuffer.height / 2) * framebuffer.width + (framebuffer.width / 2);
+        return framebuffer.data[centerIndex];
+    };
+
+    const Pixel nearPixel = renderAtDepth(0.0f);
+    const Pixel midPixel = renderAtDepth(-5.0f);
+    const Pixel farPixel = renderAtDepth(-10.0f);
+
+    REQUIRE(nearPixel.a == 255);
+    REQUIRE(midPixel.a == 255);
+    REQUIRE(farPixel.a == 255);
+    REQUIRE(PixelLuminance(nearPixel) > PixelLuminance(midPixel));
+    REQUIRE(PixelLuminance(midPixel) > PixelLuminance(farPixel));
 }
 
 } // namespace RetroRenderer

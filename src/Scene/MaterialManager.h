@@ -64,6 +64,7 @@ class MaterialManager {
     void LoadTexture(const std::string& path);
     void LoadTexture(const uint8_t* data, const size_t size);
     void ClearTexture();
+    void ResetBuiltInMaterials();
     void LoadDefaultShaders();
     [[nodiscard]] int GetCurrentMaterialIndex() const {
         return m_CurrentMaterialIndex;

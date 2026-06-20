@@ -329,7 +329,8 @@ void GLBackendRendererBase::DrawMeshGpuResources(const GLMeshResourceCache::Mesh
         }
     }
 
-    const GLuint gpuTexture = texture != nullptr ? m_TextureResources.GetOrCreate(*texture) : 0;
+    const GLuint gpuTexture =
+        texture != nullptr ? m_TextureResources.GetOrCreate(*texture, configSnapshot.gl.textureSampling) : 0;
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, gpuTexture != 0 ? gpuTexture : m_FallbackTexture);
     if (uniforms.texture >= 0) {
@@ -350,13 +351,26 @@ void GLBackendRendererBase::BeforeFrame(const Color& clearColor) {
     glViewport(0, 0, m_FrameWidth, m_FrameHeight);
     glClearColor(c.x, c.y, c.z, c.w);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
+    if (m_FrameConfigSnapshot.cull.depthTest) {
+        glEnable(GL_DEPTH_TEST);
+    } else {
+        glDisable(GL_DEPTH_TEST);
+    }
+    if (m_FrameConfigSnapshot.cull.backfaceCulling) {
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        glFrontFace(GL_CCW);
+    } else {
+        glDisable(GL_CULL_FACE);
+    }
 
     ApplyBackendFrameState();
 }
 
 void GLBackendRendererBase::EndFrame() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
     ResetBackendFrameState();
 }
 

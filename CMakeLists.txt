@@ -350,6 +350,7 @@ else()
     add_executable(${PROJECT_NAME} ${SOURCES} ${RENDERER_BACKENDS} ${RETRO_PLATFORM_SOURCES})
     retro_copy_windows_sanitizer_runtime(${PROJECT_NAME})
 endif()
+target_sources(${PROJECT_NAME} PRIVATE src/Base/ExampleSceneBaseline.cpp)
 
 # -----------------------------------------------------------------------------
 # C/C++ standards & warnings
