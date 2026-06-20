@@ -32,7 +32,6 @@ static constexpr const char* EventTypeToString(EventType type) {
 
 struct Event {
     EventType type;
-    bool handled = false;
 };
 
 struct OutputImageResizeEvent : public Event {
@@ -66,7 +65,6 @@ struct TextureLoadEvent : public Event {
 
 struct SceneLoadEvent : public Event {
     std::string scenePath;
-    const uint8_t* sceneData = nullptr;
     std::vector<uint8_t> sceneDataBuffer;
     size_t sceneDataSize = 0;
     bool loadFromMemory = false;
@@ -81,14 +79,6 @@ struct SceneLoadEvent : public Event {
     SceneLoadEvent(std::vector<uint8_t> buffer, size_t size, bool append = false) {
         type = EventType::Scene_Load;
         sceneDataBuffer = buffer;
-        sceneDataSize = size;
-        loadFromMemory = true;
-        appendToCurrentScene = append;
-    }
-    SceneLoadEvent(const uint8_t* data, size_t size, bool append = false) {
-        // TODO: implement
-        type = EventType::Scene_Load;
-        sceneData = data;
         sceneDataSize = size;
         loadFromMemory = true;
         appendToCurrentScene = append;

@@ -7,10 +7,6 @@
 #include <limits>
 
 namespace RetroRenderer {
-Model::Model() {
-    m_Meshes = std::vector<Mesh>();
-}
-
 void Model::Init(Scene* scene, const std::string& name, const glm::mat4& localMatrix) {
     p_Scene = scene;
     m_Name = name;

@@ -14,7 +14,7 @@ class Scene;
 
 class Model {
   public:
-    Model();
+    Model() = default;
     ~Model() = default;
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
