@@ -7,10 +7,12 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -22,12 +24,19 @@
 
 namespace RetroRenderer {
 namespace {
+
 struct FaceVertexRef {
     int positionIndex = -1;
     int texCoordIndex = -1;
     int normalIndex = -1;
     bool hasTexCoord = false;
     bool hasNormal = false;
+};
+
+struct ObjPosition {
+    glm::vec3 position = glm::vec3(0.0f);
+    glm::vec3 color = glm::vec3(1.0f);
+    bool hasColor = false;
 };
 
 std::string_view Trim(std::string_view value) {
@@ -48,7 +57,7 @@ bool ParseInteger(std::string_view token, int& outValue) {
     }
     const char* begin = token.data();
     const char* end = token.data() + token.size();
-    auto [ptr, ec] = std::from_chars(begin, end, outValue);
+    const auto [ptr, ec] = std::from_chars(begin, end, outValue);
     return ec == std::errc{} && ptr == end;
 }
 
@@ -71,11 +80,14 @@ bool ParseFaceVertexToken(std::string_view token,
                           size_t normalCount,
                           FaceVertexRef& outRef) {
     const size_t firstSlash = token.find('/');
-    const size_t secondSlash = firstSlash == std::string_view::npos ? std::string_view::npos : token.find('/', firstSlash + 1);
+    const size_t secondSlash =
+        firstSlash == std::string_view::npos ? std::string_view::npos : token.find('/', firstSlash + 1);
 
-    const std::string_view positionPart = firstSlash == std::string_view::npos ? token : token.substr(0, firstSlash);
+    const std::string_view positionPart =
+        firstSlash == std::string_view::npos ? token : token.substr(0, firstSlash);
     int rawPosition = 0;
-    if (!ParseInteger(positionPart, rawPosition) || !ResolveObjIndex(rawPosition, positionCount, outRef.positionIndex)) {
+    if (!ParseInteger(positionPart, rawPosition) ||
+        !ResolveObjIndex(rawPosition, positionCount, outRef.positionIndex)) {
         return false;
     }
 
@@ -83,11 +95,13 @@ bool ParseFaceVertexToken(std::string_view token,
         return true;
     }
 
-    const std::string_view texCoordPart =
-        secondSlash == std::string_view::npos ? token.substr(firstSlash + 1) : token.substr(firstSlash + 1, secondSlash - firstSlash - 1);
+    const std::string_view texCoordPart = secondSlash == std::string_view::npos
+                                              ? token.substr(firstSlash + 1)
+                                              : token.substr(firstSlash + 1, secondSlash - firstSlash - 1);
     if (!texCoordPart.empty()) {
         int rawTexCoord = 0;
-        if (!ParseInteger(texCoordPart, rawTexCoord) || !ResolveObjIndex(rawTexCoord, texCoordCount, outRef.texCoordIndex)) {
+        if (!ParseInteger(texCoordPart, rawTexCoord) ||
+            !ResolveObjIndex(rawTexCoord, texCoordCount, outRef.texCoordIndex)) {
             return false;
         }
         outRef.hasTexCoord = true;
@@ -97,11 +111,11 @@ bool ParseFaceVertexToken(std::string_view token,
         return true;
     }
 
-
     const std::string_view normalPart = token.substr(secondSlash + 1);
     if (!normalPart.empty()) {
         int rawNormal = 0;
-        if (!ParseInteger(normalPart, rawNormal) || !ResolveObjIndex(rawNormal, normalCount, outRef.normalIndex)) {
+        if (!ParseInteger(normalPart, rawNormal) ||
+            !ResolveObjIndex(rawNormal, normalCount, outRef.normalIndex)) {
             return false;
         }
         outRef.hasNormal = true;
@@ -110,15 +124,15 @@ bool ParseFaceVertexToken(std::string_view token,
     return true;
 }
 
-glm::vec3 ComputeFaceNormal(const std::vector<FaceVertexRef>& faceRefs, const std::vector<glm::vec3>& positions) {
+glm::vec3 ComputeFaceNormal(const std::vector<FaceVertexRef>& faceRefs, const std::vector<ObjPosition>& positions) {
     glm::vec3 faceNormal(0.0f);
     if (faceRefs.size() < 3) {
         return glm::vec3(0.0f, 1.0f, 0.0f);
     }
 
     for (size_t i = 0; i < faceRefs.size(); i++) {
-        const glm::vec3& current = positions[faceRefs[i].positionIndex];
-        const glm::vec3& next = positions[faceRefs[(i + 1) % faceRefs.size()].positionIndex];
+        const glm::vec3& current = positions[faceRefs[i].positionIndex].position;
+        const glm::vec3& next = positions[faceRefs[(i + 1) % faceRefs.size()].positionIndex].position;
         faceNormal.x += (current.y - next.y) * (current.z + next.z);
         faceNormal.y += (current.z - next.z) * (current.x + next.x);
         faceNormal.z += (current.x - next.x) * (current.y + next.y);
@@ -131,17 +145,143 @@ glm::vec3 ComputeFaceNormal(const std::vector<FaceVertexRef>& faceRefs, const st
     return glm::vec3(0.0f, 1.0f, 0.0f);
 }
 
-bool ParseObjText(std::string_view sourceText, std::string_view rootNodeName, ImportedSceneData& outSceneData) {
-    std::vector<glm::vec3> positions;
+std::string ReadTextFile(const std::filesystem::path& path) {
+#ifdef __ANDROID__
+    AAsset* asset = AAssetManager_open(g_assetManager, path.generic_string().c_str(), AASSET_MODE_BUFFER);
+    if (!asset) {
+        return {};
+    }
+    const size_t fileSize = AAsset_getLength(asset);
+    std::string source(fileSize, '\0');
+    AAsset_read(asset, source.data(), fileSize);
+    AAsset_close(asset);
+    return source;
+#else
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        return {};
+    }
+    return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+#endif
+}
+
+bool ParseMaterialLibrary(const std::filesystem::path& path,
+                          ImportedSceneData& outSceneData,
+                          std::unordered_map<std::string, int>& materialLookup) {
+    const std::string source = ReadTextFile(path);
+    if (source.empty()) {
+        LOGW("OBJ importer: failed to open material library '%s'", path.string().c_str());
+        return false;
+    }
+
+    int currentMaterialIndex = -1;
+    size_t cursor = 0;
+    size_t lineNumber = 0;
+    while (cursor <= source.size()) {
+        const size_t lineEnd = source.find('\n', cursor);
+        std::string_view line =
+            lineEnd == std::string_view::npos ? std::string_view(source).substr(cursor)
+                                              : std::string_view(source).substr(cursor, lineEnd - cursor);
+        cursor = lineEnd == std::string_view::npos ? source.size() + 1 : lineEnd + 1;
+        lineNumber++;
+
+        if (!line.empty() && line.back() == '\r') {
+            line.remove_suffix(1);
+        }
+        const size_t commentPos = line.find('#');
+        if (commentPos != std::string_view::npos) {
+            line = line.substr(0, commentPos);
+        }
+        line = Trim(line);
+        if (line.empty()) {
+            continue;
+        }
+
+        const size_t separator = line.find_first_of(" \t");
+        const std::string_view keyword = separator == std::string_view::npos ? line : line.substr(0, separator);
+        const std::string_view payload =
+            separator == std::string_view::npos ? std::string_view{} : Trim(line.substr(separator + 1));
+
+        if (keyword == "newmtl") {
+            ImportedMaterial material{};
+            currentMaterialIndex = static_cast<int>(outSceneData.materials.size());
+            materialLookup[std::string(payload)] = currentMaterialIndex;
+            outSceneData.materials.push_back(std::move(material));
+            continue;
+        }
+
+        if (currentMaterialIndex < 0 || currentMaterialIndex >= static_cast<int>(outSceneData.materials.size())) {
+            continue;
+        }
+
+        ImportedMaterial& material = outSceneData.materials[static_cast<size_t>(currentMaterialIndex)];
+        if (keyword == "Kd") {
+            std::istringstream stream{std::string(payload)};
+            if (!(stream >> material.diffuseColor.r >> material.diffuseColor.g >> material.diffuseColor.b)) {
+                LOGW("OBJ importer: invalid material diffuse color at line %zu", lineNumber);
+            }
+        } else if (keyword == "Ks") {
+            std::istringstream stream{std::string(payload)};
+            if (!(stream >> material.specularColor.r >> material.specularColor.g >> material.specularColor.b)) {
+                LOGW("OBJ importer: invalid material specular color at line %zu", lineNumber);
+            }
+        } else if (keyword == "map_Kd") {
+            material.diffuseTexturePath = std::string(payload);
+        }
+    }
+
+    return true;
+}
+
+int BeginObjectNode(ImportedSceneData& outSceneData, std::string_view objectName) {
+    ImportedNode node{};
+    node.name = objectName.empty() ? "Imported OBJ object" : std::string(objectName);
+    const int nodeIndex = static_cast<int>(outSceneData.nodes.size());
+    outSceneData.nodes.push_back(std::move(node));
+    outSceneData.nodes[static_cast<size_t>(outSceneData.rootNodeIndex)].childNodeIndices.push_back(nodeIndex);
+    return nodeIndex;
+}
+
+void FlushCurrentMesh(ImportedSceneData& outSceneData,
+                      ImportedMesh& currentMesh,
+                      const std::optional<int>& currentMaterialIndex,
+                      int currentNodeIndex) {
+    if (currentMesh.vertices.empty() || currentMesh.indices.empty()) {
+        return;
+    }
+
+    currentMesh.materialIndex = currentMaterialIndex;
+    const int meshIndex = static_cast<int>(outSceneData.meshes.size());
+    outSceneData.meshes.push_back(std::move(currentMesh));
+    outSceneData.nodes[static_cast<size_t>(currentNodeIndex)].meshIndices.push_back(meshIndex);
+    currentMesh = ImportedMesh{};
+}
+
+bool ParseObjText(std::string_view sourceText,
+                  std::string_view rootNodeName,
+                  const std::filesystem::path& sourcePath,
+                  ImportedSceneData& outSceneData) {
+    std::vector<ObjPosition> positions;
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> texCoords;
-    ImportedMesh mesh{};
+    ImportedMesh currentMesh{};
+    std::optional<int> currentMaterialIndex;
+    std::unordered_map<std::string, int> materialLookup;
 
+    outSceneData = ImportedSceneData{};
+    outSceneData.rootNodeIndex = 0;
+    outSceneData.sourceDirectory = sourcePath.empty() ? "" : sourcePath.parent_path().string();
+    ImportedNode rootNode{};
+    rootNode.name = rootNodeName.empty() ? "Imported OBJ" : std::string(rootNodeName);
+    outSceneData.nodes.push_back(std::move(rootNode));
+
+    int currentNodeIndex = 0;
     size_t cursor = 0;
     size_t lineNumber = 0;
     while (cursor <= sourceText.size()) {
         const size_t lineEnd = sourceText.find('\n', cursor);
-        std::string_view line = lineEnd == std::string_view::npos ? sourceText.substr(cursor) : sourceText.substr(cursor, lineEnd - cursor);
+        std::string_view line =
+            lineEnd == std::string_view::npos ? sourceText.substr(cursor) : sourceText.substr(cursor, lineEnd - cursor);
         cursor = lineEnd == std::string_view::npos ? sourceText.size() + 1 : lineEnd + 1;
         lineNumber++;
 
@@ -159,43 +299,73 @@ bool ParseObjText(std::string_view sourceText, std::string_view rootNodeName, Im
 
         const size_t separator = line.find_first_of(" \t");
         const std::string_view keyword = separator == std::string_view::npos ? line : line.substr(0, separator);
-        const std::string_view payload = separator == std::string_view::npos ? std::string_view{} : Trim(line.substr(separator + 1));
+        const std::string_view payload =
+            separator == std::string_view::npos ? std::string_view{} : Trim(line.substr(separator + 1));
+
+        if (keyword == "mtllib") {
+            if (sourcePath.empty()) {
+                continue;
+            }
+            ParseMaterialLibrary(sourcePath.parent_path() / std::string(payload), outSceneData, materialLookup);
+            continue;
+        }
+
+        if (keyword == "usemtl") {
+            const auto it = materialLookup.find(std::string(payload));
+            const std::optional<int> nextMaterialIndex =
+                it == materialLookup.end() ? std::nullopt : std::optional<int>(it->second);
+            if (currentMaterialIndex != nextMaterialIndex) {
+                FlushCurrentMesh(outSceneData, currentMesh, currentMaterialIndex, currentNodeIndex);
+                currentMaterialIndex = nextMaterialIndex;
+            }
+            if (it == materialLookup.end() && !payload.empty()) {
+                LOGW("OBJ importer: unknown material '%s' at line %zu", std::string(payload).c_str(), lineNumber);
+            }
+            continue;
+        }
+
+        if (keyword == "o" || keyword == "g") {
+            if (payload.empty()) {
+                continue;
+            }
+            FlushCurrentMesh(outSceneData, currentMesh, currentMaterialIndex, currentNodeIndex);
+            currentNodeIndex = BeginObjectNode(outSceneData, payload);
+            continue;
+        }
 
         if (keyword == "v") {
             std::istringstream stream{std::string(payload)};
-            float x = 0.0f;
-            float y = 0.0f;
-            float z = 0.0f;
-            if (!(stream >> x >> y >> z)) {
+            ObjPosition vertex{};
+            if (!(stream >> vertex.position.x >> vertex.position.y >> vertex.position.z)) {
                 LOGW("OBJ importer: invalid vertex position at line %zu", lineNumber);
                 continue;
             }
-            positions.emplace_back(x, y, z);
+            if (stream >> vertex.color.r >> vertex.color.g >> vertex.color.b) {
+                vertex.hasColor = true;
+            }
+            positions.push_back(vertex);
             continue;
         }
 
         if (keyword == "vn") {
             std::istringstream stream{std::string(payload)};
-            float x = 0.0f;
-            float y = 0.0f;
-            float z = 0.0f;
-            if (!(stream >> x >> y >> z)) {
+            glm::vec3 normal(0.0f);
+            if (!(stream >> normal.x >> normal.y >> normal.z)) {
                 LOGW("OBJ importer: invalid normal at line %zu", lineNumber);
                 continue;
             }
-            normals.emplace_back(x, y, z);
+            normals.push_back(normal);
             continue;
         }
 
         if (keyword == "vt") {
             std::istringstream stream{std::string(payload)};
-            float u = 0.0f;
-            float v = 0.0f;
-            if (!(stream >> u >> v)) {
+            glm::vec2 texCoord(0.0f);
+            if (!(stream >> texCoord.x >> texCoord.y)) {
                 LOGW("OBJ importer: invalid texcoord at line %zu", lineNumber);
                 continue;
             }
-            texCoords.emplace_back(u, v);
+            texCoords.push_back(texCoord);
             continue;
         }
 
@@ -229,32 +399,27 @@ bool ParseObjText(std::string_view sourceText, std::string_view rootNodeName, Im
             const FaceVertexRef triRefs[3] = {faceRefs[0], faceRefs[i], faceRefs[i + 1]};
             for (const FaceVertexRef& ref : triRefs) {
                 Vertex vertex{};
-                vertex.position = glm::vec4(positions[ref.positionIndex], 1.0f);
-                vertex.texCoords = ref.hasTexCoord ? texCoords[ref.texCoordIndex] : glm::vec2(0.0f, 0.0f);
-                vertex.normal = ref.hasNormal ? normals[ref.normalIndex] : computedFaceNormal;
-                vertex.color = glm::vec3(1.0f);
+                const ObjPosition& sourcePosition = positions[static_cast<size_t>(ref.positionIndex)];
+                vertex.position = glm::vec4(sourcePosition.position, 1.0f);
+                vertex.texCoords = ref.hasTexCoord ? texCoords[static_cast<size_t>(ref.texCoordIndex)] : glm::vec2(0.0f);
+                vertex.normal = ref.hasNormal ? normals[static_cast<size_t>(ref.normalIndex)] : computedFaceNormal;
+                vertex.color = sourcePosition.hasColor ? sourcePosition.color : glm::vec3(1.0f);
 
-                mesh.indices.push_back(static_cast<unsigned int>(mesh.vertices.size()));
-                mesh.vertices.push_back(vertex);
+                currentMesh.indices.push_back(static_cast<unsigned int>(currentMesh.vertices.size()));
+                currentMesh.vertices.push_back(vertex);
             }
         }
     }
 
-    if (mesh.vertices.empty() || mesh.indices.empty()) {
+    FlushCurrentMesh(outSceneData, currentMesh, currentMaterialIndex, currentNodeIndex);
+
+    if (outSceneData.meshes.empty()) {
         LOGE("OBJ importer: no renderable triangles found");
         return false;
     }
-
-    ImportedNode rootNode{};
-    rootNode.name = rootNodeName.empty() ? "Imported OBJ" : std::string(rootNodeName);
-    rootNode.meshIndices.push_back(0);
-
-    outSceneData = ImportedSceneData{};
-    outSceneData.meshes.push_back(std::move(mesh));
-    outSceneData.nodes.push_back(std::move(rootNode));
-    outSceneData.rootNodeIndex = 0;
     return true;
 }
+
 } // namespace
 
 bool LightweightObjSceneImporter::LoadFromMemory(const uint8_t* data, size_t size, ImportedSceneData& outSceneData) {
@@ -263,31 +428,18 @@ bool LightweightObjSceneImporter::LoadFromMemory(const uint8_t* data, size_t siz
         return false;
     }
     const std::string_view source(reinterpret_cast<const char*>(data), size);
-    return ParseObjText(source, "Imported OBJ", outSceneData);
+    return ParseObjText(source, "Imported OBJ", {}, outSceneData);
 }
 
 bool LightweightObjSceneImporter::LoadFromFile(const std::string& path, ImportedSceneData& outSceneData) {
-    const std::string rootNodeName = std::filesystem::path(path).filename().string();
-#ifdef __ANDROID__
-    AAsset* asset = AAssetManager_open(g_assetManager, path.c_str(), AASSET_MODE_BUFFER);
-    if (!asset) {
-        LOGE("OBJ importer: failed to open asset '%s'", path.c_str());
-        return false;
-    }
-    const size_t fileSize = AAsset_getLength(asset);
-    std::string source(fileSize, '\0');
-    AAsset_read(asset, source.data(), fileSize);
-    AAsset_close(asset);
-    return ParseObjText(source, rootNodeName, outSceneData);
-#else
-    std::ifstream file(path, std::ios::binary);
-    if (!file.is_open()) {
+    const std::filesystem::path sourcePath(path);
+    const std::string rootNodeName = sourcePath.filename().string();
+    const std::string source = ReadTextFile(sourcePath);
+    if (source.empty()) {
         LOGE("OBJ importer: failed to open file '%s'", path.c_str());
         return false;
     }
-    std::string source((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    return ParseObjText(source, rootNodeName, outSceneData);
-#endif
+    return ParseObjText(source, rootNodeName, sourcePath, outSceneData);
 }
 
 } // namespace RetroRenderer

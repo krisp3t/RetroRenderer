@@ -49,7 +49,7 @@ TEST_CASE("Example scene catalog discovers scenes recursively in sorted order", 
     WriteFile(tempDirectory.path() / "alpha/scene-a.obj", "dummy");
     WriteFile(tempDirectory.path() / "root.obj", "dummy");
 
-    ExampleSceneCatalog catalog(tempDirectory.path());
+    ExampleSceneCatalog catalog(tempDirectory.path(), {});
     REQUIRE(catalog.Refresh());
     REQUIRE(catalog.RootExists());
 

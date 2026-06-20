@@ -6,6 +6,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <string>
 
 namespace RetroRenderer {
@@ -13,6 +15,15 @@ namespace {
 bool LoadObjText(const std::string& objText, ImportedSceneData& outSceneData) {
     LightweightObjSceneImporter importer;
     return importer.LoadFromMemory(reinterpret_cast<const uint8_t*>(objText.data()), objText.size(), outSceneData);
+}
+
+std::filesystem::path MakeTempDir(const char* name) {
+    const std::filesystem::path dir =
+        std::filesystem::temp_directory_path() / "retrorenderer_obj_importer_tests" / name;
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+    std::filesystem::create_directories(dir, ec);
+    return dir;
 }
 } // namespace
 
@@ -180,6 +191,104 @@ TEST_CASE("OBJ importer returns false on invalid references when no valid faces 
 
     ImportedSceneData sceneData{};
     REQUIRE_FALSE(LoadObjText(objText, sceneData));
+}
+
+TEST_CASE("OBJ importer preserves optional vertex colors", "[importer][obj]") {
+    const std::string objText =
+        "v 0 0 0 1 0 0\n"
+        "v 1 0 0 0 1 0\n"
+        "v 0 1 0 0 0 1\n"
+        "f 1 2 3\n";
+
+    ImportedSceneData sceneData{};
+    REQUIRE(LoadObjText(objText, sceneData));
+    REQUIRE(sceneData.meshes.size() == 1);
+
+    const ImportedMesh& mesh = sceneData.meshes[0];
+    REQUIRE(mesh.vertices.size() == 3);
+    REQUIRE(mesh.vertices[0].color.r == Catch::Approx(1.0f));
+    REQUIRE(mesh.vertices[0].color.g == Catch::Approx(0.0f));
+    REQUIRE(mesh.vertices[1].color.g == Catch::Approx(1.0f));
+    REQUIRE(mesh.vertices[2].color.b == Catch::Approx(1.0f));
+}
+
+TEST_CASE("OBJ importer loads material libraries and splits meshes on usemtl", "[importer][obj]") {
+    const std::filesystem::path tempDir = MakeTempDir("materials");
+    const std::filesystem::path objPath = tempDir / "scene.obj";
+    const std::filesystem::path mtlPath = tempDir / "scene.mtl";
+
+    {
+        std::ofstream objFile(objPath);
+        REQUIRE(objFile.is_open());
+        objFile << "mtllib scene.mtl\n"
+                   "v -1 -1 0\n"
+                   "v  0 -1 0\n"
+                   "v  0  1 0\n"
+                   "v -1  1 0\n"
+                   "v  0 -1 0\n"
+                   "v  1 -1 0\n"
+                   "v  1  1 0\n"
+                   "v  0  1 0\n"
+                   "vt 0 0\n"
+                   "vt 1 0\n"
+                   "vt 1 1\n"
+                   "vt 0 1\n"
+                   "usemtl left\n"
+                   "f 1/1 2/2 3/3 4/4\n"
+                   "usemtl right\n"
+                   "f 5/1 6/2 7/3 8/4\n";
+    }
+
+    {
+        std::ofstream mtlFile(mtlPath);
+        REQUIRE(mtlFile.is_open());
+        mtlFile << "newmtl left\n"
+                   "Kd 1.0 0.0 0.0\n"
+                   "map_Kd left.bmp\n"
+                   "\n"
+                   "newmtl right\n"
+                   "Kd 0.0 1.0 0.0\n"
+                   "map_Kd right.bmp\n";
+    }
+
+    LightweightObjSceneImporter importer;
+    ImportedSceneData sceneData{};
+    REQUIRE(importer.LoadFromFile(objPath.string(), sceneData));
+
+    REQUIRE(sceneData.materials.size() == 2);
+    REQUIRE(sceneData.materials[0].diffuseTexturePath == "left.bmp");
+    REQUIRE(sceneData.materials[1].diffuseTexturePath == "right.bmp");
+    REQUIRE(sceneData.meshes.size() == 2);
+    REQUIRE(sceneData.meshes[0].materialIndex.has_value());
+    REQUIRE(sceneData.meshes[0].materialIndex.value() == 0);
+    REQUIRE(sceneData.meshes[1].materialIndex.has_value());
+    REQUIRE(sceneData.meshes[1].materialIndex.value() == 1);
+    REQUIRE(sceneData.sourceDirectory == tempDir.string());
+}
+
+TEST_CASE("OBJ importer creates child nodes for named objects", "[importer][obj]") {
+    const std::string objText =
+        "o left\n"
+        "v -1 0 0\n"
+        "v  0 0 0\n"
+        "v -1 1 0\n"
+        "f 1 2 3\n"
+        "o right\n"
+        "v 0 0 0\n"
+        "v 1 0 0\n"
+        "v 1 1 0\n"
+        "f 4 5 6\n";
+
+    ImportedSceneData sceneData{};
+    REQUIRE(LoadObjText(objText, sceneData));
+
+    REQUIRE(sceneData.rootNodeIndex == 0);
+    REQUIRE(sceneData.nodes.size() == 3);
+    REQUIRE(sceneData.nodes[0].childNodeIndices.size() == 2);
+    REQUIRE(sceneData.nodes[1].name == "left");
+    REQUIRE(sceneData.nodes[2].name == "right");
+    REQUIRE(sceneData.nodes[1].meshIndices.size() == 1);
+    REQUIRE(sceneData.nodes[2].meshIndices.size() == 1);
 }
 
 } // namespace RetroRenderer
