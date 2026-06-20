@@ -177,10 +177,9 @@ TEST_CASE("Software async stats atomics accumulate correctly under contention", 
                 stats.swJobsSubmitted.fetch_add(1, std::memory_order_relaxed);
                 stats.swJobsCompleted.fetch_add(1, std::memory_order_relaxed);
                 stats.swJobsCancelled.fetch_add(1, std::memory_order_relaxed);
-                stats.swJobsDroppedPending.fetch_add(1, std::memory_order_relaxed);
-                stats.swJobsSkippedBusy.fetch_add(1, std::memory_order_relaxed);
+                stats.swJobsReplacedPending.fetch_add(1, std::memory_order_relaxed);
                 stats.swFramesPresented.fetch_add(1, std::memory_order_relaxed);
-                stats.swFramesDroppedReady.fetch_add(1, std::memory_order_relaxed);
+                stats.swFramesReplacedReady.fetch_add(1, std::memory_order_relaxed);
             }
         });
     }
@@ -192,10 +191,9 @@ TEST_CASE("Software async stats atomics accumulate correctly under contention", 
     REQUIRE(stats.swJobsSubmitted.load(std::memory_order_relaxed) == expected);
     REQUIRE(stats.swJobsCompleted.load(std::memory_order_relaxed) == expected);
     REQUIRE(stats.swJobsCancelled.load(std::memory_order_relaxed) == expected);
-    REQUIRE(stats.swJobsDroppedPending.load(std::memory_order_relaxed) == expected);
-    REQUIRE(stats.swJobsSkippedBusy.load(std::memory_order_relaxed) == expected);
+    REQUIRE(stats.swJobsReplacedPending.load(std::memory_order_relaxed) == expected);
     REQUIRE(stats.swFramesPresented.load(std::memory_order_relaxed) == expected);
-    REQUIRE(stats.swFramesDroppedReady.load(std::memory_order_relaxed) == expected);
+    REQUIRE(stats.swFramesReplacedReady.load(std::memory_order_relaxed) == expected);
 }
 
 } // namespace RetroRenderer
