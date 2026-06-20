@@ -586,7 +586,7 @@ void ConfigPanel::LoadSelectedExampleScene() {
     const auto loadablePath =
         ExampleSceneCatalog::CanonicalizeLoadablePath(m_exampleSceneCatalog_.GetRootPath(), selectedScene.absolutePath);
     if (!loadablePath.has_value()) {
-        m_examplesStatusMessage_ = "The selected example is outside assets/tests-visual and was rejected.";
+        m_examplesStatusMessage_ = "The selected example is outside the assets folder and was rejected.";
         LOGE("Rejected example scene outside examples root: %s", selectedScene.absolutePath.string().c_str());
         return;
     }
@@ -607,7 +607,7 @@ void ConfigPanel::DrawExampleDirectoryNode(size_t directoryIndex) {
     ImGuiTreeNodeFlags flags =
         ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
     if (directory.childDirectoryIndices.empty()) {
-        flags |= ImGuiTreeNodeFlags_Leaf;
+        flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
     }
     if (m_selectedExampleDirectoryIndex_.has_value() && *m_selectedExampleDirectoryIndex_ == directoryIndex) {
         flags |= ImGuiTreeNodeFlags_Selected;
@@ -628,7 +628,7 @@ void ConfigPanel::DrawExampleDirectoryNode(size_t directoryIndex) {
     for (size_t childDirectoryIndex : directory.childDirectoryIndices) {
         DrawExampleDirectoryNode(childDirectoryIndex);
     }
-    if ((flags & ImGuiTreeNodeFlags_Leaf) == 0) {
+    if ((flags & ImGuiTreeNodeFlags_NoTreePushOnOpen) == 0) {
         ImGui::TreePop();
     }
 }
@@ -652,16 +652,17 @@ void ConfigPanel::DisplayExamplesWindow() {
     }
     const auto& directories = m_exampleSceneCatalog_.GetDirectories();
     const auto& scenes = m_exampleSceneCatalog_.GetScenes();
-    const bool hasSelectedScene = m_selectedExampleSceneIndex_.has_value() && *m_selectedExampleSceneIndex_ < scenes.size();
+    const bool hadSelectedSceneAtFrameStart =
+        m_selectedExampleSceneIndex_.has_value() && *m_selectedExampleSceneIndex_ < scenes.size();
 
     ImGui::SameLine();
-    if (!hasSelectedScene) {
+    if (!hadSelectedSceneAtFrameStart) {
         ImGui::BeginDisabled();
     }
     if (ImGui::Button("Load")) {
         LoadSelectedExampleScene();
     }
-    if (!hasSelectedScene) {
+    if (!hadSelectedSceneAtFrameStart) {
         ImGui::EndDisabled();
     }
 
@@ -705,6 +706,7 @@ void ConfigPanel::DisplayExamplesWindow() {
         ImGui::TableNextColumn();
         ImGui::BeginChild("ExamplesDetails", ImVec2(0.0f, 0.0f), false);
 
+        const bool hasSelectedScene = m_selectedExampleSceneIndex_.has_value() && *m_selectedExampleSceneIndex_ < scenes.size();
         const size_t activeDirectoryIndex = m_selectedExampleDirectoryIndex_.value_or(0);
         const ExampleSceneDirectory& activeDirectory = directories[activeDirectoryIndex];
         ImGui::Text("Folder: %s",

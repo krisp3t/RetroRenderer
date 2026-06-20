@@ -26,8 +26,9 @@ std::string ReadTextFile(const std::filesystem::path& path) {
 
 } // namespace
 
-ExampleSceneCatalog::ExampleSceneCatalog(std::filesystem::path rootPath)
-    : m_rootPath(std::move(rootPath)) {
+ExampleSceneCatalog::ExampleSceneCatalog(std::filesystem::path rootPath, std::vector<std::filesystem::path> scanRoots)
+    : m_rootPath(std::move(rootPath)),
+      m_scanRoots(std::move(scanRoots)) {
 }
 
 bool ExampleSceneCatalog::Refresh(const std::vector<std::string>& supportedExtensions) {
@@ -54,37 +55,55 @@ bool ExampleSceneCatalog::Refresh(const std::vector<std::string>& supportedExten
         normalizedExtensions.push_back(ToLower(extension));
     }
 
-    std::filesystem::recursive_directory_iterator iterator(
-        m_rootPath,
-        std::filesystem::directory_options::skip_permission_denied,
-        ec);
-    if (ec) {
-        return false;
-    }
-
-    for (const std::filesystem::directory_entry& entry : iterator) {
-        if (!entry.is_regular_file(ec)) {
-            ec.clear();
-            continue;
+    const auto scanRoot = [this, &normalizedExtensions](const std::filesystem::path& absoluteScanRoot,
+                                                        const std::filesystem::path& relativeScanRoot) {
+        std::error_code scanEc;
+        if (!std::filesystem::exists(absoluteScanRoot, scanEc) || !std::filesystem::is_directory(absoluteScanRoot, scanEc)) {
+            return;
         }
 
-        const std::string extension = ToLower(entry.path().extension().string());
-        if (std::find(normalizedExtensions.begin(), normalizedExtensions.end(), extension) == normalizedExtensions.end()) {
-            continue;
+        (void)EnsureDirectory(relativeScanRoot);
+
+        std::filesystem::recursive_directory_iterator iterator(
+            absoluteScanRoot,
+            std::filesystem::directory_options::skip_permission_denied,
+            scanEc);
+        if (scanEc) {
+            return;
         }
 
-        const std::filesystem::path relativePath = std::filesystem::relative(entry.path(), m_rootPath, ec);
-        if (ec) {
-            ec.clear();
-            continue;
-        }
+        for (const std::filesystem::directory_entry& entry : iterator) {
+            if (!entry.is_regular_file(scanEc)) {
+                scanEc.clear();
+                continue;
+            }
 
-        ExampleSceneEntry sceneEntry{};
-        sceneEntry.absolutePath = entry.path();
-        sceneEntry.relativePath = relativePath;
-        sceneEntry.displayName = entry.path().filename().string();
-        sceneEntry.directoryIndex = EnsureDirectory(relativePath.parent_path());
-        m_scenes_.push_back(std::move(sceneEntry));
+            const std::string extension = ToLower(entry.path().extension().string());
+            if (std::find(normalizedExtensions.begin(), normalizedExtensions.end(), extension) == normalizedExtensions.end()) {
+                continue;
+            }
+
+            const std::filesystem::path relativePath = std::filesystem::relative(entry.path(), m_rootPath, scanEc);
+            if (scanEc) {
+                scanEc.clear();
+                continue;
+            }
+
+            ExampleSceneEntry sceneEntry{};
+            sceneEntry.absolutePath = entry.path();
+            sceneEntry.relativePath = relativePath;
+            sceneEntry.displayName = entry.path().filename().string();
+            sceneEntry.directoryIndex = EnsureDirectory(relativePath.parent_path());
+            m_scenes_.push_back(std::move(sceneEntry));
+        }
+    };
+
+    if (m_scanRoots.empty()) {
+        scanRoot(m_rootPath, {});
+    } else {
+        for (const std::filesystem::path& relativeScanRoot : m_scanRoots) {
+            scanRoot(m_rootPath / relativeScanRoot, relativeScanRoot);
+        }
     }
 
     std::sort(m_scenes_.begin(), m_scenes_.end(), [](const ExampleSceneEntry& lhs, const ExampleSceneEntry& rhs) {

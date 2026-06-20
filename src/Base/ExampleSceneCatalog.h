@@ -25,7 +25,10 @@ struct ExampleSceneDirectory {
 
 class ExampleSceneCatalog {
   public:
-    explicit ExampleSceneCatalog(std::filesystem::path rootPath = std::filesystem::path("assets/tests-visual"));
+    explicit ExampleSceneCatalog(
+        std::filesystem::path rootPath = std::filesystem::path("assets"),
+        std::vector<std::filesystem::path> scanRoots = {std::filesystem::path("tests-visual"),
+                                                        std::filesystem::path("shader-examples")});
 
     bool Refresh(const std::vector<std::string>& supportedExtensions = {".obj"});
 
@@ -46,6 +49,7 @@ class ExampleSceneCatalog {
 
   private:
     std::filesystem::path m_rootPath;
+    std::vector<std::filesystem::path> m_scanRoots;
     bool m_rootExists_ = false;
     std::vector<ExampleSceneEntry> m_scenes_;
     std::vector<ExampleSceneDirectory> m_directories_;
