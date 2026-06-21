@@ -1408,6 +1408,7 @@ void ConfigPanel::DisplayPostFxSettings() {
     }
     manualChange |= ImGui::SliderInt("Texture max dimension", &retro.textureMaxDimension, 0, 64);
     manualChange |= ImGui::Checkbox("Snap projected vertices", &retro.snapVertices);
+    manualChange |= ImGui::SliderFloat("Vertex snap step", &retro.vertexSnapStep, 0.25f, 4.0f, "%.2f px");
     manualChange |= ImGui::Checkbox("Affine texture mapping", &retro.affineTextureMapping);
 
     ImGui::SeparatorText("PS1 style");
@@ -1458,7 +1459,6 @@ void ConfigPanel::DisplayPostFxSettings() {
     manualChange |= ImGui::Checkbox("RGB555 output quantization", &retro.quantizeToRgb555);
     manualChange |= ImGui::Checkbox("PS1 output dither", &retro.enablePs1OutputDither);
     manualChange |= ImGui::SliderInt("Depth precision bits", &retro.depthPrecisionBits, 0, 24);
-    manualChange |= ImGui::SliderFloat("Vertex snap step", &retro.vertexSnapStep, 0.25f, 4.0f, "%.2f px");
     manualChange |= ImGui::Checkbox("Use Gouraud shading", &retro.useGouraudShading);
     manualChange |= ImGui::Checkbox("Enable fog", &retro.enableFog);
     ImVec4 fogColor = retro.fogColor.ToImVec4();
@@ -1482,7 +1482,7 @@ void ConfigPanel::DisplayPostFxSettings() {
     if (retro.useTextureDerivedPalette) {
         ImGui::TextWrapped("Texture-derived palette overrides the fixed palette when a software-sampled texture has an auto-derived palette.");
     }
-    ImGui::TextWrapped("PS1 controls configure a dedicated PS1 shading path, CLUT-like texture reduction, UV precision, semitransparency, RGB555 quantization, snap precision, Gouraud shading, depth precision, and fog for the software retro path.");
+    ImGui::TextWrapped("PS1 controls configure a dedicated PS1 shading path, CLUT-like texture reduction, UV precision, semitransparency, RGB555 quantization, Gouraud shading, depth precision, and fog for the software retro path.");
     if (retro.usePs1ShadingModel) {
         ImGui::TextWrapped("PS1 material mode overrides how the software PS1 path chooses textured, vertex-colored, or flat-color shading, and whether lighting is applied at all.");
     }

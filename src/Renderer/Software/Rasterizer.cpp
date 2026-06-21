@@ -734,6 +734,22 @@ void WriteTrianglePixel(Buffer<Pixel>& framebuffer,
 }
 } // namespace
 
+Pixel Rasterizer::ApplyRetroPixelStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Config& cfg) {
+    Pixel styledColor = inputColor;
+    if (!UsePs1ShadingModel(cfg) &&
+        !cfg.retro.enableOrderedDithering &&
+        cfg.retro.enablePalette &&
+        cfg.retro.palette != Config::PaletteType::NONE) {
+        const Color& quantized = RetroPalette::GetPaletteColor(
+            cfg.retro,
+            RetroPalette::FindNearestPaletteIndex(inputColor.r, inputColor.g, inputColor.b, cfg.retro));
+        styledColor = Pixel{quantized.r, quantized.g, quantized.b, inputColor.a};
+    }
+
+    styledColor = ApplyRetroFillStyle(styledColor, pixelPos, cfg);
+    return ApplyPs1OutputStyle(styledColor, pixelPos, cfg);
+}
+
 glm::vec2 Rasterizer::NDCToViewport(const glm::vec2& v, size_t width, size_t height) {
     // Keep subpixel precision for raster rules.
     return {(v.x + 1.0f) * 0.5f * width + 0.5f, (1.0f - v.y) * 0.5f * height + 0.5f};

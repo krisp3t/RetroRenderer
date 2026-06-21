@@ -34,6 +34,7 @@ class Rasterizer {
     ~Rasterizer() = default;
     // TODO: add configurable line/triangle colors
     static glm::vec2 NDCToViewport(const glm::vec2& v, size_t width, size_t height);
+    static Pixel ApplyRetroPixelStyle(Pixel inputColor, const glm::ivec2& pixelPos, const Config& cfg);
     static void DrawTriangle(Buffer<Pixel>& framebuffer,
                              Buffer<float>& depthBuffer,
                              std::array<RasterVertex, 3>& vertices,

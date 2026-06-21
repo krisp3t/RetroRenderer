@@ -306,7 +306,7 @@ void DrawDepthTestedLine(Buffer<Pixel>& framebuffer,
             const size_t pixelIndex = static_cast<size_t>(pixelY) * framebuffer.width + static_cast<size_t>(pixelX);
             const float depth = QuantizeGridDepth(z, cfg);
             if (!cfg.cull.depthTest || depth < depthBuffer.data[pixelIndex]) {
-                framebuffer.data[pixelIndex] = color;
+                framebuffer.data[pixelIndex] = Rasterizer::ApplyRetroPixelStyle(color, glm::ivec2{pixelX, pixelY}, cfg);
                 if (cfg.cull.depthTest) {
                     depthBuffer.data[pixelIndex] = depth;
                 }
@@ -505,6 +505,14 @@ Pixel SampleSkyboxCubemap(const std::array<std::vector<Pixel>, 6>& faces, int fa
 
 size_t ComputeSkyboxSampleStep(size_t width, size_t height) {
     return std::max<size_t>(1, (std::max(width, height) + 319) / 320);
+}
+
+bool ShouldStylizeBackgroundPixels(const Config& cfg) {
+    return cfg.retro.enableOrderedDithering ||
+           cfg.retro.quantizeToRgb555 ||
+           (!cfg.retro.usePs1ShadingModel &&
+            cfg.retro.enablePalette &&
+            cfg.retro.palette != Config::PaletteType::NONE);
 }
 
 bool NearlyEqual(float a, float b, float epsilon = 1e-4f) {
@@ -984,7 +992,21 @@ void SWRenderer::DrawSkybox() {
     if (m_SkyboxCachePixels.size() != m_FrameBuffer->GetCount()) {
         return;
     }
-    std::copy_n(m_SkyboxCachePixels.data(), m_SkyboxCachePixels.size(), m_FrameBuffer->data);
+    if (!ShouldStylizeBackgroundPixels(m_FrameConfigSnapshot)) {
+        std::copy_n(m_SkyboxCachePixels.data(), m_SkyboxCachePixels.size(), m_FrameBuffer->data);
+        return;
+    }
+
+    for (size_t y = 0; y < m_FrameBuffer->height; y++) {
+        Pixel* dstRow = m_FrameBuffer->data + y * m_FrameBuffer->width;
+        const Pixel* srcRow = m_SkyboxCachePixels.data() + y * m_FrameBuffer->width;
+        for (size_t x = 0; x < m_FrameBuffer->width; x++) {
+            dstRow[x] = Rasterizer::ApplyRetroPixelStyle(
+                srcRow[x],
+                glm::ivec2{static_cast<int>(x), static_cast<int>(y)},
+                m_FrameConfigSnapshot);
+        }
+    }
 }
 
 void SWRenderer::DrawGridGizmo() {
