@@ -420,8 +420,8 @@ bool LoadSkyboxCrossImage(const std::string& path, int& outFaceSize, std::array<
     static constexpr Offset kFaceOffsets[6] = {
         {2, 1}, // +X
         {0, 1}, // -X
-        {1, 0}, // +Y
-        {1, 2}, // -Y
+        {1, 2}, // +Y
+        {1, 0}, // -Y
         {1, 1}, // +Z
         {3, 1}, // -Z
     };
