@@ -113,6 +113,7 @@ endif ()
 find_package(glm       CONFIG REQUIRED)
 find_package(imgui     CONFIG REQUIRED)
 find_package(glad      CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 # -----------------------------------------------------------------------------
 # Source files
@@ -129,6 +130,7 @@ set(RETRO_RENDERER_SOURCES
         src/Renderer/GLUiRenderer.cpp
         src/Renderer/GridGizmo.cpp
         src/Renderer/InlineRenderExecutor.cpp
+        src/Renderer/MaterialRuntime.cpp
         src/Renderer/RenderSystem.cpp
         src/Renderer/RetroPalette.cpp
         src/Renderer/UiRenderPacket.cpp
@@ -137,6 +139,7 @@ set(RETRO_RENDERER_SOURCES
 )
 
 set(RETRO_SCENE_SOURCES
+        src/Scene/AnimationTimeline.cpp
         src/Scene/Camera.cpp
         src/Scene/LightweightObjSceneImporter.cpp
         src/Scene/MaterialManager.cpp
@@ -149,6 +152,7 @@ set(RETRO_SCENE_SOURCES
 )
 
 set(RETRO_WINDOW_SOURCES
+        src/Window/AnimationPanel.cpp
         src/Window/ConfigPanel.cpp
         src/Window/DisplaySystem.cpp
         src/Window/InputSystem.cpp
@@ -394,6 +398,7 @@ target_link_libraries(${PROJECT_NAME}
         imgui::imgui
         glm::glm
         glad::glad
+        nlohmann_json::nlohmann_json
         KrisLogger
         retro_sanitizers
 )

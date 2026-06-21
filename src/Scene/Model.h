@@ -31,6 +31,7 @@ class Model {
     void SetLocalPosition(const glm::vec3& position);
     void SetLocalTRS(const glm::vec3& translation, const glm::vec3& rotationEulerDegrees, const glm::vec3& scale);
     void SetParent(int parent);
+    [[nodiscard]] const glm::mat4& GetLocalTransform() const;
     const glm::mat4& GetWorldTransform() const;
     void MarkDirty();
     void RecomputeLocalBounds();

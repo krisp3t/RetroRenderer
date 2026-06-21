@@ -64,26 +64,34 @@ void SceneEditorPanel::DrawLight(SceneLight& light, int lightIndex, EditorContex
 
 void SceneEditorPanel::DrawModelRecursive(Scene& scene, int modelIndex, EditorContext& editorContext) {
     Model& model = scene.GetModel(static_cast<size_t>(modelIndex));
-    constexpr ImGuiTreeNodeFlags kNodeFlags =
+    ImGuiTreeNodeFlags nodeFlags =
         ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+    if (editorContext.selectedModelIndex.has_value() && *editorContext.selectedModelIndex == modelIndex) {
+        nodeFlags |= ImGuiTreeNodeFlags_Selected;
+    }
     const std::string label = model.GetName() + "##model_" + std::to_string(modelIndex);
-    if (!ImGui::TreeNodeEx(label.c_str(), kNodeFlags)) {
+    const bool opened = ImGui::TreeNodeEx(label.c_str(), nodeFlags);
+    if (ImGui::IsItemClicked()) {
+        if (!editorContext.selectedModelIndex.has_value() || *editorContext.selectedModelIndex != modelIndex) {
+            editorContext.selectedModelIndex = modelIndex;
+            editorContext.GetSceneManager().ClearAnimationPreviewPose();
+        }
+    }
+    if (!opened) {
         return;
     }
 
-    glm::vec3 localPosition{};
-    glm::vec3 localRotation{};
-    glm::vec3 localScale{};
-    model.GetLocalTRS(localPosition, localRotation, localScale);
-    bool transformChanged = false;
-    transformChanged |=
-        ImGui::DragFloat3("Local position", glm::value_ptr(localPosition), 0.1f, 0.0f, 0.0f, "%.3f");
-    transformChanged |=
-        ImGui::DragFloat3("Local rotation", glm::value_ptr(localRotation), 0.5f, 0.0f, 0.0f, "%.2f");
-    transformChanged |= ImGui::DragFloat3("Local scale", glm::value_ptr(localScale), 0.01f, 0.0f, 0.0f, "%.3f");
-    if (transformChanged) {
-        model.SetLocalTRS(localPosition, localRotation, localScale);
-        editorContext.GetSceneManager().NotifySceneMutated();
+    if (editorContext.selectedModelIndex.has_value() && *editorContext.selectedModelIndex == modelIndex) {
+        TransformPose pose = editorContext.GetSceneManager().GetEditableAnimationPoseForModel(modelIndex);
+        bool transformChanged = false;
+        transformChanged |=
+            ImGui::DragFloat3("Local position", glm::value_ptr(pose.translation), 0.1f, 0.0f, 0.0f, "%.3f");
+        transformChanged |=
+            ImGui::DragFloat3("Local rotation", glm::value_ptr(pose.rotationEulerDegrees), 0.5f, 0.0f, 0.0f, "%.2f");
+        transformChanged |= ImGui::DragFloat3("Local scale", glm::value_ptr(pose.scale), 0.01f, 0.0f, 0.0f, "%.3f");
+        if (transformChanged) {
+            editorContext.GetSceneManager().SetAnimationPreviewPoseForCurrentFrame(modelIndex, pose);
+        }
     }
 
     for (int childIndex : model.GetChildren()) {

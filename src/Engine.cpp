@@ -69,6 +69,7 @@ bool Engine::Init() {
         .materialManager = p_MaterialManager.get(),
         .dispatchImmediate = [this](const Event& event) { DispatchImmediate(event); },
         .enqueueEvent = [this](std::unique_ptr<Event> event) { EnqueueEvent(std::move(event)); },
+        .selectedModelIndex = std::nullopt,
     });
 
     // Default scene (optional)

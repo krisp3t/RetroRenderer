@@ -415,6 +415,22 @@ bool ConfigPanel::HasScene() const {
     return m_editorContext_ && m_editorContext_->HasScene();
 }
 
+void ConfigPanel::ValidateEditorSelection() {
+    if (!m_editorContext_ || !m_editorContext_->selectedModelIndex.has_value()) {
+        return;
+    }
+
+    const std::shared_ptr<Scene> scene = GetScene();
+    if (!scene ||
+        *m_editorContext_->selectedModelIndex < 0 ||
+        static_cast<size_t>(*m_editorContext_->selectedModelIndex) >= scene->GetModelCount()) {
+        m_editorContext_->selectedModelIndex.reset();
+        if (m_editorContext_->sceneManager) {
+            m_editorContext_->sceneManager->ClearAnimationPreviewPose();
+        }
+    }
+}
+
 void ConfigPanel::ApplyRendererPreset(Config::RenderPreset preset) {
     if (!p_config_) {
         return;
@@ -495,6 +511,8 @@ void ConfigPanel::DisplayGUI() {
         return;
     }
 
+    ValidateEditorSelection();
+
     ImGuiIO& io = ImGui::GetIO();
     if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
         ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -513,6 +531,7 @@ void ConfigPanel::DisplayGUI() {
     DisplayJoysticks();
     DisplayMainMenu();
     DisplaySceneGraph();
+    DisplayAnimationWindow();
     DisplayMaterialWindow();
     DisplayConfigWindow();
     DisplayControlsOverlay();
@@ -894,6 +913,12 @@ void ConfigPanel::DisplayWindowSettings() {
 void ConfigPanel::DisplaySceneGraph() {
     if (m_editorContext_) {
         m_sceneEditorPanel_.Draw(*m_editorContext_);
+    }
+}
+
+void ConfigPanel::DisplayAnimationWindow() {
+    if (m_editorContext_) {
+        m_animationPanel_.Draw(*m_editorContext_);
     }
 }
 

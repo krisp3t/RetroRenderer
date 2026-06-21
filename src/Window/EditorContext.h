@@ -7,6 +7,7 @@
 #include <cassert>
 #include <functional>
 #include <memory>
+#include <optional>
 
 namespace RetroRenderer {
 
@@ -21,6 +22,7 @@ struct EditorContext {
     MaterialManager* materialManager = nullptr;
     std::function<void(const Event&)> dispatchImmediate;
     std::function<void(std::unique_ptr<Event>)> enqueueEvent;
+    std::optional<int> selectedModelIndex;
 
     [[nodiscard]] Camera* GetCamera() const {
         return sceneManager != nullptr ? sceneManager->GetCamera() : nullptr;
@@ -32,6 +34,10 @@ struct EditorContext {
 
     [[nodiscard]] bool HasScene() const {
         return GetScene() != nullptr;
+    }
+
+    [[nodiscard]] bool HasSelectedModel() const {
+        return selectedModelIndex.has_value();
     }
 
     [[nodiscard]] SceneManager& GetSceneManager() const {

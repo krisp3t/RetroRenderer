@@ -69,6 +69,10 @@ void Model::SetLocalTRS(const glm::vec3& translation, const glm::vec3& rotationE
     SetLocalTransform(localTransform);
 }
 
+const glm::mat4& Model::GetLocalTransform() const {
+    return m_LocalMatrix;
+}
+
 const glm::mat4& Model::GetWorldTransform() const {
     return m_WorldMatrix;
 }

@@ -4,6 +4,7 @@
 #include "../Base/Stats.h"
 #include "../Renderer/FrameSubmission.h"
 #include "../Renderer/RenderOutput.h"
+#include "AnimationPanel.h"
 #include "EditorContext.h"
 #include "MaterialEditorPanel.h"
 #include "SceneEditorPanel.h"
@@ -50,6 +51,7 @@ class ConfigPanel {
     std::shared_ptr<const Texture> m_previewTextureSnapshot_;
     bool m_isDragging_ = false;
     std::optional<EditorContext> m_editorContext_;
+    AnimationPanel m_animationPanel_;
     SceneEditorPanel m_sceneEditorPanel_;
     MaterialEditorPanel m_materialEditorPanel_;
     ExampleSceneCatalog m_exampleSceneCatalog_;
@@ -72,6 +74,7 @@ class ConfigPanel {
     void DisplayEnvironmentSettings();
     void DisplayMainMenu();
     void DisplaySceneGraph();
+    void DisplayAnimationWindow();
     void DisplayMaterialWindow();
     void DisplayTexturePreview(const std::shared_ptr<const Texture>& texture);
     void DisplayConfigWindow();
@@ -95,6 +98,7 @@ class ConfigPanel {
     [[nodiscard]] Camera* GetCamera() const;
     [[nodiscard]] std::shared_ptr<Scene> GetScene() const;
     [[nodiscard]] bool HasScene() const;
+    void ValidateEditorSelection();
 
     static constexpr const char* kSupportedModels = ".obj";
     VirtualStickState moveStickState;

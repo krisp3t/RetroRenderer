@@ -58,7 +58,8 @@
         {
             "name": "catch2",
             "platform": "!android & !emscripten"
-        }
+        },
+        "nlohmann-json"
     ],
     "version": "1.0",
     "name": "retrorenderer"
